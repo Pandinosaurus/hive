@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.expressions;
@@ -83,10 +84,10 @@ public class StringSubstrColStartLen extends VectorExpression {
    * @param start start offset of the byte array the string starts at
    * @param len length of the bytes the string holds in the byte array
    * @param substrStart the Start index for the substring operation
-   * @param substrLen the length of the substring
-   * @param offsetArray the array that indexes are populated to. Assume its length >= 2.
+   * @param substrLength the length of the substring
+   * @param offsetArray the array that indexes are populated to. Assume its {@literal length >= 2}.
    */
-  static void populateSubstrOffsets(byte[] utf8String, int start, int len, int substrStart,
+  public static void populateSubstrOffsets(byte[] utf8String, int start, int len, int substrStart,
       int substrLength, int[] offsetArray) {
     int curIdx = -1;
     offsetArray[0] = -1;

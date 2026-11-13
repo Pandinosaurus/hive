@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.topnkey;
 
@@ -72,6 +73,15 @@ public class TopNKeyProcessor implements SemanticNodeProcessor {
     }
 
     if (reduceSinkDesc.getTopN() > maxTopNAllowed) {
+      return null;
+    }
+
+    // HIVE-26671: We do not want to create a TopNKey processor when the reduce sink
+    // operator contains a count distinct. This would result in a topnkey operator
+    // with an extra group in its sort order. The TopNKey Pushdown Processor could then
+    // push down this operator and it would be incorrect since the count distinct adds
+    // a group that is only temporarily used for calculating a value.
+    if (reduceSinkDesc.hasADistinctColumnIndex()) {
       return null;
     }
 

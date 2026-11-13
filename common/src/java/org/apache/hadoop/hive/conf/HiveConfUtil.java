@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.conf;
@@ -94,6 +95,56 @@ public class HiveConfUtil {
       }
     }
     return hiddenSet;
+  }
+
+  /**
+   * Getting the set of the configurations which are immutable at runtime. Unlike
+   * {@link HiveConf#verifyAndSet(String, String)}, this works on any {@link Configuration} and not
+   * only on a {@link HiveConf}, which makes it usable on a JobConf.
+   * @param configuration The original configuration
+   * @return The list of the configuration prefixes which must not be modified at runtime
+   */
+  public static Set<String> getRestrictedSet(Configuration configuration) {
+    Set<String> restrictedSet = new HashSet<String>();
+    String restrictedListStr = HiveConf.getVar(configuration, HiveConf.ConfVars.HIVE_CONF_RESTRICTED_LIST);
+    if (restrictedListStr != null) {
+      for (String entry : restrictedListStr.split(",")) {
+        restrictedSet.add(entry.trim());
+      }
+    }
+
+    String internalVariableListStr = HiveConf.getVar(configuration, ConfVars.HIVE_CONF_INTERNAL_VARIABLE_LIST);
+    if (internalVariableListStr != null) {
+      for (String entry : internalVariableListStr.split(",")) {
+        restrictedSet.add(entry.trim());
+      }
+    }
+
+    restrictedSet.add(ConfVars.HIVE_IN_TEST.varname);
+    restrictedSet.add(ConfVars.HIVE_CONF_RESTRICTED_LIST.varname);
+    restrictedSet.add(ConfVars.HIVE_CONF_HIDDEN_LIST.varname);
+    restrictedSet.add(ConfVars.HIVE_CONF_INTERNAL_VARIABLE_LIST.varname);
+    restrictedSet.add(ConfVars.HIVE_CONF_LOCKED_LIST.varname);
+    restrictedSet.add(ConfVars.HIVE_COMPACTOR_CONF_ALLOWLIST.varname);
+    restrictedSet.add(ConfVars.HIVE_COMPACTOR_CONF_ALLOWLIST_APPEND.varname);
+    restrictedSet.add(ConfVars.HIVE_COMPACTOR_CONF_DENYLIST.varname);
+    return restrictedSet;
+  }
+
+  /**
+   * Getting the set of locked configurations
+   * @param configuration The original configuration
+   * @return The list of the configuration values to be locked
+   */
+  public static Set<String> getLockedSet(Configuration configuration) {
+    Set<String> lockedSet = new HashSet<>();
+    String lockedListStr = HiveConf.getVar(configuration, ConfVars.HIVE_CONF_LOCKED_LIST);
+    if (lockedListStr != null) {
+      for (String entry : lockedListStr.split(",")) {
+        lockedSet.add(entry.trim());
+      }
+    }
+    return lockedSet;
   }
 
   /**

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.reloperators;
 
@@ -22,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelTraitSet;
@@ -29,6 +31,7 @@ import org.apache.calcite.rel.InvalidRelException;
 import org.apache.calcite.rel.RelCollation;
 import org.apache.calcite.rel.RelCollations;
 import org.apache.calcite.rel.RelDistribution;
+import org.apache.calcite.rel.RelInput;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelWriter;
 import org.apache.calcite.rel.core.Join;
@@ -93,8 +96,16 @@ public class HiveJoin extends Join implements HiveRelNode {
     this.joinAlgorithm = joinAlgo;
   }
 
-  @Override
-  public void implement(Implementor implementor) {
+  public HiveJoin(RelInput input) throws InvalidRelException, CalciteSemanticException {
+    this(
+        input.getCluster(),
+        input.getTraitSet(),
+        input.getInputs().get(0),
+        input.getInputs().get(1),
+        input.getExpression("condition"),
+        input.getEnum("joinType", JoinRelType.class),
+        ImmutableSet.of(),
+        null);
   }
 
   @Override

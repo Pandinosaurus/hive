@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -25,6 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -53,7 +55,6 @@ import java.util.stream.IntStream;
 /**
  * Test class for Hive Kafka Producer.
  */
-@org.junit.Ignore("flaky HIVE-23693")
 @SuppressWarnings("unchecked") public class HiveKafkaProducerTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(HiveKafkaProducerTest.class);
@@ -159,7 +160,9 @@ import java.util.stream.IntStream;
   @Test(expected = org.apache.kafka.common.KafkaException.class) public void testWrongEpochAndId() {
     HiveKafkaProducer secondProducer = new HiveKafkaProducer(producerProperties);
     secondProducer.resumeTransaction(3434L, (short) 12);
-    secondProducer.sendOffsetsToTransaction(ImmutableMap.of(), "__dummy_consumer_group");
+    secondProducer.sendOffsetsToTransaction(Collections.singletonMap(
+            new TopicPartition("dummy_topic", 0),
+            new OffsetAndMetadata(0L)), "__dummy_consumer_group");
     secondProducer.close(Duration.ZERO);
   }
 
@@ -170,7 +173,9 @@ import java.util.stream.IntStream;
     producer.close(Duration.ZERO);
     HiveKafkaProducer secondProducer = new HiveKafkaProducer(producerProperties);
     secondProducer.resumeTransaction(pid, (short) 12);
-    secondProducer.sendOffsetsToTransaction(ImmutableMap.of(), "__dummy_consumer_group");
+    secondProducer.sendOffsetsToTransaction(Collections.singletonMap(
+            new TopicPartition("dummy_topic", 0),
+            new OffsetAndMetadata(0L)), "__dummy_consumer_group");
     secondProducer.close(Duration.ZERO);
   }
 
@@ -181,7 +186,9 @@ import java.util.stream.IntStream;
     producer.close(Duration.ZERO);
     HiveKafkaProducer secondProducer = new HiveKafkaProducer(producerProperties);
     secondProducer.resumeTransaction(45L, epoch);
-    secondProducer.sendOffsetsToTransaction(ImmutableMap.of(), "__dummy_consumer_group");
+    secondProducer.sendOffsetsToTransaction(Collections.singletonMap(
+            new TopicPartition("dummy_topic", 0),
+            new OffsetAndMetadata(0L)), "__dummy_consumer_group");
     secondProducer.close(Duration.ZERO);
   }
 }

@@ -9,19 +9,22 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.hooks;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.metastore.api.Catalog;
 import org.apache.hadoop.hive.metastore.api.DataConnector;
 import org.apache.hadoop.hive.metastore.api.Database;
+import org.apache.hadoop.hive.metastore.api.Function;
 import org.apache.hadoop.hive.ql.ddl.table.AlterTableType;
 import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.ql.metadata.DummyPartition;
@@ -51,6 +54,7 @@ public class WriteEntity extends Entity implements Serializable {
     INSERT_OVERWRITE,
     UPDATE,
     DELETE,
+    CTAS,
     PATH_WRITE, // Write to a URI, no locking done for this
   };
 
@@ -61,6 +65,11 @@ public class WriteEntity extends Entity implements Serializable {
    */
   public WriteEntity() {
     super();
+  }
+
+  public WriteEntity(Catalog catalog, WriteType type) {
+    super(catalog, true);
+    setWriteTypeInternal(type);
   }
 
   public WriteEntity(Database database, WriteType type) {
@@ -86,6 +95,11 @@ public class WriteEntity extends Entity implements Serializable {
 
   public WriteEntity(Table t, WriteType type, boolean complete) {
     super(t, complete);
+    setWriteTypeInternal(type);
+  }
+
+  public WriteEntity(Function function, WriteType type) {
+    super(function, true);
     setWriteTypeInternal(type);
   }
 
@@ -124,11 +138,11 @@ public class WriteEntity extends Entity implements Serializable {
    *
    * @param d
    *          The name of the directory that is being written to.
-   * @param islocal
+   * @param isLocal
    *          Flag to decide whether this directory is local or in dfs.
    */
-  public WriteEntity(Path d, boolean islocal) {
-    this(d, islocal, false);
+  public WriteEntity(Path d, boolean isLocal) {
+    this(d, isLocal, false);
   }
 
   /**
@@ -136,13 +150,13 @@ public class WriteEntity extends Entity implements Serializable {
    *
    * @param d
    *          The name of the directory that is being written to.
-   * @param islocal
+   * @param isLocal
    *          Flag to decide whether this directory is local or in dfs.
    * @param isTemp
    *          True if this is a temporary location such as scratch dir
    */
-  public WriteEntity(Path d, boolean islocal, boolean isTemp) {
-    super(d, islocal, true);
+  public WriteEntity(Path d, boolean isLocal, boolean isTemp) {
+    super(d, isLocal, true);
     this.isTempURI = isTemp;
     this.writeType = WriteType.PATH_WRITE;
   }
@@ -161,15 +175,6 @@ public class WriteEntity extends Entity implements Serializable {
     return writeType;
   }
 
-  /**
-   * Only use this if you are very sure of what you are doing.  This is used by the
-   * {@link org.apache.hadoop.hive.ql.parse.UpdateDeleteSemanticAnalyzer} to reset the types to
-   * update or delete after rewriting and reparsing the queries.
-   * @param type new operation type
-   */
-  public void setWriteType(WriteType type) {
-    setWriteTypeInternal(type);
-  }
   private void setWriteTypeInternal(WriteType type) {
     writeType = type;
   }
@@ -221,7 +226,7 @@ public class WriteEntity extends Entity implements Serializable {
         // Not used, @see org.apache.hadoop.hive.ql.ddl.table.storage.skewed.AlterTableSkewedByAnalyzer
         // alter table {table_name} skewed by (col_name1, col_name2, ...)
         //   on ([(col_name1_value, col_name2_value, ...) [, (col_name1_value, col_name2_value), ...] [stored as directories]
-      case SET_SKEWED_LOCATION: 
+      case SET_SKEWED_LOCATION:
         // alter table {table_name} set skewed location (col_name1="location1" [, col_name2="location2", ...] )
       case INTO_BUCKETS:
         // Not used, @see org.apache.hadoop.hive.ql.ddl.table.storage.cluster.AlterTableIntoBucketsAnalyzer
@@ -240,17 +245,18 @@ public class WriteEntity extends Entity implements Serializable {
         } else {
           return WriteType.DDL_EXCLUSIVE;
         }
-        
+
       case CLUSTERED_BY:
-        // alter table {table_name} clustered by (col_name, col_name, ...) [sorted by (col_name, ...)] 
+        // alter table {table_name} clustered by (col_name, col_name, ...) [sorted by (col_name, ...)]
         //    into {num_buckets} buckets;
       case NOT_SORTED:
       case NOT_CLUSTERED:
       case SET_FILE_FORMAT:
         // alter table {table_name} [partition ({partition_spec})] set fileformat {file_format}
       case SET_SERDE:
-        // alter table {table_name} [PARTITION ({partition_spec})] set serde '{serde_class_name}'  
+        // alter table {table_name} [PARTITION ({partition_spec})] set serde '{serde_class_name}'
       case ADDCOLS:
+      case DROP_COLUMN:
       case REPLACE_COLUMNS:
         // alter table {table_name} [partition ({partition_spec})] add/replace columns ({col_name} {data_type})
       case RENAME_COLUMN:
@@ -260,10 +266,10 @@ public class WriteEntity extends Entity implements Serializable {
       case OWNER:
       case RENAME:
         // alter table {table_name} rename to {new_table_name}
-      case DROPPROPS:  
-        return AcidUtils.isLocklessReadsEnabled(table, conf) ? 
+      case DROPPROPS:
+        return AcidUtils.isLocklessReadsEnabled(table, conf) ?
             WriteType.DDL_EXCL_WRITE : WriteType.DDL_EXCLUSIVE;
-  
+
       case ADDPARTITION:
         // Not used: @see org.apache.hadoop.hive.ql.ddl.table.partition.add.AbstractAddPartitionAnalyzer
         // alter table {table_name} add [if not exists] partition ({partition_spec}) [location '{location}']
@@ -271,20 +277,21 @@ public class WriteEntity extends Entity implements Serializable {
       case SET_SERDE_PROPS:
       case ADDPROPS:
       case UPDATESTATS:
+      case DROP_COL_STATS:
         return WriteType.DDL_SHARED;
-  
+
       case COMPACT:
-        // alter table {table_name} [partition (partition_key = 'partition_value' [, ...])] 
+        // alter table {table_name} [partition (partition_key = 'partition_value' [, ...])]
         //    compact 'compaction_type'[and wait] [with overwrite tblproperties ("property"="value" [, ...])];
       case TOUCH:
         // alter table {table_name} touch [partition ({partition_spec})]
         return WriteType.DDL_NO_LOCK;
-  
+
       default:
         throw new RuntimeException("Unknown operation " + op.toString());
     }
   }
-  
+
   public boolean isDynamicPartitionWrite() {
     return isDynamicPartitionWrite;
   }

@@ -9,28 +9,30 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.dbinstall.rules;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import org.testcontainers.containers.MariaDBContainer;
+import org.testcontainers.utility.DockerImageName;
 
 public class Mariadb extends DatabaseRule {
+  private final MariaDBContainer<?> container = new MariaDBContainer<>(DockerImageName.parse("mariadb:11.4"));
 
   @Override
-  public String getDockerImageName() {
-    return "mariadb:10.2";
+  public void before() {
+    container.start();
   }
 
   @Override
-  public String[] getDockerAdditionalArgs() {
-    return buildArray("-p", "3306:3306", "-e", "MYSQL_ROOT_PASSWORD=" + getDbRootPassword(), "-d");
+  public void after() {
+    container.stop();
   }
 
   @Override
@@ -45,29 +47,22 @@ public class Mariadb extends DatabaseRule {
 
   @Override
   public String getDbRootPassword() {
-    return "its-a-secret";
+    return container.getPassword();
   }
 
   @Override
   public String getJdbcDriver() {
-    return "org.mariadb.jdbc.Driver";
+    return container.getDriverClassName();
   }
 
   @Override
-  public String getJdbcUrl(String hostAddress) {
-    return "jdbc:mariadb://" + hostAddress + ":3306/" + HIVE_DB;
+  public String getJdbcUrl() {
+    return container.withDatabaseName(HIVE_DB).getJdbcUrl();
   }
 
   @Override
-  public String getInitialJdbcUrl(String hostAddress) {
-    return "jdbc:mariadb://" + hostAddress + ":3306/?allowPublicKeyRetrieval=true";
-  }
-
-  @Override
-  public boolean isContainerReady(ProcessResults pr) {
-    Pattern pat = Pattern.compile("ready for connections");
-    Matcher m = pat.matcher(pr.stderr);
-    return m.find() && m.find();
+  public String getInitialJdbcUrl() {
+    return container.withDatabaseName("").getJdbcUrl();
   }
 
   @Override

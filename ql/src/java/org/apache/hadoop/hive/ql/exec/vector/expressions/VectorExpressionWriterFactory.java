@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.expressions;
@@ -737,6 +738,9 @@ public final class VectorExpressionWriterFactory {
       case UNION:
         return genVectorExpressionWritableUnion(
             (SettableUnionObjectInspector) fieldObjInspector);
+
+      case UNKNOWN:
+        return genVectorExpressionWritableUnknown(fieldObjInspector);
 
       default:
         throw new IllegalArgumentException("Unknown type " +
@@ -1715,6 +1719,28 @@ public final class VectorExpressionWriterFactory {
 
         unionOI.setFieldAndTag(union, value, (byte) tag);
         return union;
+      }
+    }.init(fieldObjInspector);
+  }
+
+  private static VectorExpressionWriter genVectorExpressionWritableUnknown(
+      ObjectInspector fieldObjInspector) throws HiveException {
+    return new VectorExpressionWriterBase() {
+
+      @Override
+      public Object writeValue(ColumnVector column, int row) throws HiveException {
+        return null;
+      }
+
+      @Override
+      public Object setValue(Object row, ColumnVector column, int columnRow)
+          throws HiveException {
+        return null;
+      }
+
+      @Override
+      public Object initValue(Object ost) throws HiveException {
+        return null;
       }
     }.init(fieldObjInspector);
   }

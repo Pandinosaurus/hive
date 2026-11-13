@@ -306,20 +306,17 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
@@ -365,17 +362,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -384,10 +381,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -438,20 +435,17 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
@@ -481,17 +475,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -500,10 +494,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -572,21 +566,18 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                        value expressions: _col1 (type: string)
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                      value expressions: _col1 (type: string)
             Execution mode: vectorized
         Map 5 
             Map Operator Tree:
@@ -669,13 +660,13 @@ STAGE PLANS:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
                 outputColumnNames: _col1
-                Statistics: Num rows: 1000 Data size: 86000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 184000 Basic stats: COMPLETE Column stats: PARTIAL
                 Reduce Output Operator
                   key expressions: _col1 (type: string)
                   null sort order: z
                   sort order: +
                   Map-reduce partition columns: _col1 (type: string)
-                  Statistics: Num rows: 1000 Data size: 86000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1000 Data size: 184000 Basic stats: COMPLETE Column stats: PARTIAL
         Reducer 3 
             Reduce Operator Tree:
               Merge Join Operator
@@ -684,17 +675,17 @@ STAGE PLANS:
                 keys:
                   0 _col1 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 4 
             Execution mode: vectorized
@@ -703,10 +694,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -766,21 +757,18 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                        value expressions: _col1 (type: string)
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                      value expressions: _col1 (type: string)
             Execution mode: vectorized
         Map 5 
             Map Operator Tree:
@@ -831,13 +819,13 @@ STAGE PLANS:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
                 outputColumnNames: _col1
-                Statistics: Num rows: 1000 Data size: 86000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 184000 Basic stats: COMPLETE Column stats: PARTIAL
                 Reduce Output Operator
                   key expressions: _col1 (type: string)
                   null sort order: z
                   sort order: +
                   Map-reduce partition columns: _col1 (type: string)
-                  Statistics: Num rows: 1000 Data size: 86000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1000 Data size: 184000 Basic stats: COMPLETE Column stats: PARTIAL
         Reducer 3 
             Reduce Operator Tree:
               Merge Join Operator
@@ -846,17 +834,17 @@ STAGE PLANS:
                 keys:
                   0 _col1 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 4 
             Execution mode: vectorized
@@ -865,10 +853,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -934,20 +922,17 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string), _col1 (type: string)
-                        null sort order: zz
-                        sort order: ++
-                        Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
-                        Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string), _col1 (type: string)
+                      null sort order: zz
+                      sort order: ++
+                      Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
+                      Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
@@ -1009,17 +994,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string), _col1 (type: string)
                   1 _col0 (type: string), _col1 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -1028,10 +1013,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1082,20 +1067,17 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string), _col1 (type: string)
-                        null sort order: zz
-                        sort order: ++
-                        Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
-                        Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string), _col1 (type: string)
+                      null sort order: zz
+                      sort order: ++
+                      Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
+                      Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
@@ -1125,17 +1107,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string), _col1 (type: string)
                   1 _col0 (type: string), _col1 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -1144,10 +1126,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1209,20 +1191,17 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
@@ -1268,17 +1247,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -1287,10 +1266,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1341,20 +1320,17 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
@@ -1384,17 +1360,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -1403,10 +1379,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1466,56 +1442,56 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: hr is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: hr is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: hr (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: hr (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
                 TableScan
                   alias: srcpart_double_hour_n0
-                  filterExpr: ((UDFToDouble(hour) = 11.0D) and CAST( UDFToInteger((hr / 2.0D)) AS STRING) is not null) (type: boolean)
+                  filterExpr: ((UDFToDouble(hour) = 11.0D) and hr is not null) (type: boolean)
                   Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: ((UDFToDouble(hour) = 11.0D) and CAST( UDFToInteger((hr / 2.0D)) AS STRING) is not null) (type: boolean)
+                    predicate: ((UDFToDouble(hour) = 11.0D) and hr is not null) (type: boolean)
                     Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: CAST( UDFToInteger((hr / 2.0D)) AS STRING) (type: string)
                       outputColumnNames: _col0
                       Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
+                      Filter Operator
+                        predicate: _col0 is not null (type: boolean)
                         Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Select Operator
-                        expressions: _col0 (type: string)
-                        outputColumnNames: _col0
-                        Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          keys: _col0 (type: string)
-                          minReductionHashAggr: 0.4
-                          mode: hash
+                        Reduce Output Operator
+                          key expressions: _col0 (type: string)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: string)
+                          Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                        Select Operator
+                          expressions: _col0 (type: string)
                           outputColumnNames: _col0
                           Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                          Dynamic Partitioning Event Operator
-                            Target column: hr (string)
-                            Target Input: srcpart_iceberg
-                            Partition key expr: hr
+                          Group By Operator
+                            keys: _col0 (type: string)
+                            minReductionHashAggr: 0.4
+                            mode: hash
+                            outputColumnNames: _col0
                             Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                            Target Vertex: Map 1
+                            Dynamic Partitioning Event Operator
+                              Target column: hr (string)
+                              Target Input: srcpart_iceberg
+                              Partition key expr: hr
+                              Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                              Target Vertex: Map 1
             Execution mode: vectorized
         Reducer 2 
             Reduce Operator Tree:
@@ -1525,17 +1501,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -1544,10 +1520,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1598,40 +1574,40 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: hr is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: hr is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: hr (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: hr (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
                 TableScan
                   alias: srcpart_double_hour_n0
-                  filterExpr: ((UDFToDouble(hour) = 11.0D) and CAST( UDFToInteger((hr / 2.0D)) AS STRING) is not null) (type: boolean)
+                  filterExpr: ((UDFToDouble(hour) = 11.0D) and hr is not null) (type: boolean)
                   Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: ((UDFToDouble(hour) = 11.0D) and CAST( UDFToInteger((hr / 2.0D)) AS STRING) is not null) (type: boolean)
+                    predicate: ((UDFToDouble(hour) = 11.0D) and hr is not null) (type: boolean)
                     Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: CAST( UDFToInteger((hr / 2.0D)) AS STRING) (type: string)
                       outputColumnNames: _col0
                       Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
+                      Filter Operator
+                        predicate: _col0 is not null (type: boolean)
                         Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col0 (type: string)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: string)
+                          Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
             Execution mode: vectorized
         Reducer 2 
             Reduce Operator Tree:
@@ -1641,17 +1617,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -1660,10 +1636,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1714,20 +1690,17 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string), _col1 (type: string)
-                        null sort order: zz
-                        sort order: ++
-                        Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
-                        Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string), _col1 (type: string)
+                      null sort order: zz
+                      sort order: ++
+                      Map-reduce partition columns: _col0 (type: string), _col1 (type: string)
+                      Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
@@ -1789,17 +1762,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string), _col1 (type: string)
                   1 _col0 (type: string), _col1 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -1808,10 +1781,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1867,20 +1840,20 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ((UDFToDouble(hr) = 11.0D) and ds is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
                   Filter Operator
-                    predicate: ((UDFToDouble(hr) = 11.0D) and ds is not null) (type: boolean)
-                    Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                    predicate: (UDFToDouble(hr) = 11.0D) (type: boolean)
+                    Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                     Select Operator
                       expressions: ds (type: string), hr (type: string)
                       outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                       Reduce Output Operator
                         key expressions: _col0 (type: string)
                         null sort order: z
                         sort order: +
                         Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                         value expressions: _col1 (type: string)
             Execution mode: vectorized
         Map 5 
@@ -1964,13 +1937,13 @@ STAGE PLANS:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
                 outputColumnNames: _col1
-                Statistics: Num rows: 500 Data size: 43000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 500 Data size: 92000 Basic stats: COMPLETE Column stats: PARTIAL
                 Reduce Output Operator
                   key expressions: _col1 (type: string)
                   null sort order: z
                   sort order: +
                   Map-reduce partition columns: _col1 (type: string)
-                  Statistics: Num rows: 500 Data size: 43000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 500 Data size: 92000 Basic stats: COMPLETE Column stats: PARTIAL
         Reducer 3 
             Reduce Operator Tree:
               Merge Join Operator
@@ -1979,17 +1952,17 @@ STAGE PLANS:
                 keys:
                   0 _col1 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 4 
             Execution mode: vectorized
@@ -1998,10 +1971,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -2061,20 +2034,20 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ((UDFToDouble(hr) = 13.0D) and ds is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
                   Filter Operator
-                    predicate: ((UDFToDouble(hr) = 13.0D) and ds is not null) (type: boolean)
-                    Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                    predicate: (UDFToDouble(hr) = 13.0D) (type: boolean)
+                    Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                     Select Operator
                       expressions: ds (type: string), hr (type: string)
                       outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                       Reduce Output Operator
                         key expressions: _col0 (type: string)
                         null sort order: z
                         sort order: +
                         Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                         value expressions: _col1 (type: string)
             Execution mode: vectorized
         Map 5 
@@ -2158,13 +2131,13 @@ STAGE PLANS:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
                 outputColumnNames: _col1
-                Statistics: Num rows: 500 Data size: 43000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 500 Data size: 92000 Basic stats: COMPLETE Column stats: PARTIAL
                 Reduce Output Operator
                   key expressions: _col1 (type: string)
                   null sort order: z
                   sort order: +
                   Map-reduce partition columns: _col1 (type: string)
-                  Statistics: Num rows: 500 Data size: 43000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 500 Data size: 92000 Basic stats: COMPLETE Column stats: PARTIAL
         Reducer 3 
             Reduce Operator Tree:
               Merge Join Operator
@@ -2173,17 +2146,17 @@ STAGE PLANS:
                 keys:
                   0 _col1 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 4 
             Execution mode: vectorized
@@ -2192,10 +2165,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -2242,7 +2215,7 @@ STAGE PLANS:
         Reducer 2 <- Map 1 (SIMPLE_EDGE), Union 6 (SIMPLE_EDGE)
         Reducer 3 <- Reducer 2 (CUSTOM_SIMPLE_EDGE)
         Reducer 5 <- Map 4 (CUSTOM_SIMPLE_EDGE), Union 6 (CONTAINS)
-        Reducer 8 <- Map 7 (CUSTOM_SIMPLE_EDGE), Union 6 (CONTAINS)
+        Reducer 7 <- Map 4 (CUSTOM_SIMPLE_EDGE), Union 6 (CONTAINS)
 #### A masked pattern was here ####
       Vertices:
         Map 1 
@@ -2250,32 +2223,29 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
                 TableScan
                   alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
                   Select Operator
                     expressions: ds (type: string)
                     outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
-                      aggregations: max(ds)
+                      aggregations: min(ds)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0
@@ -2285,18 +2255,8 @@ STAGE PLANS:
                         sort order: 
                         Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: string)
-            Execution mode: vectorized
-        Map 7 
-            Map Operator Tree:
-                TableScan
-                  alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Select Operator
-                    expressions: ds (type: string)
-                    outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
-                      aggregations: min(ds)
+                      aggregations: max(ds)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0
@@ -2315,17 +2275,17 @@ STAGE PLANS:
                 keys:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
-                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   aggregations: count()
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     null sort order: 
                     sort order: 
-                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                     value expressions: _col0 (type: bigint)
         Reducer 3 
             Execution mode: vectorized
@@ -2334,10 +2294,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -2346,7 +2306,7 @@ STAGE PLANS:
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
-                aggregations: max(VALUE._col0)
+                aggregations: min(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
                 Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
@@ -2381,11 +2341,11 @@ STAGE PLANS:
                           Partition key expr: ds
                           Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                           Target Vertex: Map 1
-        Reducer 8 
+        Reducer 7 
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
-                aggregations: min(VALUE._col0)
+                aggregations: max(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
                 Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
@@ -2458,7 +2418,7 @@ STAGE PLANS:
         Reducer 2 <- Map 1 (SIMPLE_EDGE), Union 6 (SIMPLE_EDGE)
         Reducer 3 <- Reducer 2 (SIMPLE_EDGE)
         Reducer 5 <- Map 4 (CUSTOM_SIMPLE_EDGE), Union 6 (CONTAINS)
-        Reducer 8 <- Map 7 (CUSTOM_SIMPLE_EDGE), Union 6 (CONTAINS)
+        Reducer 7 <- Map 4 (CUSTOM_SIMPLE_EDGE), Union 6 (CONTAINS)
 #### A masked pattern was here ####
       Vertices:
         Map 1 
@@ -2466,32 +2426,29 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 4 
             Map Operator Tree:
                 TableScan
                   alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
                   Select Operator
                     expressions: ds (type: string)
                     outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
-                      aggregations: max(ds)
+                      aggregations: min(ds)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0
@@ -2501,18 +2458,8 @@ STAGE PLANS:
                         sort order: 
                         Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: string)
-            Execution mode: vectorized
-        Map 7 
-            Map Operator Tree:
-                TableScan
-                  alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Select Operator
-                    expressions: ds (type: string)
-                    outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
-                      aggregations: min(ds)
+                      aggregations: max(ds)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0
@@ -2532,19 +2479,19 @@ STAGE PLANS:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
                 outputColumnNames: _col0
-                Statistics: Num rows: 1000 Data size: 94000 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1000 Data size: 184000 Basic stats: COMPLETE Column stats: PARTIAL
                 Group By Operator
                   keys: _col0 (type: string)
                   minReductionHashAggr: 0.99
                   mode: hash
                   outputColumnNames: _col0
-                  Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
                   Reduce Output Operator
                     key expressions: _col0 (type: string)
                     null sort order: z
                     sort order: +
                     Map-reduce partition columns: _col0 (type: string)
-                    Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
         Reducer 3 
             Execution mode: vectorized
             Reduce Operator Tree:
@@ -2552,10 +2499,10 @@ STAGE PLANS:
                 keys: KEY._col0 (type: string)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -2564,7 +2511,7 @@ STAGE PLANS:
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
-                aggregations: max(VALUE._col0)
+                aggregations: min(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
                 Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
@@ -2599,11 +2546,11 @@ STAGE PLANS:
                           Partition key expr: ds
                           Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                           Target Vertex: Map 1
-        Reducer 8 
+        Reducer 7 
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
-                aggregations: min(VALUE._col0)
+                aggregations: max(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
                 Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
@@ -2674,11 +2621,11 @@ STAGE PLANS:
     Tez
 #### A masked pattern was here ####
       Edges:
-        Reducer 11 <- Map 10 (CUSTOM_SIMPLE_EDGE), Union 9 (CONTAINS)
         Reducer 2 <- Map 1 (SIMPLE_EDGE), Union 3 (CONTAINS)
-        Reducer 4 <- Union 3 (SIMPLE_EDGE), Union 9 (SIMPLE_EDGE)
-        Reducer 6 <- Map 5 (SIMPLE_EDGE), Union 3 (CONTAINS)
-        Reducer 8 <- Map 7 (CUSTOM_SIMPLE_EDGE), Union 9 (CONTAINS)
+        Reducer 4 <- Union 3 (SIMPLE_EDGE), Union 8 (SIMPLE_EDGE)
+        Reducer 5 <- Map 1 (SIMPLE_EDGE), Union 3 (CONTAINS)
+        Reducer 7 <- Map 6 (CUSTOM_SIMPLE_EDGE), Union 8 (CONTAINS)
+        Reducer 9 <- Map 6 (CUSTOM_SIMPLE_EDGE), Union 8 (CONTAINS)
 #### A masked pattern was here ####
       Vertices:
         Map 1 
@@ -2686,32 +2633,46 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Group By Operator
-                      keys: ds (type: string)
-                      minReductionHashAggr: 0.99
-                      mode: hash
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Group By Operator
+                    keys: ds (type: string)
+                    minReductionHashAggr: 0.99
+                    mode: hash
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2 Data size: 368 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2 Data size: 368 Basic stats: COMPLETE Column stats: PARTIAL
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 2 Data size: 368 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
-        Map 10 
+        Map 6 
             Map Operator Tree:
                 TableScan
                   alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
                   Select Operator
                     expressions: ds (type: string)
                     outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Group By Operator
+                      aggregations: max(ds)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        null sort order: 
+                        sort order: 
+                        Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                        value expressions: _col0 (type: string)
                     Group By Operator
                       aggregations: min(ds)
                       minReductionHashAggr: 0.99
@@ -2724,104 +2685,6 @@ STAGE PLANS:
                         Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: string)
             Execution mode: vectorized
-        Map 5 
-            Map Operator Tree:
-                TableScan
-                  alias: srcpart_iceberg
-                  filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Group By Operator
-                      keys: ds (type: string)
-                      minReductionHashAggr: 0.99
-                      mode: hash
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
-                        Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
-            Execution mode: vectorized
-        Map 7 
-            Map Operator Tree:
-                TableScan
-                  alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Select Operator
-                    expressions: ds (type: string)
-                    outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Group By Operator
-                      aggregations: max(ds)
-                      minReductionHashAggr: 0.99
-                      mode: hash
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        null sort order: 
-                        sort order: 
-                        Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                        value expressions: _col0 (type: string)
-            Execution mode: vectorized
-        Reducer 11 
-            Execution mode: vectorized
-            Reduce Operator Tree:
-              Group By Operator
-                aggregations: min(VALUE._col0)
-                mode: mergepartial
-                outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                Filter Operator
-                  predicate: _col0 is not null (type: boolean)
-                  Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                  Group By Operator
-                    keys: _col0 (type: string)
-                    minReductionHashAggr: 0.5
-                    mode: hash
-                    outputColumnNames: _col0
-                    Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                    Reduce Output Operator
-                      key expressions: _col0 (type: string)
-                      null sort order: z
-                      sort order: +
-                      Map-reduce partition columns: _col0 (type: string)
-                      Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: _col0 (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Group By Operator
-                        keys: _col0 (type: string)
-                        minReductionHashAggr: 0.4
-                        mode: hash
-                        outputColumnNames: _col0
-                        Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                        Dynamic Partitioning Event Operator
-                          Target column: ds (string)
-                          Target Input: srcpart_iceberg
-                          Partition key expr: ds
-                          Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                          Target Vertex: Map 1
-                    Select Operator
-                      expressions: _col0 (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Group By Operator
-                        keys: _col0 (type: string)
-                        minReductionHashAggr: 0.4
-                        mode: hash
-                        outputColumnNames: _col0
-                        Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                        Dynamic Partitioning Event Operator
-                          Target column: ds (string)
-                          Target Input: srcpart_iceberg
-                          Partition key expr: ds
-                          Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                          Target Vertex: Map 5
         Reducer 2 
             Execution mode: vectorized
             Reduce Operator Tree:
@@ -2829,13 +2692,13 @@ STAGE PLANS:
                 keys: KEY._col0 (type: string)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 2 Data size: 368 Basic stats: COMPLETE Column stats: PARTIAL
                 Reduce Output Operator
                   key expressions: _col0 (type: string)
                   null sort order: z
                   sort order: +
                   Map-reduce partition columns: _col0 (type: string)
-                  Statistics: Num rows: 4 Data size: 376 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 4 Data size: 736 Basic stats: COMPLETE Column stats: PARTIAL
         Reducer 4 
             Reduce Operator Tree:
               Merge Join Operator
@@ -2845,29 +2708,29 @@ STAGE PLANS:
                   0 _col0 (type: string)
                   1 _col0 (type: string)
                 outputColumnNames: _col0
-                Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 2 Data size: 368 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2 Data size: 368 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
                       serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
-        Reducer 6 
+        Reducer 5 
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
                 keys: KEY._col0 (type: string)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 2 Data size: 368 Basic stats: COMPLETE Column stats: PARTIAL
                 Reduce Output Operator
                   key expressions: _col0 (type: string)
                   null sort order: z
                   sort order: +
                   Map-reduce partition columns: _col0 (type: string)
-                  Statistics: Num rows: 4 Data size: 376 Basic stats: COMPLETE Column stats: COMPLETE
-        Reducer 8 
+                  Statistics: Num rows: 4 Data size: 736 Basic stats: COMPLETE Column stats: PARTIAL
+        Reducer 7 
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
@@ -2906,6 +2769,29 @@ STAGE PLANS:
                           Partition key expr: ds
                           Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                           Target Vertex: Map 1
+        Reducer 9 
+            Execution mode: vectorized
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: min(VALUE._col0)
+                mode: mergepartial
+                outputColumnNames: _col0
+                Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                Filter Operator
+                  predicate: _col0 is not null (type: boolean)
+                  Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                  Group By Operator
+                    keys: _col0 (type: string)
+                    minReductionHashAggr: 0.5
+                    mode: hash
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                    Reduce Output Operator
+                      key expressions: _col0 (type: string)
+                      null sort order: z
+                      sort order: +
+                      Map-reduce partition columns: _col0 (type: string)
+                      Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: _col0 (type: string)
                       outputColumnNames: _col0
@@ -2921,11 +2807,11 @@ STAGE PLANS:
                           Target Input: srcpart_iceberg
                           Partition key expr: ds
                           Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                          Target Vertex: Map 5
+                          Target Vertex: Map 1
         Union 3 
             Vertex: Union 3
-        Union 9 
-            Vertex: Union 9
+        Union 8 
+            Vertex: Union 8
 
   Stage: Stage-0
     Fetch Operator
@@ -2973,34 +2859,31 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Map Join Operator
-                        condition map:
-                             Inner Join 0 to 1
-                        keys:
-                          0 _col0 (type: string)
-                          1 _col0 (type: string)
-                        input vertices:
-                          1 Map 3
-                        Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          aggregations: count()
-                          minReductionHashAggr: 0.99
-                          mode: hash
-                          outputColumnNames: _col0
-                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                          Reduce Output Operator
-                            null sort order: 
-                            sort order: 
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                            value expressions: _col0 (type: bigint)
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col0 (type: string)
+                        1 _col0 (type: string)
+                      input vertices:
+                        1 Map 3
+                      Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
+                      Group By Operator
+                        aggregations: count()
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                        Reduce Output Operator
+                          null sort order: 
+                          sort order: 
+                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                          value expressions: _col0 (type: bigint)
             Execution mode: vectorized
         Map 3 
             Map Operator Tree:
@@ -3045,10 +2928,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -3116,44 +2999,41 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col0 (type: string)
+                        1 _col0 (type: string)
+                      outputColumnNames: _col1
+                      input vertices:
+                        1 Map 3
+                      Statistics: Num rows: 1000 Data size: 184000 Basic stats: COMPLETE Column stats: PARTIAL
                       Map Join Operator
                         condition map:
                              Inner Join 0 to 1
                         keys:
-                          0 _col0 (type: string)
+                          0 _col1 (type: string)
                           1 _col0 (type: string)
-                        outputColumnNames: _col1
                         input vertices:
-                          1 Map 3
-                        Statistics: Num rows: 1000 Data size: 86000 Basic stats: COMPLETE Column stats: COMPLETE
-                        Map Join Operator
-                          condition map:
-                               Inner Join 0 to 1
-                          keys:
-                            0 _col1 (type: string)
-                            1 _col0 (type: string)
-                          input vertices:
-                            1 Map 4
-                          Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
-                          Group By Operator
-                            aggregations: count()
-                            minReductionHashAggr: 0.99
-                            mode: hash
-                            outputColumnNames: _col0
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                            Reduce Output Operator
-                              null sort order: 
-                              sort order: 
-                              Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                              value expressions: _col0 (type: bigint)
+                          1 Map 4
+                        Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
+                        Group By Operator
+                          aggregations: count()
+                          minReductionHashAggr: 0.99
+                          mode: hash
+                          outputColumnNames: _col0
+                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                          Reduce Output Operator
+                            null sort order: 
+                            sort order: 
+                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                            value expressions: _col0 (type: bigint)
             Execution mode: vectorized
         Map 3 
             Map Operator Tree:
@@ -3234,10 +3114,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -3303,34 +3183,31 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Map Join Operator
-                        condition map:
-                             Inner Join 0 to 1
-                        keys:
-                          0 _col0 (type: string), _col1 (type: string)
-                          1 _col0 (type: string), _col1 (type: string)
-                        input vertices:
-                          1 Map 3
-                        Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          aggregations: count()
-                          minReductionHashAggr: 0.99
-                          mode: hash
-                          outputColumnNames: _col0
-                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                          Reduce Output Operator
-                            null sort order: 
-                            sort order: 
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                            value expressions: _col0 (type: bigint)
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col0 (type: string), _col1 (type: string)
+                        1 _col0 (type: string), _col1 (type: string)
+                      input vertices:
+                        1 Map 3
+                      Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
+                      Group By Operator
+                        aggregations: count()
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                        Reduce Output Operator
+                          null sort order: 
+                          sort order: 
+                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                          value expressions: _col0 (type: bigint)
             Execution mode: vectorized
         Map 3 
             Map Operator Tree:
@@ -3391,10 +3268,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -3456,34 +3333,31 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Map Join Operator
-                        condition map:
-                             Inner Join 0 to 1
-                        keys:
-                          0 _col0 (type: string)
-                          1 _col0 (type: string)
-                        input vertices:
-                          1 Map 3
-                        Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          aggregations: count()
-                          minReductionHashAggr: 0.99
-                          mode: hash
-                          outputColumnNames: _col0
-                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                          Reduce Output Operator
-                            null sort order: 
-                            sort order: 
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                            value expressions: _col0 (type: bigint)
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col0 (type: string)
+                        1 _col0 (type: string)
+                      input vertices:
+                        1 Map 3
+                      Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
+                      Group By Operator
+                        aggregations: count()
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                        Reduce Output Operator
+                          null sort order: 
+                          sort order: 
+                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                          value expressions: _col0 (type: bigint)
             Execution mode: vectorized
         Map 3 
             Map Operator Tree:
@@ -3528,10 +3402,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -3582,70 +3456,70 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: hr is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: hr is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: hr (type: string)
-                      outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 172000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Map Join Operator
-                        condition map:
-                             Inner Join 0 to 1
-                        keys:
-                          0 _col0 (type: string)
-                          1 _col0 (type: string)
-                        input vertices:
-                          1 Map 3
-                        Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          aggregations: count()
-                          minReductionHashAggr: 0.99
-                          mode: hash
-                          outputColumnNames: _col0
-                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                          Reduce Output Operator
-                            null sort order: 
-                            sort order: 
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                            value expressions: _col0 (type: bigint)
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: hr (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col0 (type: string)
+                        1 _col0 (type: string)
+                      input vertices:
+                        1 Map 3
+                      Statistics: Num rows: 1000 Data size: 8000 Basic stats: COMPLETE Column stats: PARTIAL
+                      Group By Operator
+                        aggregations: count()
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                        Reduce Output Operator
+                          null sort order: 
+                          sort order: 
+                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                          value expressions: _col0 (type: bigint)
             Execution mode: vectorized
         Map 3 
             Map Operator Tree:
                 TableScan
                   alias: srcpart_double_hour_n0
-                  filterExpr: ((UDFToDouble(hour) = 11.0D) and CAST( UDFToInteger((hr / 2.0D)) AS STRING) is not null) (type: boolean)
+                  filterExpr: ((UDFToDouble(hour) = 11.0D) and hr is not null) (type: boolean)
                   Statistics: Num rows: 2 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: ((UDFToDouble(hour) = 11.0D) and CAST( UDFToInteger((hr / 2.0D)) AS STRING) is not null) (type: boolean)
+                    predicate: ((UDFToDouble(hour) = 11.0D) and hr is not null) (type: boolean)
                     Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: CAST( UDFToInteger((hr / 2.0D)) AS STRING) (type: string)
                       outputColumnNames: _col0
                       Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        key expressions: _col0 (type: string)
-                        null sort order: z
-                        sort order: +
-                        Map-reduce partition columns: _col0 (type: string)
+                      Filter Operator
+                        predicate: _col0 is not null (type: boolean)
                         Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                      Select Operator
-                        expressions: _col0 (type: string)
-                        outputColumnNames: _col0
-                        Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          keys: _col0 (type: string)
-                          minReductionHashAggr: 0.4
-                          mode: hash
+                        Reduce Output Operator
+                          key expressions: _col0 (type: string)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: string)
+                          Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                        Select Operator
+                          expressions: _col0 (type: string)
                           outputColumnNames: _col0
                           Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                          Dynamic Partitioning Event Operator
-                            Target column: hr (string)
-                            Target Input: srcpart_iceberg
-                            Partition key expr: hr
+                          Group By Operator
+                            keys: _col0 (type: string)
+                            minReductionHashAggr: 0.4
+                            mode: hash
+                            outputColumnNames: _col0
                             Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
-                            Target Vertex: Map 1
+                            Dynamic Partitioning Event Operator
+                              Target column: hr (string)
+                              Target Input: srcpart_iceberg
+                              Partition key expr: hr
+                              Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
+                              Target Vertex: Map 1
             Execution mode: vectorized
         Reducer 2 
             Execution mode: vectorized
@@ -3654,10 +3528,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -3725,14 +3599,14 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ((UDFToDouble(hr) = 11.0D) and ds is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
                   Filter Operator
-                    predicate: ((UDFToDouble(hr) = 11.0D) and ds is not null) (type: boolean)
-                    Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                    predicate: (UDFToDouble(hr) = 11.0D) (type: boolean)
+                    Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                     Select Operator
                       expressions: ds (type: string), hr (type: string)
                       outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                       Map Join Operator
                         condition map:
                              Inner Join 0 to 1
@@ -3742,7 +3616,7 @@ STAGE PLANS:
                         outputColumnNames: _col1
                         input vertices:
                           1 Map 3
-                        Statistics: Num rows: 500 Data size: 43000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 500 Data size: 92000 Basic stats: COMPLETE Column stats: PARTIAL
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -3751,17 +3625,17 @@ STAGE PLANS:
                             1 _col0 (type: string)
                           input vertices:
                             1 Map 4
-                          Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: PARTIAL
                           Group By Operator
                             aggregations: count()
                             minReductionHashAggr: 0.99
                             mode: hash
                             outputColumnNames: _col0
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                             Reduce Output Operator
                               null sort order: 
                               sort order: 
-                              Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                               value expressions: _col0 (type: bigint)
             Execution mode: vectorized
         Map 3 
@@ -3843,10 +3717,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -3905,14 +3779,14 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ((UDFToDouble(hr) = 13.0D) and ds is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
                   Filter Operator
-                    predicate: ((UDFToDouble(hr) = 13.0D) and ds is not null) (type: boolean)
-                    Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                    predicate: (UDFToDouble(hr) = 13.0D) (type: boolean)
+                    Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                     Select Operator
                       expressions: ds (type: string), hr (type: string)
                       outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 1000 Data size: 180000 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 1000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
                       Map Join Operator
                         condition map:
                              Inner Join 0 to 1
@@ -3922,7 +3796,7 @@ STAGE PLANS:
                         outputColumnNames: _col1
                         input vertices:
                           1 Map 3
-                        Statistics: Num rows: 500 Data size: 43000 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 500 Data size: 92000 Basic stats: COMPLETE Column stats: PARTIAL
                         Map Join Operator
                           condition map:
                                Inner Join 0 to 1
@@ -3931,17 +3805,17 @@ STAGE PLANS:
                             1 _col0 (type: string)
                           input vertices:
                             1 Map 4
-                          Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: COMPLETE
+                          Statistics: Num rows: 500 Data size: 4000 Basic stats: COMPLETE Column stats: PARTIAL
                           Group By Operator
                             aggregations: count()
                             minReductionHashAggr: 0.99
                             mode: hash
                             outputColumnNames: _col0
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                             Reduce Output Operator
                               null sort order: 
                               sort order: 
-                              Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                              Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                               value expressions: _col0 (type: bigint)
             Execution mode: vectorized
         Map 3 
@@ -4023,10 +3897,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -4073,7 +3947,7 @@ STAGE PLANS:
         Map 1 <- Union 5 (BROADCAST_EDGE)
         Reducer 2 <- Map 1 (SIMPLE_EDGE)
         Reducer 4 <- Map 3 (CUSTOM_SIMPLE_EDGE), Union 5 (CONTAINS)
-        Reducer 7 <- Map 6 (CUSTOM_SIMPLE_EDGE), Union 5 (CONTAINS)
+        Reducer 6 <- Map 3 (CUSTOM_SIMPLE_EDGE), Union 5 (CONTAINS)
 #### A masked pattern was here ####
       Vertices:
         Map 1 
@@ -4081,48 +3955,45 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: ds is not null (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: ds is not null (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string)
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Map Join Operator
+                      condition map:
+                           Left Semi Join 0 to 1
+                      keys:
+                        0 _col0 (type: string)
+                        1 _col0 (type: string)
                       outputColumnNames: _col0
-                      Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Map Join Operator
-                        condition map:
-                             Left Semi Join 0 to 1
-                        keys:
-                          0 _col0 (type: string)
-                          1 _col0 (type: string)
+                      input vertices:
+                        1 Union 5
+                      Statistics: Num rows: 1000 Data size: 184000 Basic stats: COMPLETE Column stats: PARTIAL
+                      Group By Operator
+                        keys: _col0 (type: string)
+                        minReductionHashAggr: 0.99
+                        mode: hash
                         outputColumnNames: _col0
-                        input vertices:
-                          1 Union 5
-                        Statistics: Num rows: 1000 Data size: 94000 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          keys: _col0 (type: string)
-                          minReductionHashAggr: 0.99
-                          mode: hash
-                          outputColumnNames: _col0
-                          Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
-                          Reduce Output Operator
-                            key expressions: _col0 (type: string)
-                            null sort order: z
-                            sort order: +
-                            Map-reduce partition columns: _col0 (type: string)
-                            Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
+                        Reduce Output Operator
+                          key expressions: _col0 (type: string)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: string)
+                          Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
             Execution mode: vectorized
         Map 3 
             Map Operator Tree:
                 TableScan
                   alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
                   Select Operator
                     expressions: ds (type: string)
                     outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 2000 Data size: 368000 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
-                      aggregations: max(ds)
+                      aggregations: min(ds)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0
@@ -4132,18 +4003,8 @@ STAGE PLANS:
                         sort order: 
                         Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                         value expressions: _col0 (type: string)
-            Execution mode: vectorized
-        Map 6 
-            Map Operator Tree:
-                TableScan
-                  alias: srcpart_iceberg
-                  Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Select Operator
-                    expressions: ds (type: string)
-                    outputColumnNames: ds
-                    Statistics: Num rows: 2000 Data size: 188000 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
-                      aggregations: min(ds)
+                      aggregations: max(ds)
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0
@@ -4161,10 +4022,10 @@ STAGE PLANS:
                 keys: KEY._col0 (type: string)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -4173,7 +4034,7 @@ STAGE PLANS:
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
-                aggregations: max(VALUE._col0)
+                aggregations: min(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
                 Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
@@ -4208,11 +4069,11 @@ STAGE PLANS:
                           Partition key expr: ds
                           Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
                           Target Vertex: Map 1
-        Reducer 7 
+        Reducer 6 
             Execution mode: vectorized
             Reduce Operator Tree:
               Group By Operator
-                aggregations: min(VALUE._col0)
+                aggregations: max(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
                 Statistics: Num rows: 1 Data size: 184 Basic stats: COMPLETE Column stats: COMPLETE
@@ -4320,34 +4181,31 @@ STAGE PLANS:
                 TableScan
                   alias: srcpart_iceberg
                   filterExpr: (ds is not null and hr is not null) (type: boolean)
-                  Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (ds is not null and hr is not null) (type: boolean)
-                    Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                    Select Operator
-                      expressions: ds (type: string), hr (type: string)
-                      outputColumnNames: _col0, _col1
-                      Statistics: Num rows: 2000 Data size: 360000 Basic stats: COMPLETE Column stats: COMPLETE
-                      Map Join Operator
-                        condition map:
-                             Inner Join 0 to 1
-                        keys:
-                          0 _col0 (type: string), _col1 (type: string)
-                          1 _col0 (type: string), _col1 (type: string)
-                        input vertices:
-                          1 Map 3
-                        Statistics: Num rows: 2000 Data size: 16000 Basic stats: COMPLETE Column stats: COMPLETE
-                        Group By Operator
-                          aggregations: count()
-                          minReductionHashAggr: 0.99
-                          mode: hash
-                          outputColumnNames: _col0
-                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                          Reduce Output Operator
-                            null sort order: 
-                            sort order: 
-                            Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                            value expressions: _col0 (type: bigint)
+                  Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: ds (type: string), hr (type: string)
+                    outputColumnNames: _col0, _col1
+                    Statistics: Num rows: 2000 Data size: 736000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Map Join Operator
+                      condition map:
+                           Inner Join 0 to 1
+                      keys:
+                        0 _col0 (type: string), _col1 (type: string)
+                        1 _col0 (type: string), _col1 (type: string)
+                      input vertices:
+                        1 Map 3
+                      Statistics: Num rows: 2000 Data size: 16000 Basic stats: COMPLETE Column stats: PARTIAL
+                      Group By Operator
+                        aggregations: count()
+                        minReductionHashAggr: 0.99
+                        mode: hash
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                        Reduce Output Operator
+                          null sort order: 
+                          sort order: 
+                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                          value expressions: _col0 (type: bigint)
         Map 3 
             Map Operator Tree:
                 TableScan
@@ -4405,10 +4263,10 @@ STAGE PLANS:
                 aggregations: count(VALUE._col0)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -4444,51 +4302,267 @@ POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=11
 POSTHOOK: Input: default@srcpart@ds=2008-04-09/hr=11
 POSTHOOK: Output: hdfs://### HDFS PATH ###
 1000
+PREHOOK: query: EXPLAIN with v as (
+  select srcpart_iceberg.key, count(*) c from srcpart_iceberg join srcpart_date_n2 on (srcpart_iceberg.ds = srcpart_date_n2.ds)
+  where srcpart_date_n2.`date` = '2008-04-08'
+  group by srcpart_iceberg.key
+)
+select sum(v1.c * v2.c) from v v1 join v v2 on (v1.key = v2.key)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@srcpart_date_n2
+PREHOOK: Input: default@srcpart_iceberg
+PREHOOK: Output: hdfs://### HDFS PATH ###
+POSTHOOK: query: EXPLAIN with v as (
+  select srcpart_iceberg.key, count(*) c from srcpart_iceberg join srcpart_date_n2 on (srcpart_iceberg.ds = srcpart_date_n2.ds)
+  where srcpart_date_n2.`date` = '2008-04-08'
+  group by srcpart_iceberg.key
+)
+select sum(v1.c * v2.c) from v v1 join v v2 on (v1.key = v2.key)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@srcpart_date_n2
+POSTHOOK: Input: default@srcpart_iceberg
+POSTHOOK: Output: hdfs://### HDFS PATH ###
+STAGE DEPENDENCIES:
+  Stage-1 is a root stage
+  Stage-0 depends on stages: Stage-1
+
+STAGE PLANS:
+  Stage: Stage-1
+    Tez
+#### A masked pattern was here ####
+      Edges:
+        Map 1 <- Map 5 (BROADCAST_EDGE)
+        Reducer 2 <- Map 1 (SIMPLE_EDGE), Reducer 4 (BROADCAST_EDGE)
+        Reducer 3 <- Reducer 2 (CUSTOM_SIMPLE_EDGE)
+        Reducer 4 <- Map 1 (SIMPLE_EDGE)
+#### A masked pattern was here ####
+      Vertices:
+        Map 1 
+            Map Operator Tree:
+                TableScan
+                  alias: srcpart_iceberg
+                  filterExpr: (ds is not null and key is not null) (type: boolean)
+                  Statistics: Num rows: 2000 Data size: 542000 Basic stats: COMPLETE Column stats: PARTIAL
+                  Filter Operator
+                    predicate: key is not null (type: boolean)
+                    Statistics: Num rows: 2000 Data size: 542000 Basic stats: COMPLETE Column stats: PARTIAL
+                    Select Operator
+                      expressions: key (type: string), ds (type: string)
+                      outputColumnNames: _col0, _col1
+                      Statistics: Num rows: 2000 Data size: 542000 Basic stats: COMPLETE Column stats: PARTIAL
+                      Map Join Operator
+                        condition map:
+                             Inner Join 0 to 1
+                        keys:
+                          0 _col1 (type: string)
+                          1 _col0 (type: string)
+                        outputColumnNames: _col0
+                        input vertices:
+                          1 Map 5
+                        Statistics: Num rows: 1000 Data size: 87000 Basic stats: COMPLETE Column stats: PARTIAL
+                        Group By Operator
+                          aggregations: count()
+                          keys: _col0 (type: string)
+                          minReductionHashAggr: 0.99
+                          mode: hash
+                          outputColumnNames: _col0, _col1
+                          Statistics: Num rows: 158 Data size: 15010 Basic stats: COMPLETE Column stats: PARTIAL
+                          Reduce Output Operator
+                            key expressions: _col0 (type: string)
+                            null sort order: z
+                            sort order: +
+                            Map-reduce partition columns: _col0 (type: string)
+                            Statistics: Num rows: 158 Data size: 15010 Basic stats: COMPLETE Column stats: PARTIAL
+                            value expressions: _col1 (type: bigint)
+                          Reduce Output Operator
+                            key expressions: _col0 (type: string)
+                            null sort order: z
+                            sort order: +
+                            Map-reduce partition columns: _col0 (type: string)
+                            Statistics: Num rows: 158 Data size: 15010 Basic stats: COMPLETE Column stats: PARTIAL
+                            value expressions: _col1 (type: bigint)
+        Map 5 
+            Map Operator Tree:
+                TableScan
+                  alias: srcpart_date_n2
+                  filterExpr: ((date = '2008-04-08') and ds is not null) (type: boolean)
+                  Statistics: Num rows: 2 Data size: 376 Basic stats: COMPLETE Column stats: COMPLETE
+                  Filter Operator
+                    predicate: ((date = '2008-04-08') and ds is not null) (type: boolean)
+                    Statistics: Num rows: 1 Data size: 188 Basic stats: COMPLETE Column stats: COMPLETE
+                    Select Operator
+                      expressions: ds (type: string)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                      Reduce Output Operator
+                        key expressions: _col0 (type: string)
+                        null sort order: z
+                        sort order: +
+                        Map-reduce partition columns: _col0 (type: string)
+                        Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                      Select Operator
+                        expressions: _col0 (type: string)
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                        Group By Operator
+                          keys: _col0 (type: string)
+                          minReductionHashAggr: 0.4
+                          mode: hash
+                          outputColumnNames: _col0
+                          Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                          Dynamic Partitioning Event Operator
+                            Target column: ds (string)
+                            Target Input: srcpart_iceberg
+                            Partition key expr: ds
+                            Statistics: Num rows: 1 Data size: 94 Basic stats: COMPLETE Column stats: COMPLETE
+                            Target Vertex: Map 1
+        Reducer 2 
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                keys: KEY._col0 (type: string)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 158 Data size: 15010 Basic stats: COMPLETE Column stats: PARTIAL
+                Map Join Operator
+                  condition map:
+                       Inner Join 0 to 1
+                  keys:
+                    0 _col0 (type: string)
+                    1 _col0 (type: string)
+                  outputColumnNames: _col1, _col3
+                  input vertices:
+                    1 Reducer 4
+                  Statistics: Num rows: 158 Data size: 2528 Basic stats: COMPLETE Column stats: PARTIAL
+                  Select Operator
+                    expressions: (_col3 * _col1) (type: bigint)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 158 Data size: 2528 Basic stats: COMPLETE Column stats: PARTIAL
+                    Group By Operator
+                      aggregations: sum(_col0)
+                      minReductionHashAggr: 0.99
+                      mode: hash
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                      Reduce Output Operator
+                        null sort order: 
+                        sort order: 
+                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                        value expressions: _col0 (type: bigint)
+        Reducer 3 
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: sum(VALUE._col0)
+                mode: mergepartial
+                outputColumnNames: _col0
+                Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                File Output Operator
+                  compressed: false
+                  Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: PARTIAL
+                  table:
+                      input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                      output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                      serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+        Reducer 4 
+            Reduce Operator Tree:
+              Group By Operator
+                aggregations: count(VALUE._col0)
+                keys: KEY._col0 (type: string)
+                mode: mergepartial
+                outputColumnNames: _col0, _col1
+                Statistics: Num rows: 158 Data size: 15010 Basic stats: COMPLETE Column stats: PARTIAL
+                Reduce Output Operator
+                  key expressions: _col0 (type: string)
+                  null sort order: z
+                  sort order: +
+                  Map-reduce partition columns: _col0 (type: string)
+                  Statistics: Num rows: 158 Data size: 15010 Basic stats: COMPLETE Column stats: PARTIAL
+                  value expressions: _col1 (type: bigint)
+
+  Stage: Stage-0
+    Fetch Operator
+      limit: -1
+      Processor Tree:
+        ListSink
+
+PREHOOK: query: with v as (
+  select srcpart_iceberg.key, count(*) c from srcpart_iceberg join srcpart_date_n2 on (srcpart_iceberg.ds = srcpart_date_n2.ds)
+  where srcpart_date_n2.`date` = '2008-04-08'
+  group by srcpart_iceberg.key
+)
+select sum(v1.c * v2.c) from v v1 join v v2 on (v1.key = v2.key)
+PREHOOK: type: QUERY
+PREHOOK: Input: default@srcpart_date_n2
+PREHOOK: Input: default@srcpart_iceberg
+PREHOOK: Output: hdfs://### HDFS PATH ###
+POSTHOOK: query: with v as (
+  select srcpart_iceberg.key, count(*) c from srcpart_iceberg join srcpart_date_n2 on (srcpart_iceberg.ds = srcpart_date_n2.ds)
+  where srcpart_date_n2.`date` = '2008-04-08'
+  group by srcpart_iceberg.key
+)
+select sum(v1.c * v2.c) from v v1 join v v2 on (v1.key = v2.key)
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@srcpart_date_n2
+POSTHOOK: Input: default@srcpart_iceberg
+POSTHOOK: Output: hdfs://### HDFS PATH ###
+4112
 PREHOOK: query: drop table srcpart_iceberg
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@srcpart_iceberg
+PREHOOK: Output: database:default
 PREHOOK: Output: default@srcpart_iceberg
 POSTHOOK: query: drop table srcpart_iceberg
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@srcpart_iceberg
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@srcpart_iceberg
 PREHOOK: query: drop table srcpart_date_hour_n0_iceberg
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@srcpart_date_hour_n0_iceberg
+PREHOOK: Output: database:default
 PREHOOK: Output: default@srcpart_date_hour_n0_iceberg
 POSTHOOK: query: drop table srcpart_date_hour_n0_iceberg
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@srcpart_date_hour_n0_iceberg
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@srcpart_date_hour_n0_iceberg
 PREHOOK: query: drop table srcpart_date_n2
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@srcpart_date_n2
+PREHOOK: Output: database:default
 PREHOOK: Output: default@srcpart_date_n2
 POSTHOOK: query: drop table srcpart_date_n2
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@srcpart_date_n2
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@srcpart_date_n2
 PREHOOK: query: drop table srcpart_hour_n0
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@srcpart_hour_n0
+PREHOOK: Output: database:default
 PREHOOK: Output: default@srcpart_hour_n0
 POSTHOOK: query: drop table srcpart_hour_n0
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@srcpart_hour_n0
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@srcpart_hour_n0
 PREHOOK: query: drop table srcpart_date_hour_n0
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@srcpart_date_hour_n0
+PREHOOK: Output: database:default
 PREHOOK: Output: default@srcpart_date_hour_n0
 POSTHOOK: query: drop table srcpart_date_hour_n0
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@srcpart_date_hour_n0
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@srcpart_date_hour_n0
 PREHOOK: query: drop table srcpart_double_hour_n0
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@srcpart_double_hour_n0
+PREHOOK: Output: database:default
 PREHOOK: Output: default@srcpart_double_hour_n0
 POSTHOOK: query: drop table srcpart_double_hour_n0
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@srcpart_double_hour_n0
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@srcpart_double_hour_n0

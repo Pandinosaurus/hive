@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /*
@@ -24,10 +25,13 @@ package org.apache.hive.beeline;
 
 import java.util.List;
 
-import jline.console.completer.Completer;
+import org.jline.reader.Candidate;
+import org.jline.reader.Completer;
+import org.jline.reader.LineReader;
+import org.jline.reader.ParsedLine;
 
 /**
- * Completor for BeeLine. It dispatches to sub-completors based on the
+ * Completer for BeeLine. It dispatches to sub-completors based on the
  * current arguments.
  *
  */
@@ -42,16 +46,14 @@ class BeeLineCompleter implements Completer {
   }
 
   @Override
-  public int complete(String buf, int pos, List cand) {
-    if (buf != null && buf.startsWith(BeeLine.COMMAND_PREFIX)
-        && !buf.startsWith(BeeLine.COMMAND_PREFIX + "all")
-        && !buf.startsWith(BeeLine.COMMAND_PREFIX + "sql")) {
-      return beeLine.getCommandCompletor().complete(buf, pos, cand);
+  public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
+    if (line != null && line.line().startsWith(BeeLine.COMMAND_PREFIX)
+        && !line.line().startsWith(BeeLine.COMMAND_PREFIX + "all")
+        && !line.line().startsWith(BeeLine.COMMAND_PREFIX + "sql")) {
+       beeLine.getCommandCompleter().complete(reader, line, candidates);
     } else {
       if (beeLine.getDatabaseConnection() != null && beeLine.getDatabaseConnection().getSQLCompleter() != null) {
-        return beeLine.getDatabaseConnection().getSQLCompleter().complete(buf, pos, cand);
-      } else {
-        return -1;
+         beeLine.getDatabaseConnection().getSQLCompleter().complete(reader, line, candidates);
       }
     }
   }

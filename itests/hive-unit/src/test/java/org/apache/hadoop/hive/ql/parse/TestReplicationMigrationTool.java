@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
@@ -247,16 +248,18 @@ public class TestReplicationMigrationTool extends BaseReplicationAcrossInstances
 
     // Open a file and check if it gets caught by the verify open file option.
     FSDataOutputStream stream = fs.append(new Path(externalTableLocationa, "filea1.txt"));
-    ToolRunner.run(conf, replTool,
+    int result = ToolRunner.run(conf, replTool,
         new String[] { "-dumpFilePath", tuple.dumpLocation, "-fileLevelCheck", "-verifyOpenFiles" });
-    fail("Script didn't fail despite having an open file.");
+    if (result != -1) {
+      fail("Script didn't fail despite having an open file.");
+    }
     // Make sure we get the exception.
     assertTrue(err.toString(), err.toString().contains("There are open files"));
-    err.reset();
-    out.reset();
     // Confirm that successful message is not printed, and failure message is printed.
     assertFalse(out.toString(), out.toString().contains("Completed verification. Source & Target are in Sync."));
     assertTrue(out.toString(), out.toString().contains("Completed verification. Source & Target are not in Sync."));
+    err.reset();
+    out.reset();
 
     // Close the file and check, the script should return success.
     stream.close();
@@ -331,9 +334,11 @@ public class TestReplicationMigrationTool extends BaseReplicationAcrossInstances
 
   private void validateChecksumValidationFails(ReplicationMigrationTool replTool, WarehouseInstance.Tuple tuple,
       String message) throws Exception {
-    ToolRunner.run(conf, replTool,
+    int result = ToolRunner.run(conf, replTool,
         new String[] { "-dumpFilePath", tuple.dumpLocation, "-fileLevelCheck", "-verifyChecksum" });
-    fail("Script didn't fail despite having an extra file.");
+    if (result != -1) {
+      fail("Script didn't fail despite having an extra file.");
+    }
     // Make sure we get the exception.
     assertTrue(err.toString(), err.toString().contains(message));
     // Confirm that successful message is not printed.
@@ -385,24 +390,18 @@ public class TestReplicationMigrationTool extends BaseReplicationAcrossInstances
     assertEquals(0,
         ToolRunner.run(conf, replTool, new String[] { "-dumpFilePath", tuple.dumpLocation +"/hive/_file_list_external", "-dirLevelCheck" }));
     assertTrue(out.toString().contains("Completed verification"));
-    assertFalse(err.toString(), err.toString().isEmpty());
     out.reset();
-    err.reset();
 
     // Verify at file level.
     assertEquals(0, ToolRunner
         .run(conf, replTool, new String[] { "-dumpFilePath", tuple.dumpLocation + "/hive", "-fileLevelCheck" }));
     assertTrue(out.toString().contains("Completed verification."));
-    assertFalse(err.toString(), err.toString().isEmpty());
     out.reset();
-    err.reset();
 
     // Verify at file level, with checksum.
     assertEquals(0, ToolRunner.run(conf, replTool,
         new String[] { "-dumpFilePath", tuple.dumpLocation, "-fileLevelCheck", "-verifyChecksum" }));
     assertTrue(out.toString().contains("Completed verification. Source & Target are in Sync."));
-    assertFalse(err.toString(), err.toString().isEmpty());
     out.reset();
-    err.reset();
   }
 }

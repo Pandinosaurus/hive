@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -42,4 +43,12 @@ public interface MetaStoreThread extends Configurable {
    * been called.
    */
   void start();
+
+  /**
+   * Should use mutex support to allow only one copy of this task running across the warehouse.
+   * @param enableMutex true for enabling the mutex, false otherwise
+   */
+  default void enforceMutex(boolean enableMutex) {
+    // no-op
+  }
 }

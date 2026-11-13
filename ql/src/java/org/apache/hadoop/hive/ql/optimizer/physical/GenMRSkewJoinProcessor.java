@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.physical;
@@ -147,7 +148,7 @@ public final class GenMRSkewJoinProcessor {
     joinDescriptor.setBigKeysDirMap(bigKeysDirMap);
     joinDescriptor.setSmallKeysDirMap(smallKeysDirMap);
     joinDescriptor.setSkewKeyDefinition(HiveConf.getIntVar(parseCtx.getConf(),
-        HiveConf.ConfVars.HIVESKEWJOINKEY));
+        HiveConf.ConfVars.HIVE_SKEWJOIN_KEY));
 
     HashMap<Path, Task<?>> bigKeysDirToTaskMap =
       new HashMap<Path, Task<?>>();
@@ -271,7 +272,7 @@ public final class GenMRSkewJoinProcessor {
       PartitionDesc part = new PartitionDesc(tableDescList.get(src), null);
 
       newPlan.addPathToPartitionInfo(bigKeyDirPath, part);
-      newPlan.getAliasToPartnInfo().put(alias, part);
+      newPlan.putPartitionDesc(alias, part);
 
       Operator<? extends OperatorDesc> reducer = clonePlan.getReduceWork().getReducer();
       assert reducer instanceof JoinOperator;
@@ -319,13 +320,12 @@ public final class GenMRSkewJoinProcessor {
       }
       mapJoinOp.setChildOperators(childOps);
 
-      HiveConf jc = new HiveConf(parseCtx.getConf(),
-          GenMRSkewJoinProcessor.class);
+      HiveConf jc = new HiveConf(parseCtx.getConf());
 
       newPlan.setNumMapTasks(HiveConf
-          .getIntVar(jc, HiveConf.ConfVars.HIVESKEWJOINMAPJOINNUMMAPTASK));
+          .getIntVar(jc, HiveConf.ConfVars.HIVE_SKEWJOIN_MAPJOIN_NUM_MAP_TASK));
       newPlan
-          .setMinSplitSize(HiveConf.getLongVar(jc, HiveConf.ConfVars.HIVESKEWJOINMAPJOINMINSPLIT));
+          .setMinSplitSize(HiveConf.getLongVar(jc, HiveConf.ConfVars.HIVE_SKEWJOIN_MAPJOIN_MIN_SPLIT));
       newPlan.setInputformat(HiveInputFormat.class.getName());
 
       MapredWork w = new MapredWork();
@@ -366,7 +366,7 @@ public final class GenMRSkewJoinProcessor {
 
   public static boolean skewJoinEnabled(HiveConf conf, JoinOperator joinOp) {
 
-    if (conf != null && !conf.getBoolVar(HiveConf.ConfVars.HIVESKEWJOIN)) {
+    if (conf != null && !conf.getBoolVar(HiveConf.ConfVars.HIVE_SKEW_JOIN)) {
       return false;
     }
 

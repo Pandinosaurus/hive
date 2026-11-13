@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.lockmgr;
 
@@ -62,7 +63,7 @@ class TestTxnManager extends DummyTxnManager {
   public ValidTxnWriteIdList getValidWriteIds(List<String> tableList,
                                               String validTxnList) throws LockException {
     // Format : <txnId>$<table_name>:<hwm>:<minOpenWriteId>:<open_writeids>:<abort_writeids>
-    return new ValidTxnWriteIdList(getCurrentTxnId() + DOLLAR.toString() + "db.table" + COLON +
+    return ValidTxnWriteIdList.fromValue(getCurrentTxnId() + DOLLAR.toString() + "db.table" + COLON +
         getCurrentTxnId() + COLON +
         getCurrentTxnId() + COLON +
         getCurrentTxnId() + COLON);

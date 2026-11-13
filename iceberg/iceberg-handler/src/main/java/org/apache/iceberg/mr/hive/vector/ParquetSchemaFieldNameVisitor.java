@@ -9,27 +9,28 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.iceberg.mr.hive.vector;
 
 import java.util.List;
 import java.util.Map;
-import org.apache.hive.iceberg.org.apache.parquet.schema.GroupType;
-import org.apache.hive.iceberg.org.apache.parquet.schema.MessageType;
-import org.apache.hive.iceberg.org.apache.parquet.schema.PrimitiveType;
-import org.apache.hive.iceberg.org.apache.parquet.schema.Type;
 import org.apache.iceberg.MetadataColumns;
 import org.apache.iceberg.parquet.TypeWithSchemaVisitor;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Types;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 /**
  * Collects the top level field names from Parquet schema. During schema visit it translates the expected schema's
@@ -82,7 +83,9 @@ class ParquetSchemaFieldNameVisitor extends TypeWithSchemaVisitor<Type> {
 
     if (!isMessageType) {
       GroupType groupType = new GroupType(Type.Repetition.REPEATED, fieldNames.peek(), types);
-      typesById.put(struct.getId().intValue(), groupType);
+      if (struct.getId() != null) {
+        typesById.put(struct.getId().intValue(), groupType);
+      }
       return groupType;
     } else {
       return new MessageType("table", types);
@@ -98,19 +101,36 @@ class ParquetSchemaFieldNameVisitor extends TypeWithSchemaVisitor<Type> {
   @Override
   public Type primitive(org.apache.iceberg.types.Type.PrimitiveType expected,
       PrimitiveType primitive) {
-    typesById.put(primitive.getId().intValue(), primitive);
+    if (primitive.getId() != null) {
+      typesById.put(primitive.getId().intValue(), primitive);
+    }
     return primitive;
   }
 
   @Override
   public Type list(Types.ListType iList, GroupType array, Type element) {
-    typesById.put(array.getId().intValue(), array);
+    if (array.getId() != null) {
+      typesById.put(array.getId().intValue(), array);
+    }
     return array;
   }
 
   @Override
+  public Type variant(Types.VariantType iVariant, GroupType variant, Type result) {
+    if (variant.getId() != null) {
+      typesById.put(variant.getId().intValue(), variant);
+    }
+    // Add the variant field name to the column names list
+    appendToColNamesList(variant instanceof MessageType, variant.getName());
+
+    return variant;
+  }
+
+  @Override
   public Type map(Types.MapType iMap, GroupType map, Type key, Type value) {
-    typesById.put(map.getId().intValue(), map);
+    if (map.getId() != null) {
+      typesById.put(map.getId().intValue(), map);
+    }
     return map;
   }
 

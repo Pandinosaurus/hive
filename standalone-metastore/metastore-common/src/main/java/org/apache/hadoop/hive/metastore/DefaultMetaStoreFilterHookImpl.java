@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -29,16 +30,20 @@ import org.apache.hadoop.hive.metastore.api.PartitionSpec;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.api.TableMeta;
 
+import static org.apache.hadoop.hive.metastore.utils.MetaStoreUtils.getDefaultCatalog;
+
 /**
  * Default no-op implementation of the MetaStoreFilterHook that returns the result as is
  */
 public class DefaultMetaStoreFilterHookImpl implements MetaStoreFilterHook {
+  protected final Configuration conf;
 
   public DefaultMetaStoreFilterHookImpl(Configuration conf) {
+    this.conf = conf;
   }
 
   @Override
-  public List<String> filterDatabases(List<String> dbList) throws MetaException {
+  public List<String> filterDatabases(String catName, List<String> dbList) throws MetaException {
     return dbList;
   }
 
@@ -54,7 +59,14 @@ public class DefaultMetaStoreFilterHookImpl implements MetaStoreFilterHook {
   }
 
   @Override
-  public List<TableMeta> filterTableMetas(String catName, String dbName,List<TableMeta> tableMetas) throws MetaException {
+  @Deprecated
+  public List<TableMeta> filterTableMetas(String catName, String dbName, List<TableMeta> tableMetas)
+      throws MetaException {
+    return filterTableMetas(tableMetas);
+  }
+
+  @Override
+  public List<TableMeta> filterTableMetas(List<TableMeta> tableMetas) throws MetaException {
     return tableMetas;
   }
 
@@ -88,6 +100,11 @@ public class DefaultMetaStoreFilterHookImpl implements MetaStoreFilterHook {
   public List<String> filterPartitionNames(String catName, String dbName, String tblName,
       List<String> partitionNames) throws MetaException {
     return partitionNames;
+  }
+
+  @Override
+  public List<String> filterDataConnectors(List<String> dcList) throws MetaException {
+    return dcList;
   }
 
 }

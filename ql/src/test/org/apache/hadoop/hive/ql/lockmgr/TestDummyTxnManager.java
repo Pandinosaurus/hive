@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.lockmgr;
@@ -24,6 +25,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.ErrorMsg;
@@ -50,7 +52,7 @@ import java.util.List;
 
 @RunWith(MockitoJUnitRunner.class)
 public class TestDummyTxnManager {
-  private final HiveConf conf = new HiveConf();
+  private final HiveConf conf = new HiveConfForTest(getClass());
   private HiveTxnManager txnMgr;
   private Context ctx;
   private int nextInput = 1;
@@ -103,17 +105,19 @@ public class TestDummyTxnManager {
   @Test
   public void testSingleReadTable() throws Exception {
     // Setup
+    SessionState.get().setCurrentCatalog("hive");
     SessionState.get().setCurrentDatabase("db1");
 
     List<HiveLock> expectedLocks = new ArrayList<HiveLock>();
-    expectedLocks.add(new ZooKeeperHiveLock("default", new HiveLockObject(), HiveLockMode.SHARED));
-    expectedLocks.add(new ZooKeeperHiveLock("default.table1", new HiveLockObject(), HiveLockMode.SHARED));
+    expectedLocks.add(new ZooKeeperHiveLock("hive", new HiveLockObject(), HiveLockMode.SHARED));
+    expectedLocks.add(new ZooKeeperHiveLock("hive.default", new HiveLockObject(), HiveLockMode.SHARED));
+    expectedLocks.add(new ZooKeeperHiveLock("hive.default.table1", new HiveLockObject(), HiveLockMode.SHARED));
     DriverState driverState = new DriverState();
     DriverState driverInterrupted = new DriverState();
     driverInterrupted.abort();
     LockException lEx = new LockException(ErrorMsg.LOCK_ACQUIRE_CANCELLED.getMsg());
-    when(mockLockManager.lock(anyListOf(HiveLockObj.class), eq(false), eq(driverState))).thenReturn(expectedLocks);
-    when(mockLockManager.lock(anyListOf(HiveLockObj.class), eq(false), eq(driverInterrupted))).thenThrow(lEx);
+    when(mockLockManager.lock(anyList(), eq(false), eq(driverState))).thenReturn(expectedLocks);
+    when(mockLockManager.lock(anyList(), eq(false), eq(driverInterrupted))).thenThrow(lEx);
     lenient().doNothing().when(mockLockManager).setContext(any(HiveLockManagerCtx.class));
     doNothing().when(mockLockManager).close();
     ArgumentCaptor<List> lockObjsCaptor = ArgumentCaptor.forClass(List.class);
@@ -135,10 +139,10 @@ public class TestDummyTxnManager {
 
     verify(mockLockManager).lock(lockObjsCaptor.capture(), eq(false), eq(driverState));
     List<HiveLockObj> lockObjs = lockObjsCaptor.getValue();
-    Assert.assertEquals(2, lockObjs.size());
-    Assert.assertEquals("default", lockObjs.get(0).getName());
-    Assert.assertEquals(HiveLockMode.SHARED, lockObjs.get(0).mode);
-    Assert.assertEquals("default/table1", lockObjs.get(1).getName());
+    Assert.assertEquals(3, lockObjs.size());
+    Assert.assertEquals("hive/default", lockObjs.get(2).getName());
+    Assert.assertEquals(HiveLockMode.SHARED, lockObjs.get(2).mode);
+    Assert.assertEquals("hive/default/table1", lockObjs.get(1).getName());
     Assert.assertEquals(HiveLockMode.SHARED, lockObjs.get(1).mode);
 
     // Execute
@@ -209,6 +213,7 @@ public class TestDummyTxnManager {
 
   private Table newTable(boolean isPartitioned) {
     Table t = new Table("default", "table" + Integer.toString(nextInput++));
+    t.setCatalogName("hive");
     if (isPartitioned) {
       FieldSchema fs = new FieldSchema();
       fs.setName("version");

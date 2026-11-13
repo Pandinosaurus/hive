@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.cli.service;
@@ -63,17 +64,10 @@ class AsyncTaskCopyLocalJars implements Callable<Void> {
         // log4j-1.2-API needed for NDC
         org.apache.log4j.config.Log4j1ConfigurationFactory.class,
         io.netty.util.NetUtil.class, // netty4
-        io.netty.handler.codec.http.HttpObjectAggregator.class, //
-        org.apache.arrow.vector.types.pojo.ArrowType.class, //arrow-vector
-        org.apache.arrow.memory.RootAllocator.class, //arrow-memory
-        org.apache.arrow.memory.NettyAllocationManager.class, //arrow-memory-netty
+        io.netty.handler.codec.http.HttpObjectAggregator.class,
         io.netty.handler.codec.http.HttpObjectAggregator.class, // netty-all
-        org.apache.arrow.flatbuf.Schema.class, //arrow-format
         com.google.flatbuffers.Table.class, //flatbuffers
         com.carrotsearch.hppc.ByteArrayDeque.class, //hppc
-        io.jsonwebtoken.security.Keys.class, //jjwt-api
-        io.jsonwebtoken.impl.DefaultJws.class, //jjwt-impl
-        io.jsonwebtoken.io.JacksonSerializer.class, //jjwt-jackson
     };
 
     for (Class<?> c : dependencies) {

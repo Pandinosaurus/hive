@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.stats;
 
@@ -27,15 +28,19 @@ import org.apache.calcite.rel.metadata.RelMetadataProvider;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.util.BuiltInMethod;
 import org.apache.hadoop.hive.common.TableName;
+import org.apache.hadoop.hive.common.type.SnapshotContext;
 import org.apache.hadoop.hive.metastore.api.SourceTable;
 import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.ql.metadata.HiveStorageHandler;
 import org.apache.hadoop.hive.ql.metadata.MaterializedViewMetadata;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveTezModelRelMetadataProvider;
 import org.apache.hadoop.hive.ql.optimizer.calcite.RelOptHiveTable;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan;
+import org.apache.hadoop.hive.ql.optimizer.calcite.rules.views.HiveMaterializedViewUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.StreamSupport;
 
 public class HiveIncrementalRelMdRowCount extends HiveRelMdRowCount {
 
@@ -49,8 +54,7 @@ public class HiveIncrementalRelMdRowCount extends HiveRelMdRowCount {
   }
 
   public static RelMetadataProvider source(RelOptMaterialization materialization) {
-    MaterializedViewMetadata mvMetadata = ((RelOptHiveTable) materialization.tableRel.getTable())
-            .getHiveTableMD().getMVMetadata();
+    MaterializedViewMetadata mvMetadata = HiveMaterializedViewUtils.extractTable(materialization).getMVMetadata();
     Map<String, SourceTable> sourceTableMap = new HashMap<>(mvMetadata.getSourceTables().size());
     for (SourceTable sourceTable : mvMetadata.getSourceTables()) {
       Table table = sourceTable.getTable();
@@ -82,6 +86,13 @@ public class HiveIncrementalRelMdRowCount extends HiveRelMdRowCount {
     SourceTable sourceTable = sourceTableMap.get(fullyQualifiedName);
     if (sourceTable == null) {
       return super.getRowCount(rel, mq);
+    }
+
+    HiveStorageHandler storageHandler = table.getStorageHandler();
+    if (storageHandler != null && storageHandler.areSnapshotsSupported()) {
+      SnapshotContext since = new SnapshotContext(Long.parseLong(table.getVersionIntervalFrom()));
+      return StreamSupport.stream(storageHandler.getSnapshotContexts(table, since).spliterator(), false)
+          .mapToDouble(SnapshotContext::getAddedRowCount).sum();
     }
 
     return (double) sourceTable.getInsertedCount();

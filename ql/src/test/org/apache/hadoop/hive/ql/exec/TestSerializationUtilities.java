@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec;
 
@@ -22,25 +23,36 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 
+import com.google.common.collect.ArrayListMultimap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.io.orc.OrcInputFormat;
 import org.apache.hadoop.hive.ql.io.orc.OrcOutputFormat;
+import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
+import org.apache.hadoop.hive.ql.plan.ExprNodeConstantDesc;
+import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
+import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
+import org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc;
 import org.apache.hadoop.hive.ql.plan.MapWork;
 import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
 import org.apache.hadoop.hive.ql.plan.VectorPartitionDesc;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDFOPEqual;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDFOPNull;
+import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class TestSerializationUtilities {
-
   @Test
   public void testEveryPropertiesAreSerialized() throws Exception {
     MapWork mapWork = doSerDeser(null);
@@ -127,6 +139,44 @@ public class TestSerializationUtilities {
     assertPartitionDescPropertyPresence(mapWork, "/warehouse/test_table/p=1", "serialization.ddl", false);
   }
 
+  @Test
+  public void testUnsupportedDeserialization() throws Exception {
+    ArrayList<Long> invalidExpr = new ArrayList<>();
+    invalidExpr.add(1L);
+    byte[] buf = SerializationUtilities.serializeObjectWithTypeInformation(invalidExpr);
+    try {
+      SerializationUtilities.deserializeObjectWithTypeInformation(buf, true);
+      Assert.fail("Should throw exception as the input is not a valid filter");
+    } catch (UnsupportedOperationException e) {
+      // ignore
+    }
+
+    ExprNodeDesc validExpr = ExprNodeGenericFuncDesc.newInstance(new GenericUDFOPNull(),
+        Arrays.asList(new ExprNodeColumnDesc(new ColumnInfo("_c0", TypeInfoFactory.stringTypeInfo, "a", false))));
+    buf = SerializationUtilities.serializeObjectWithTypeInformation(validExpr);
+    ExprNodeDesc desc = SerializationUtilities.deserializeObjectWithTypeInformation(buf, true);
+    Assert.assertTrue(ExprNodeDescUtils.isSame(validExpr, desc));
+  }
+
+  @Test
+  public void testSerializeChildrenFromGuavaCollection() throws Exception {
+    ExprNodeDesc column = new ExprNodeColumnDesc(TypeInfoFactory.stringTypeInfo, "foo", null, false);
+    ExprNodeDesc constant = new ExprNodeConstantDesc(TypeInfoFactory.stringTypeInfo, "bar");
+    ArrayListMultimap<Object, ExprNodeDesc> l = ArrayListMultimap.create();
+    l.put("coltype", column);
+    l.put("coltype", constant);
+
+    FunctionInfo inFunctionInfo = FunctionRegistry.getFunctionInfo("in");
+    Optional<Collection<ExprNodeDesc>> v = l.asMap().values().stream().findFirst();
+    Assert.assertTrue(v.isPresent());
+    List<ExprNodeDesc> children = (List<ExprNodeDesc>) v.get();
+    ExprNodeGenericFuncDesc node = ExprNodeGenericFuncDesc.newInstance(inFunctionInfo.getGenericUDF(), "in", children);
+
+    byte[] buf = SerializationUtilities.serializeObjectWithTypeInformation(node);
+    ExprNodeDesc desc = SerializationUtilities.deserializeObjectWithTypeInformation(buf, true);
+    Assert.assertTrue(ExprNodeDescUtils.isSame(node, desc));
+  }
+
   private MapWork doSerDeser(Configuration configuration) throws Exception, IOException {
     MapWork mapWork = mockMapWorkWithSomePartitionDescProperties();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -195,5 +245,54 @@ public class TestSerializationUtilities {
     mapWork.setPathToPartitionInfo(partMap);
 
     return mapWork;
+  }
+
+  @Test
+  public void testDeserializeObjectWithTypeInformationAcceptsLegitimateExpression() {
+    ExprNodeGenericFuncDesc expr = buildColumnEqualsConstant(new ExprNodeConstantDesc(
+        TypeInfoFactory.stringTypeInfo, "value"));
+
+    byte[] typed = SerializationUtilities.serializeObjectWithTypeInformation(expr);
+    Object deserialized = SerializationUtilities.deserializeObjectWithTypeInformation(typed, true);
+    Assert.assertTrue(deserialized instanceof ExprNodeGenericFuncDesc);
+
+    String base64 = SerializationUtilities.serializeExpression(expr);
+    Assert.assertNotNull(SerializationUtilities.deserializeExpression(base64));
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testDeserializeObjectWithTypeInformationRejectsNonExprRoot() {
+    byte[] bytes = SerializationUtilities.serializeObjectWithTypeInformation(
+        new LinkedHashMap<String, String>());
+    SerializationUtilities.deserializeObjectWithTypeInformation(bytes, true);
+  }
+
+  @Test
+  public void testDeserializeObjectFromKryoAcceptsLegitimateExpression() {
+    ExprNodeGenericFuncDesc expr = buildColumnEqualsConstant(new ExprNodeConstantDesc(
+        TypeInfoFactory.stringTypeInfo, "value"));
+    String exprString = "(col1 = 'value')";
+    Assert.assertEquals(exprString, expr.getExprString());
+
+    byte[] kryo = SerializationUtilities.serializeObjectToKryo(expr);
+    Assert.assertEquals(
+        exprString,
+        SerializationUtilities.deserializeObjectFromKryo(kryo, ExprNodeGenericFuncDesc.class).getExprString()
+    );
+    Assert.assertNotNull(SerializationUtilities.deserializeObjectFromKryo(kryo, Object.class));
+
+    String base64 = SerializationUtilities.serializeExpression(expr);
+    Assert.assertEquals(
+        exprString,
+        SerializationUtilities.deserializeExpression(base64).getExprString()
+    );
+  }
+
+  private static ExprNodeGenericFuncDesc buildColumnEqualsConstant(ExprNodeConstantDesc constant) {
+    List<ExprNodeDesc> children = new ArrayList<>();
+    children.add(new ExprNodeColumnDesc(TypeInfoFactory.stringTypeInfo, "col1", "tab", false));
+    children.add(constant);
+    return new ExprNodeGenericFuncDesc(TypeInfoFactory.booleanTypeInfo,
+        new GenericUDFOPEqual(), children);
   }
 }

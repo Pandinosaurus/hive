@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common.metrics.common;
 
@@ -57,6 +58,8 @@ public class MetricsConstant {
   public static final String HS2_OPEN_SESSIONS = "hs2_open_sessions";
   public static final String HS2_ACTIVE_SESSIONS = "hs2_active_sessions";
   public static final String HS2_ABANDONED_SESSIONS = "hs2_abandoned_sessions";
+  // Per-LLAP-cluster session count: metric name is HS2_LLAP_TARGET_SESSIONS + "_" + sanitizedTarget
+  public static final String HS2_LLAP_TARGET_SESSIONS = "hs2_llap_target_sessions";
   public static final String HS2_AVG_OPEN_SESSION_TIME = "hs2_avg_open_session_time";
   public static final String HS2_AVG_ACTIVE_SESSION_TIME = "hs2_avg_active_session_time";
 

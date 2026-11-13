@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.minikdc;
 
@@ -57,7 +58,7 @@ public class TestHiveAuthFactory {
     Assert.assertNotNull(keyTabFile);
     hiveConf.setVar(ConfVars.HIVE_SERVER2_KERBEROS_KEYTAB, keyTabFile);
 
-    HiveAuthFactory authFactory = new HiveAuthFactory(hiveConf);
+    HiveAuthFactory authFactory = new HiveAuthFactory(hiveConf, false);
     Assert.assertNotNull(authFactory);
     Assert.assertEquals("org.apache.hadoop.hive.metastore.security.HadoopThriftAuthBridge$Server$TUGIAssumingTransportFactory",
         authFactory.getAuthTransFactory().getClass().getName());
@@ -81,7 +82,7 @@ public class TestHiveAuthFactory {
 
     hiveConf.setVar(ConfVars.METASTORE_CLUSTER_DELEGATION_TOKEN_STORE_CLS, "org.apache.hadoop.hive.metastore.security.DBTokenStore");
 
-    HiveAuthFactory authFactory = new HiveAuthFactory(hiveConf);
+    HiveAuthFactory authFactory = new HiveAuthFactory(hiveConf, false);
     Assert.assertNotNull(authFactory);
     Assert.assertEquals("org.apache.hadoop.hive.metastore.security.HadoopThriftAuthBridge$Server$TUGIAssumingTransportFactory",
         authFactory.getAuthTransFactory().getClass().getName());

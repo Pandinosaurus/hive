@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.session;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.session.SessionState.ResourceType;
 
 import org.junit.Before;
@@ -44,12 +46,13 @@ import static org.junit.Assert.assertEquals;
 public class TestAddResource {
 
   private static final String TEST_JAR_DIR = System.getProperty("test.tmp.dir", ".") + File.separator;
+
   private HiveConf conf;
   private ResourceType t;
 
   @Before
   public void setup() throws IOException {
-    conf = new HiveConf();
+    conf = new HiveConfForTest(getClass());
     t = ResourceType.JAR;
 
     //Generate test jar files
@@ -109,7 +112,7 @@ public class TestAddResource {
     list.add(createURI(TEST_JAR_DIR + "testjar5.jar"));
 
     //return all the dependency urls
-    Mockito.when(ss.resolveAndDownload(t, query, false)).thenReturn(list);
+    Mockito.when(ss.resolveAndDownload(t, query)).thenReturn(list);
     addList.add(query);
     ss.add_resources(t, addList);
     Set<String> dependencies = ss.list_resource(t, null);
@@ -145,7 +148,7 @@ public class TestAddResource {
 
     Collections.sort(list);
 
-    Mockito.when(ss.resolveAndDownload(t, query, false)).thenReturn(list);
+    Mockito.when(ss.resolveAndDownload(t, query)).thenReturn(list);
     for (int i = 0; i < 10; i++) {
       addList.add(query);
     }
@@ -165,8 +168,6 @@ public class TestAddResource {
   // test when two jars with shared dependencies are added, the classloader contains union of the dependencies
   @Test
   public void testUnion() throws URISyntaxException, IOException {
-
-    HiveConf conf = new HiveConf();
     SessionState ss = Mockito.spy(SessionState.start(conf).get());
     ResourceType t = ResourceType.JAR;
     String query1 = "testQuery1";
@@ -183,8 +184,8 @@ public class TestAddResource {
     list2.add(createURI(TEST_JAR_DIR + "testjar3.jar"));
     list2.add(createURI(TEST_JAR_DIR + "testjar4.jar"));
 
-    Mockito.when(ss.resolveAndDownload(t, query1, false)).thenReturn(list1);
-    Mockito.when(ss.resolveAndDownload(t, query2, false)).thenReturn(list2);
+    Mockito.when(ss.resolveAndDownload(t, query1)).thenReturn(list1);
+    Mockito.when(ss.resolveAndDownload(t, query2)).thenReturn(list2);
     addList.add(query1);
     addList.add(query2);
     ss.add_resources(t, addList);
@@ -234,8 +235,8 @@ public class TestAddResource {
     Collections.sort(list1);
     Collections.sort(list2);
 
-    Mockito.when(ss.resolveAndDownload(t, query1, false)).thenReturn(list1);
-    Mockito.when(ss.resolveAndDownload(t, query2, false)).thenReturn(list2);
+    Mockito.when(ss.resolveAndDownload(t, query1)).thenReturn(list1);
+    Mockito.when(ss.resolveAndDownload(t, query2)).thenReturn(list2);
     addList.add(query1);
     addList.add(query2);
     ss.add_resources(t, addList);
@@ -293,9 +294,9 @@ public class TestAddResource {
     Collections.sort(list2);
     Collections.sort(list3);
 
-    Mockito.when(ss.resolveAndDownload(t, query1, false)).thenReturn(list1);
-    Mockito.when(ss.resolveAndDownload(t, query2, false)).thenReturn(list2);
-    Mockito.when(ss.resolveAndDownload(t, query3, false)).thenReturn(list3);
+    Mockito.when(ss.resolveAndDownload(t, query1)).thenReturn(list1);
+    Mockito.when(ss.resolveAndDownload(t, query2)).thenReturn(list2);
+    Mockito.when(ss.resolveAndDownload(t, query3)).thenReturn(list3);
     addList.add(query1);
     addList.add(query2);
     addList.add(query3);

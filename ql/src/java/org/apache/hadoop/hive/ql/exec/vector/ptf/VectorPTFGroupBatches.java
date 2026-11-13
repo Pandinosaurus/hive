@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.ptf;
@@ -26,6 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.type.HiveIntervalDayTime;
 import org.apache.hadoop.hive.ql.exec.PTFPartition;
@@ -64,6 +66,7 @@ public class VectorPTFGroupBatches extends PTFPartition {
   private int[] bufferedColumnMap;
   private int[] orderColumnMap;
   private int[] keyWithoutOrderColumnMap;
+  private int[] partitionKeyIndices;
 
   private int spillLimitBufferedBatchCount;
   private String spillLocalDirs;
@@ -90,6 +93,21 @@ public class VectorPTFGroupBatches extends PTFPartition {
   RowPositionInBatch[] positionCache;
 
   List<Integer> inMemoryStartRowIndex;
+
+  /**
+   * Whether any of the evaluators is a group-aggregated streaming evaluator.
+   */
+  private boolean hasGroupAggregatedStreamingEvaluator;
+
+  /**
+   * List of row counts of each reduce key group (peer group) within the current partition.
+   */
+  private final List<Integer> aggregatedGroupRowCounts = new ArrayList<>();
+
+  /**
+   * Accumulates the row count of the reduce key group currently being buffered.
+   */
+  private int currentAggregatedGroupRowCount;
 
   /**
    * PartitionResults collects results for the currently evaluated partition. Before HIVE-24761, PTF
@@ -289,12 +307,20 @@ public class VectorPTFGroupBatches extends PTFPartition {
 
   public void init(VectorPTFEvaluatorBase[] evaluators, int[] outputProjectionColumnMap,
       int[] bufferedColumnMap, TypeInfo[] bufferedTypeInfos, int[] orderColumnMap,
-      int[] keyWithoutOrderColumnMap, VectorizedRowBatch overflowBatch) {
+      int[] keyWithoutOrderColumnMap, int[] partitionColumnMap, VectorizedRowBatch overflowBatch) {
     this.evaluators = evaluators;
     this.outputProjectionColumnMap = outputProjectionColumnMap;
     this.bufferedColumnMap = bufferedColumnMap;
     this.orderColumnMap = orderColumnMap;
     this.keyWithoutOrderColumnMap = keyWithoutOrderColumnMap;
+
+    partitionKeyIndices = new int[keyWithoutOrderColumnMap.length];
+    for (int i = 0; i < keyWithoutOrderColumnMap.length; i++) {
+      partitionKeyIndices[i] = ArrayUtils.indexOf(partitionColumnMap, keyWithoutOrderColumnMap[i]);
+      Preconditions.checkState(partitionKeyIndices[i] != ArrayUtils.INDEX_NOT_FOUND,
+          "Key input column %s not found among partition columns %s",
+          keyWithoutOrderColumnMap[i], Arrays.toString(partitionColumnMap));
+    }
 
     this.overflowBatch = overflowBatch;
     bufferedBatches = new ArrayList<BufferedVectorizedRowBatch>(0);
@@ -305,6 +331,14 @@ public class VectorPTFGroupBatches extends PTFPartition {
 
     this.blocks = new VectorSpillBlockContainer(spillLimitBufferedBatchCount, spillLocalDirs,
         bufferedColumnMap, bufferedTypeInfos);
+
+    hasGroupAggregatedStreamingEvaluator = false;
+    for (VectorPTFEvaluatorBase evaluator : evaluators) {
+      if (evaluator.isGroupAggregatedStreamingEvaluator()) {
+        hasGroupAggregatedStreamingEvaluator = true;
+        break;
+      }
+    }
   }
 
   /**
@@ -336,15 +370,6 @@ public class VectorPTFGroupBatches extends PTFPartition {
     return getValueFromBatch(bufferedBatches.get(rp.batchIndex), col, rp.rowIndexInBatch);
   }
 
-  public Object getValueAndEvaluateInputExpression(VectorPTFEvaluatorBase evaluator, int row,
-      int col) throws HiveException {
-    RowPositionInBatch rp = getPosition(row);
-    BufferedVectorizedRowBatch batch = bufferedBatches.get(rp.batchIndex);
-    if (!batch.isInputExpressionEvaluated) {
-      evaluator.evaluateInputExpr(batch);
-    }
-    return getValueFromBatch(batch, col, rp.rowIndexInBatch);
-  }
 
   public RowPositionInBatch getPosition(int i) throws HiveException {
     if (positionCache[i] != null) {
@@ -454,6 +479,23 @@ public class VectorPTFGroupBatches extends PTFPartition {
   }
 
   /**
+   * First pass for peer group aggregated streaming evaluators (e.g. cume_dist)
+   */
+  private void precomputeAggregatedStreamingResults() throws HiveException {
+    if (!hasGroupAggregatedStreamingEvaluator) {
+      return;
+    }
+    List<Integer> groupRowCounts =
+        Collections.unmodifiableList(aggregatedGroupRowCounts);
+    for (VectorPTFEvaluatorBase evaluator : evaluators) {
+      if (evaluator.isGroupAggregatedStreamingEvaluator()) {
+        evaluator.addStreamingGroupResults(groupRowCounts);
+      }
+    }
+    aggregatedGroupRowCounts.clear();
+  }
+
+  /**
    * This should be called, when all of the batches were processed for a group (all of the
    * evaluators have been evaluated for this group). The data is not needed anymore.
    */
@@ -503,6 +545,14 @@ public class VectorPTFGroupBatches extends PTFPartition {
     copyBufferedColumns(batch, bufferedBatch);
     bufferedBatch.isLastGroupBatch = isLastGroupBatch;
     cachedSize = -1; // clear cached size as we added new batches
+
+    if (hasGroupAggregatedStreamingEvaluator) {
+      currentAggregatedGroupRowCount += batch.size;
+      if (isLastGroupBatch) {
+        aggregatedGroupRowCounts.add(currentAggregatedGroupRowCount);
+        currentAggregatedGroupRowCount = 0;
+      }
+    }
   }
 
   public void resetEvaluators() {
@@ -775,6 +825,11 @@ public class VectorPTFGroupBatches extends PTFPartition {
     }
   }
 
+  /**
+   * Sets the partition key values as repeating columns in the overflowBatch. Key columns are in
+   * output projection order, partitionKey values in PARTITION BY order; partitionKeyIndices maps
+   * between the two.
+   */
   private void copyPartitionColumnToOverflow(Object[] partitionKey) {
     // Set partition column in overflowBatch.
     // We can set by ref since our last batch is held by us.
@@ -782,7 +837,7 @@ public class VectorPTFGroupBatches extends PTFPartition {
     for (int i = 0; i < keyInputColumnCount; i++) {
       final int keyColumnNum = keyWithoutOrderColumnMap[i];
       Preconditions.checkState(overflowBatch.cols[keyColumnNum] != null);
-      setRepeatingColumn(partitionKey[i], overflowBatch, keyColumnNum);
+      setRepeatingColumn(partitionKey[partitionKeyIndices[i]], overflowBatch, keyColumnNum);
     }
   }
 
@@ -831,6 +886,11 @@ public class VectorPTFGroupBatches extends PTFPartition {
   @VisibleForTesting
   void preFinishPartition() throws HiveException {
     int rows = size();
+
+    for (VectorPTFEvaluatorBase evaluator : evaluators) {
+      evaluator.setPartitionSize(rows);
+    }
+    precomputeAggregatedStreamingResults();
 
     positionCache = new RowPositionInBatch[rows + 1];
     partitionResults = new PartitionResults(rows);
@@ -997,7 +1057,6 @@ public class VectorPTFGroupBatches extends PTFPartition {
 
     partialBatch.size = size;
     partialBatch.isLastGroupBatch = bufferedBatch.isLastGroupBatch;
-    partialBatch.isInputExpressionEvaluated = bufferedBatch.isInputExpressionEvaluated;
     return partialBatch;
   }
 
@@ -1159,7 +1218,6 @@ public class VectorPTFGroupBatches extends PTFPartition {
         block.readSingleRowFromBytesContainer(bufferedBatch);
         bufferedBatch.size += 1;
         bufferedBatch.isLastGroupBatch = block.isLastGroupBatch[batchIndex];
-        bufferedBatch.isInputExpressionEvaluated = block.isInputExpressionEvaluated[batchIndex];
       }
       currentBufferedBatchCount = block.spillBatchCount;
       partitionMetrics.batchesReadFromSpill += currentBufferedBatchCount;
@@ -1187,7 +1245,6 @@ public class VectorPTFGroupBatches extends PTFPartition {
       BufferedVectorizedRowBatch bufferedBatch = bufferedBatches.get(i);
       block.spillBatch(bufferedBatch);
       block.isLastGroupBatch[i] = bufferedBatch.isLastGroupBatch;
-      block.isInputExpressionEvaluated[i] = bufferedBatch.isInputExpressionEvaluated;
       block.spillRowCount += bufferedBatch.size;
       block.spillBatchCount += 1;
       if (previousBatch != null) {

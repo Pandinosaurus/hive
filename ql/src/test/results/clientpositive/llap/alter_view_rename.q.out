@@ -45,10 +45,13 @@ ds                  	string
 PREHOOK: query: ALTER VIEW tv1.view1 RENAME TO tv2.view2
 PREHOOK: type: ALTERVIEW_RENAME
 PREHOOK: Input: tv1@view1
+PREHOOK: Output: database:tv2
 PREHOOK: Output: tv1@view1
+PREHOOK: Output: tv2@view2
 POSTHOOK: query: ALTER VIEW tv1.view1 RENAME TO tv2.view2
 POSTHOOK: type: ALTERVIEW_RENAME
 POSTHOOK: Input: tv1@view1
+POSTHOOK: Output: database:tv2
 POSTHOOK: Output: tv1@view1
 POSTHOOK: Output: tv2@view2
 PREHOOK: query: DESCRIBE EXTENDED tv2.view2
@@ -75,10 +78,12 @@ POSTHOOK: Input: tv2@view2
 PREHOOK: query: DROP TABLE invites_n1
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@invites_n1
+PREHOOK: Output: database:default
 PREHOOK: Output: default@invites_n1
 POSTHOOK: query: DROP TABLE invites_n1
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@invites_n1
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@invites_n1
 PREHOOK: query: DROP VIEW tv2.view2
 PREHOOK: type: DROPVIEW

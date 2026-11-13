@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -113,31 +114,13 @@ public abstract class AbstractThriftHiveMetastore implements Iface {
     }
 
     @Override
-    public void create_dataconnector(DataConnector connector)
-            throws AlreadyExistsException, InvalidObjectException, MetaException, TException {
-        throw new UnsupportedOperationException("this method is not supported");
-    }
-
-    @Override
     public DataConnector get_dataconnector_req(GetDataConnectorRequest request)
             throws NoSuchObjectException, MetaException, TException {
         throw new UnsupportedOperationException("this method is not supported");
     }
 
     @Override
-    public void drop_dataconnector(String name, boolean ifNotExists, boolean checkReferences)
-            throws NoSuchObjectException, InvalidOperationException, MetaException, TException {
-        throw new UnsupportedOperationException("this method is not supported");
-    }
-
-    @Override
     public List<String> get_dataconnectors() throws MetaException, TException {
-        throw new UnsupportedOperationException("this method is not supported");
-    }
-
-    @Override
-    public void alter_dataconnector(String name, DataConnector connector)
-            throws MetaException, NoSuchObjectException, TException {
         throw new UnsupportedOperationException("this method is not supported");
     }
 
@@ -321,17 +304,6 @@ public abstract class AbstractThriftHiveMetastore implements Iface {
 
     @Override
     public List<String> get_all_tables(String db_name) throws MetaException, TException {
-        throw new UnsupportedOperationException("this method is not supported");
-    }
-
-    @Override
-    public Table get_table(String dbname, String tbl_name)
-            throws MetaException, NoSuchObjectException, TException {
-        throw new UnsupportedOperationException("this method is not supported");
-    }
-
-    @Override
-    public List<Table> get_table_objects_by_name(String dbname, List<String> tbl_names) throws TException {
         throw new UnsupportedOperationException("this method is not supported");
     }
 
@@ -634,6 +606,11 @@ public abstract class AbstractThriftHiveMetastore implements Iface {
     @Override
     public GetPartitionsByNamesResult get_partitions_by_names_req(GetPartitionsByNamesRequest req)
             throws MetaException, NoSuchObjectException, TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+    @Override
+    public List<Partition> get_partitions_by_filter_req(GetPartitionsByFilterRequest req) throws MetaException, NoSuchObjectException, TException {
         throw new UnsupportedOperationException("this method is not supported");
     }
 
@@ -1053,6 +1030,12 @@ public abstract class AbstractThriftHiveMetastore implements Iface {
 
     @Override
     public void repl_tbl_writeid_state(ReplTblWriteIdStateRequest rqst) throws TException {
+        throw new UnsupportedOperationException("this method is not supported");
+    }
+
+
+    @Override
+    public ReplayedTxnsForPolicyResult get_replayed_txns_for_policy(String policyName) throws TException {
         throw new UnsupportedOperationException("this method is not supported");
     }
 

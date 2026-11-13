@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -33,7 +34,10 @@ import org.apache.hadoop.hive.ql.plan.ReplTxnWork;
 import org.apache.hadoop.hive.ql.plan.api.StageType;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.StringUtils;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * ReplTxnTask.
@@ -100,6 +104,18 @@ public class ReplTxnTask extends Task<ReplTxnWork> {
         assert work.getTxnToWriteIdList() != null;
         String dbName = work.getDbName();
         List <TxnToWriteId> txnToWriteIdList = work.getTxnToWriteIdList();
+
+        if (ReplUtils.filterTransactionOperations(conf)) {
+          // Implicitly open transactions since the OpenTxn(s) were filtered out to save space.
+          List<Long> txnIdsToOpen = txnToWriteIdList.stream()
+                  .map(txn2WriteId -> new Long(txn2WriteId.getTxnId()))
+                  .collect(Collectors.toList());
+          List<Long> openedTxnIds = txnManager.replOpenTxn(replPolicy, txnIdsToOpen, user);
+          assert openedTxnIds.size() == txnIdsToOpen.size();
+          LOG.info("Replayed (implicit) OpenTxn Event for policy " + replPolicy + " with srcTxn " +
+                  txnIdsToOpen.toString() + " and target txn id " + openedTxnIds.toString());
+        }
+
         txnManager.replAllocateTableWriteIdsBatch(dbName, tableName, replPolicy, txnToWriteIdList);
         LOG.info("Replayed alloc write Id Event for repl policy: " + replPolicy + " db Name : " + dbName +
             " txnToWriteIdList: " +txnToWriteIdList.toString() + " table name: " + tableName);

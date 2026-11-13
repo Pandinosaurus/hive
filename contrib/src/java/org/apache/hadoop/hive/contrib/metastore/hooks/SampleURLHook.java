@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.contrib.metastore.hooks;
@@ -33,7 +34,7 @@ public class SampleURLHook implements JDOConnectionURLHook {
   @Override
   public String getJdoConnectionUrl(Configuration conf) throws Exception {
     if (originalUrl == null) {
-      originalUrl = conf.get(HiveConf.ConfVars.METASTORECONNECTURLKEY.varname, "");
+      originalUrl = conf.get(HiveConf.ConfVars.METASTORE_CONNECT_URL_KEY.varname, "");
       return "jdbc:derby:;databaseName=target/tmp/junit_metastore_db_blank;create=true";
     } else {
       return originalUrl;

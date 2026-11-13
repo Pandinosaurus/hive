@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql;
@@ -22,13 +23,13 @@ import static org.apache.hadoop.hive.metastore.Warehouse.DEFAULT_DATABASE_NAME;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.util.LinkedHashSet;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -51,8 +53,13 @@ import org.apache.hadoop.hive.cli.CliSessionState;
 import org.apache.hadoop.hive.cli.control.AbstractCliConfig;
 import org.apache.hadoop.hive.common.io.CachingPrintStream;
 import org.apache.hadoop.hive.common.io.SessionStream;
+import org.apache.hadoop.hive.common.io.QTestFetchConverter;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.metastore.api.Database;
+import org.apache.hadoop.hive.metastore.api.DatabaseType;
+import org.apache.hadoop.hive.metastore.api.GetDatabaseObjectsRequest;
+import org.apache.hadoop.hive.metastore.api.GetDatabaseObjectsResponse;
 import org.apache.hadoop.hive.ql.metadata.HiveMetaStoreClientWithLocalCache;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.ql.QTestMiniClusters.FsType;
@@ -82,6 +89,7 @@ import org.apache.hadoop.hive.ql.qoption.QTestAuthorizerHandler;
 import org.apache.hadoop.hive.ql.qoption.QTestDisabledHandler;
 import org.apache.hadoop.hive.ql.qoption.QTestDatabaseHandler;
 import org.apache.hadoop.hive.ql.qoption.QTestOptionDispatcher;
+import org.apache.hadoop.hive.ql.qoption.QTestQueryHistoryHandler;
 import org.apache.hadoop.hive.ql.qoption.QTestReplaceHandler;
 import org.apache.hadoop.hive.ql.qoption.QTestSysDbHandler;
 import org.apache.hadoop.hive.ql.qoption.QTestTimezoneHandler;
@@ -108,6 +116,9 @@ public class QTestUtil {
   public static String DEBUG_HINT =
       "\nSee ./ql/target/tmp/log/hive.log or ./itests/qtest/target/tmp/log/hive.log, "
           + "or check ./ql/target/surefire-reports or ./itests/qtest/target/surefire-reports/ for specific test cases logs.";
+
+  private static final String QTEST_DRIVER_OPERATION_ID = "qtest_operation_id";
+  private static final String QTEST_DRIVER_USER = "qtest_driver_user";
 
   private String testWarehouse;
   @Deprecated private final String testFiles;
@@ -176,6 +187,13 @@ public class QTestUtil {
     conf.setVar(ConfVars.METASTORE_RAW_STORE_IMPL, "org.apache.hadoop.hive.metastore.VerifyingObjectStore");
 
     miniClusters.initConf(conf);
+
+    // disable query history altogether
+    HiveConf.setBoolVar(conf, HiveConf.ConfVars.HIVE_QUERY_HISTORY_ENABLED, false);
+
+    // make DriverFactory able to create non-null QueryInfo objects
+    conf.set(DriverContext.DEFAULT_USER_NAME_PROP, QTestUtil.QTEST_DRIVER_USER);
+    conf.set(DriverContext.DEFAULT_OPERATION_ID_PROP, QTestUtil.QTEST_DRIVER_OPERATION_ID);
   }
 
   public QTestUtil(QTestArguments testArgs) throws Exception {
@@ -214,10 +232,11 @@ public class QTestUtil {
     System.setProperty("hive.query.max.length", "100Mb");
 
     conf = new HiveConf(IDriver.class);
+    setCustomConfs(conf, testArgs.getCustomConfs());
     setMetaStoreProperties();
 
     final String scriptsDir = getScriptsDir(conf);
-    this.miniClusters.setup(testArgs, conf, scriptsDir, logDir);
+    this.miniClusters.setup(testArgs, conf, scriptsDir);
 
     initConf();
 
@@ -234,13 +253,18 @@ public class QTestUtil {
     dispatcher.register("timezone", new QTestTimezoneHandler());
     dispatcher.register("authorizer", new QTestAuthorizerHandler());
     dispatcher.register("disabled", new QTestDisabledHandler());
-    dispatcher.register("database", new QTestDatabaseHandler());
+    dispatcher.register("database", new QTestDatabaseHandler(scriptsDir));
+    dispatcher.register("queryhistory", new QTestQueryHistoryHandler());
 
     this.initScript = scriptsDir + File.separator + testArgs.getInitScript();
     this.cleanupScript = scriptsDir + File.separator + testArgs.getCleanupScript();
 
     savedConf = new HiveConf(conf);
 
+  }
+
+  private void setCustomConfs(HiveConf conf, Map<ConfVars,String> customConfigValueMap) {
+    customConfigValueMap.entrySet().forEach(item-> conf.set(item.getKey().varname, item.getValue()));
   }
 
   private void logClassPath() {
@@ -276,6 +300,10 @@ public class QTestUtil {
     return scriptsDir;
   }
 
+  public QTestDatabaseHandler getDatabaseHandler() {
+    return (QTestDatabaseHandler) dispatcher.getHandler("database");
+  }
+
   public void shutdown() throws Exception {
     if (System.getenv(QTEST_LEAVE_FILES) == null) {
       cleanUp();
@@ -291,11 +319,11 @@ public class QTestUtil {
   }
 
   public void setInputFile(File qf) throws IOException {
-    String query = FileUtils.readFileToString(qf);
+    String query = FileUtils.readFileToString(qf, StandardCharsets.UTF_8);
     inputFile = qf;
     inputContent = query;
-    qTestResultProcessor.init(query);
     qOutProcessor.initMasks(query);
+    qTestResultProcessor.init(query);
   }
 
   public final File getInputFile() {
@@ -336,6 +364,31 @@ public class QTestUtil {
     }
   }
 
+  public void clearConnectorsCreatedInTests() throws Exception {
+    if (System.getenv(QTEST_LEAVE_FILES) != null) {
+      return;
+    }
+    conf.set("hive.metastore.filter.hook", "org.apache.hadoop.hive.metastore.DefaultMetaStoreFilterHookImpl");
+    db = Hive.get(conf);
+
+    GetDatabaseObjectsRequest request = new GetDatabaseObjectsRequest();
+    request.setPattern("*");
+    GetDatabaseObjectsResponse response = db.getMSC().get_databases_req(request);
+    if (response != null && response.getDatabasesSize() > 0) {
+      for (Database database : response.getDatabases()) {
+        if (database.getType() == DatabaseType.REMOTE) {
+          db.dropDatabase(database.getName(), true, true);
+        }
+      }
+    }
+    List<String> connectors = db.getAllDataConnectorNames();
+    if (connectors != null) {
+      for (String connectorName : connectors) {
+        db.dropDataConnector(connectorName, true);
+      }
+    }
+  }
+
   /**
    * Clear out any side effects of running tests
    */
@@ -363,7 +416,7 @@ public class QTestUtil {
           continue;
         }
         db.dropTable(dbName, tblName, true, true, fsType == FsType.ENCRYPTED_HDFS);
-        HiveMaterializedViewsRegistry.get().dropMaterializedView(tblObj);
+        HiveMaterializedViewsRegistry.get().dropMaterializedView(tblObj.getFullTableName());
       }
     }
 
@@ -463,6 +516,7 @@ public class QTestUtil {
     Utilities.clearWorkMap(conf);
     NotificationEventPoll.shutdown();
     QueryResultsCache.cleanupInstance();
+    clearConnectorsCreatedInTests();
     clearTablesCreatedDuringTests();
     clearUDFsCreatedDuringTests();
     clearKeysCreatedInTests();
@@ -513,7 +567,7 @@ public class QTestUtil {
   private void cleanupFromFile() throws IOException {
     File cleanupFile = new File(cleanupScript);
     if (cleanupFile.isFile()) {
-      String cleanupCommands = FileUtils.readFileToString(cleanupFile);
+      String cleanupCommands = FileUtils.readFileToString(cleanupFile, StandardCharsets.UTF_8);
       LOG.info("Cleanup (" + cleanupScript + "):\n" + cleanupCommands);
 
       try {
@@ -548,7 +602,7 @@ public class QTestUtil {
       return;
     }
 
-    String initCommands = FileUtils.readFileToString(scriptFile);
+    String initCommands = FileUtils.readFileToString(scriptFile, StandardCharsets.UTF_8);
     LOG.info("Initial setup (" + initScript + "):\n" + initCommands);
 
     try {
@@ -564,7 +618,7 @@ public class QTestUtil {
 
     sem = new SemanticAnalyzer(new QueryState.Builder().withHiveConf(conf).build());
 
-    testWarehouse = conf.getVar(HiveConf.ConfVars.METASTOREWAREHOUSE);
+    testWarehouse = conf.getVar(HiveConf.ConfVars.METASTORE_WAREHOUSE);
 
     db = Hive.get(conf);
     pd = new ParseDriver();
@@ -639,9 +693,23 @@ public class QTestUtil {
 
     qTestResultProcessor.setOutputs(ss, fo);
 
+    ss.out = new QTestFetchConverter(ss.out, false, "UTF-8", line -> {
+      notifyOutputLine(line);
+      if (qOutProcessor != null) {
+        // ensure that the masking is done before the sorting of the query results
+        return qOutProcessor.processLine(line).get();
+      }
+      return line;
+    });
+
     ss.err = new CachingPrintStream(fo, true, "UTF-8");
     ss.setIsSilent(true);
     ss.setIsQtestLogging(true);
+  }
+
+  /** Lets the implementor know that a new line has been produced in the output */
+  protected void notifyOutputLine(String line) {
+    // by default do nothing
   }
 
   public CliSessionState startSessionState(boolean canReuseSession) throws IOException {
@@ -744,7 +812,7 @@ public class QTestUtil {
    * if you want to use another hive cmd after the failure to sanity check the state of the system.
    */
   private boolean ignoreErrors() {
-    return conf.getBoolVar(HiveConf.ConfVars.CLIIGNOREERRORS);
+    return conf.getBoolVar(HiveConf.ConfVars.CLI_IGNORE_ERRORS);
   }
 
   boolean isHiveCommand(String command) {
@@ -769,7 +837,7 @@ public class QTestUtil {
     //replace ${hiveconf:hive.metastore.warehouse.dir} with actual dir if existed.
     //we only want the absolute path, so remove the header, such as hdfs://localhost:57145
     String wareHouseDir =
-        SessionState.get().getConf().getVar(ConfVars.METASTOREWAREHOUSE).replaceAll("^[a-zA-Z]+://.*?:\\d+", "");
+        SessionState.get().getConf().getVar(ConfVars.METASTORE_WAREHOUSE).replaceAll("^[a-zA-Z]+://.*?:\\d+", "");
     commandArgs = commandArgs.replaceAll("\\$\\{hiveconf:hive\\.metastore\\.warehouse\\.dir\\}", wareHouseDir);
 
     if (SessionState.get() != null) {
@@ -783,6 +851,7 @@ public class QTestUtil {
       if (proc != null) {
         try {
           CommandProcessorResponse response = proc.run(commandArgs.trim());
+          SessionState.get().out.flush();
           return response;
         } catch (CommandProcessorException e) {
           SessionState.getConsole().printError(e.toString(),

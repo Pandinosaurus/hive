@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.cli.operation;
 
@@ -24,7 +25,9 @@ import org.apache.hadoop.hive.common.metrics.common.MetricsFactory;
 import org.apache.hadoop.hive.common.metrics.metrics2.CodahaleMetrics;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.session.SessionState;
+import org.apache.hive.service.cli.HandleIdentifier;
 import org.apache.hive.service.cli.OperationState;
+import org.apache.hive.service.cli.SessionHandle;
 import org.apache.hive.service.cli.session.HiveSession;
 import org.junit.After;
 import org.junit.Before;
@@ -51,6 +54,9 @@ public class TestSQLOperationMetrics {
     when(session.getHiveConf()).thenReturn(conf);
     when(session.getSessionState()).thenReturn(mock(SessionState.class));
     when(session.getUserName()).thenReturn("userName");
+    SessionHandle sessionHandle = mock(SessionHandle.class);
+    when(sessionHandle.getHandleIdentifier()).thenReturn(new HandleIdentifier());
+    when(session.getSessionHandle()).thenReturn(sessionHandle);
 
     operation = new SQLOperation(session, "select * from dummy",
         Maps.<String, String>newHashMap(), false, 0L);

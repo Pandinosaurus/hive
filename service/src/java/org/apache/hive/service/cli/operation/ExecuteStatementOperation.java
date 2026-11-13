@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.cli.operation;
 
@@ -24,6 +25,7 @@ import static org.apache.hive.service.cli.operation.hplsql.HplSqlQueryExecutor.Q
 import java.sql.SQLException;
 import java.util.Map;
 
+import org.apache.hadoop.hive.ql.processors.ShowProcessListProcessor;
 import org.apache.hive.service.cli.operation.hplsql.BeelineConsole;
 import org.apache.hadoop.hive.ql.exec.FunctionRegistry;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
@@ -34,11 +36,9 @@ import org.apache.hive.common.util.HiveStringUtils;
 import org.apache.hive.hplsql.Conf;
 import org.apache.hive.hplsql.Exec;
 import org.apache.hive.hplsql.HplSqlSessionState;
-import org.apache.hive.hplsql.ResultListener;
 import org.apache.hive.hplsql.udf.Udf;
 import org.apache.hive.service.cli.HiveSQLException;
 import org.apache.hive.service.cli.OperationType;
-import org.apache.hive.service.cli.operation.hplsql.BeelineConsole;
 import org.apache.hive.service.cli.operation.hplsql.HplSqlOperation;
 import org.apache.hive.service.cli.operation.hplsql.HplSqlQueryExecutor;
 import org.apache.hive.service.cli.session.HiveSession;
@@ -46,14 +46,9 @@ import org.apache.hive.service.cli.session.HiveSession;
 public abstract class ExecuteStatementOperation extends Operation {
   protected String statement = null;
 
-  public ExecuteStatementOperation(HiveSession parentSession, String statement,
-      Map<String, String> confOverlay) {
-    super(parentSession, confOverlay, OperationType.EXECUTE_STATEMENT);
-    this.statement = statement;
-  }
-
-  public ExecuteStatementOperation(HiveSession parentSession, String statement, Map<String, String> confOverlay, boolean runInBackground, boolean generateNewQueryId) {
-    super(parentSession, confOverlay, OperationType.EXECUTE_STATEMENT, generateNewQueryId);
+  public ExecuteStatementOperation(HiveSession parentSession, String statement, Map<String, String> confOverlay,
+      boolean embedded) {
+    super(parentSession, confOverlay, OperationType.EXECUTE_STATEMENT, embedded);
     this.statement = statement;
   }
 
@@ -75,11 +70,13 @@ public abstract class ExecuteStatementOperation extends Operation {
                 parentSession.getMetaStoreClient(),
                 new HiveHplSqlSessionState(SessionState.get())
         );
+        setHiveVariables(parentSession, interpreter);
         interpreter.init();
         registerUdf();
         SessionState.get().addDynamicVar(interpreter);
       }
-      return new HplSqlOperation(parentSession, statement, confOverlay, runAsync, SessionState.get().getDynamicVar(Exec.class));
+      return new HplSqlOperation(parentSession, statement, confOverlay, runAsync,
+          SessionState.get().getDynamicVar(Exec.class));
     }
 
     String[] tokens = cleanStatement.trim().split("\\s+");
@@ -93,8 +90,24 @@ public abstract class ExecuteStatementOperation extends Operation {
       // runAsync, queryTimeout makes sense only for a SQLOperation
       // Pass the original statement to SQLOperation as sql parser can remove comments by itself
       return new SQLOperation(parentSession, statement, confOverlay, runAsync, queryTimeout, hplSqlMode());
+    } else if (processor instanceof ShowProcessListProcessor) {
+      return new ShowProcessListOperation(parentSession, cleanStatement, processor, confOverlay, hplSqlMode());
     }
-    return new HiveCommandOperation(parentSession, cleanStatement, processor, confOverlay);
+    return new HiveCommandOperation(parentSession, cleanStatement, processor, confOverlay, hplSqlMode());
+  }
+
+  private static void setHiveVariables(HiveSession parentSession, Exec interpreter) {
+    Map<String, String> hiveVars = parentSession.getSessionState().getHiveVariables();
+    if (hiveVars.size() > 0) {
+      String[] hiveVarArray = new String[hiveVars.size() * 2];
+      int i = 0;
+      for (Map.Entry<String, String> entry : hiveVars.entrySet()) {
+        hiveVarArray[i] = "--hivevar";
+        hiveVarArray[i+1] = entry.getKey() + "=" + entry.getValue();
+        i = i + 2;
+      }
+      interpreter.parseArguments(hiveVarArray);
+    }
   }
 
   private static void registerUdf() throws HiveSQLException {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql;
 
@@ -29,25 +30,23 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.shims.ShimLoader;
-import org.apache.hive.common.util.RetryTestRunner;
 import org.apache.hive.jdbc.miniHS2.MiniHS2;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestName;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TestAutoPurgeTables {
-  private static final String driverName = "org.apache.hive.jdbc.HiveDriver";
+
   private static final String testDbName = "auto_purge_test_db";
   //private static final String testTableName = "auto_purge_test_table";
   private static final String INSERT_OVERWRITE_COMMAND_FORMAT =
@@ -112,14 +111,13 @@ public class TestAutoPurgeTables {
 
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    conf = new HiveConf(TestAutoPurgeTables.class);
+    conf = new HiveConfForTest(TestAutoPurgeTables.class);
     // enable trash so it can be tested
     conf.setFloat("fs.trash.checkpoint.interval", 30);
     conf.setFloat("fs.trash.interval", 30);
     // Create test database and base tables once for all the test
     miniHS2 = new MiniHS2.Builder().withConf(conf).build();
     miniHS2.start(new HashMap<String, String>());
-    Class.forName(driverName);
     con = getConnection(miniHS2.getBaseJdbcURL() + ";create=true");
     try (Statement stmt = con.createStatement()) {
       Assert.assertNotNull("Statement is null", stmt);

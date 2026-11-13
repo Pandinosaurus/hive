@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.serde2.io;
 
@@ -300,6 +301,22 @@ public class TimestampWritableV2 implements WritableComparable<TimestampWritable
       nanos = getNanos();
     }
     return seconds + nanos / 1000000000;
+  }
+
+  /**
+   *
+   * @return double representation of the timestamp, accurate to microseconds
+   */
+  public double getMicros() {
+    double seconds, nanos;
+    if (bytesEmpty) {
+      seconds = timestamp.toEpochSecond();
+      nanos = timestamp.getNanos();
+    } else {
+      seconds = getSeconds();
+      nanos = getNanos();
+    }
+    return seconds * 1e6 + nanos / 1e3;
   }
 
   public static long getLong(Timestamp timestamp) {

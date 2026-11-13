@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.security.authorization.plugin;
@@ -21,6 +22,7 @@ package org.apache.hadoop.hive.ql.security.authorization.plugin;
 import org.apache.hadoop.hive.ql.hooks.ExecuteWithHookContext;
 import org.apache.hadoop.hive.ql.hooks.HookContext;
 import org.apache.hadoop.hive.ql.QueryProperties;
+import org.apache.hadoop.hive.ql.QueryProperties.QueryFeature;
 
 public class DisallowTransformHook implements ExecuteWithHookContext {
 
@@ -30,7 +32,7 @@ public class DisallowTransformHook implements ExecuteWithHookContext {
     if (null == qProps) {
       return; // its a ddl query.
     } 
-    if (qProps.usesScript()) {
+    if (qProps.hasFeature(QueryFeature.USES_SCRIPT)) {
        throw new HiveAccessControlException("Query with transform clause is disallowed in"
            + " current configuration.");
     }

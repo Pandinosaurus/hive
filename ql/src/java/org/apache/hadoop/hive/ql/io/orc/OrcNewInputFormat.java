@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
@@ -54,7 +55,7 @@ public class OrcNewInputFormat extends InputFormat<NullWritable, OrcStruct>{
     return new OrcRecordReader(OrcFile.createReader(path,
                                                    OrcFile.readerOptions(conf)),
         ShimLoader.getHadoopShims().getConfiguration(context),
-        fileSplit.getStart(), fileSplit.getLength());
+        fileSplit.getStart(), fileSplit.getLength(), inputSplit);
   }
 
   private static class OrcRecordReader
@@ -65,11 +66,15 @@ public class OrcNewInputFormat extends InputFormat<NullWritable, OrcStruct>{
     private float progress = 0.0f;
 
     OrcRecordReader(Reader file, Configuration conf,
-                    long offset, long length) throws IOException {
+                    long offset, long length, InputSplit inputSplit) throws IOException {
       numColumns = file.getSchema().getChildren().size();
       value = new OrcStruct(numColumns);
-      this.reader = OrcInputFormat.createReaderFromFile(file, conf, offset,
-          length);
+      if (inputSplit instanceof OrcNewSplit) {
+        this.reader = OrcInputFormat.createReaderFromFile(file, conf, offset,
+                length, ((OrcNewSplit)inputSplit).isOriginal());
+      } else {
+        this.reader = OrcInputFormat.createReaderFromFile(file, conf, offset, length);
+      }
     }
 
     @Override

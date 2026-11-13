@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -38,6 +39,7 @@ import org.apache.hadoop.hive.metastore.api.SeedTableWriteIdsRequest;
 import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
+import org.apache.hadoop.hive.metastore.client.builder.GetPartitionsArgs;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.events.PreAlterTableEvent;
 import org.apache.hadoop.hive.metastore.events.PreCreateTableEvent;
@@ -59,7 +61,7 @@ public final class TransactionalValidationListener extends MetaStorePreEventList
 
   private final Set<String> supportedCatalogs = new HashSet<String>();
 
-  TransactionalValidationListener(Configuration conf) {
+  public TransactionalValidationListener(Configuration conf) {
     super(conf);
     supportedCatalogs.add("hive");
   }
@@ -217,10 +219,10 @@ public final class TransactionalValidationListener extends MetaStorePreEventList
       }
     }
     checkSorted(newTable);
-    if(TxnUtils.isAcidTable(newTable) && !TxnUtils.isAcidTable(oldTable)) {
+    if (TxnUtils.isAcidTable(newTable) && !TxnUtils.isTransactionalTable(oldTable)) {
       /* we just made an existing table full acid which wasn't acid before and it passed all checks
       initialize the Write ID sequence so that we can handle assigning ROW_IDs to 'original'
-      files already present in the table. */
+      files already present in the table. Not needed if oldTable is insertOnly.*/
       TxnStore t = TxnUtils.getTxnStore(getConf());
       //For now assume no partition may have > 10M files.  Perhaps better to count them.
       t.seedWriteId(new SeedTableWriteIdsRequest(newTable.getDbName(),
@@ -446,8 +448,10 @@ public final class TransactionalValidationListener extends MetaStorePreEventList
   /**
    * see org.apache.hadoop.hive.ql.exec.Utilities#COPY_KEYWORD
    */
+  // Copy suffix is either a numeric counter (HDFS/local: _copy_N) or a 16-hex per-query
+  // uniqueness tag (non-atomic-rename FS such as S3A: _copy_<queryTag>).
   private static final Pattern ORIGINAL_PATTERN_COPY =
-    Pattern.compile("[0-9]+_[0-9]+" + "_copy_" + "[0-9]+");
+      Pattern.compile("[0-9]+_[0-9]+" + "_copy_" + "(?:[0-9]{1,6}|[0-9a-fA-F]{16})");
 
   /**
    * It's assumed everywhere that original data files are named according to
@@ -476,8 +480,8 @@ public final class TransactionalValidationListener extends MetaStorePreEventList
     try {
       RawStore rawStore = hmsHandler.getMS();
       String catName = getTableCatalog(table);
-      List<Partition> partitions = rawStore.getPartitions(catName, table.getDbName(), table.getTableName(), -1);
-      return partitions;
+      return rawStore.getPartitions(catName, table.getDbName(), table.getTableName(),
+          GetPartitionsArgs.getAllPartitions());
     } catch (Exception err) {
       String msg = "Error getting partitions for " + Warehouse.getQualifiedName(table);
       LOG.error(msg, err);

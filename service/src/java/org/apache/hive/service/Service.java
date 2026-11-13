@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service;
@@ -39,6 +40,12 @@ public interface Service {
     /** started and not stopped */
     STARTED,
 
+    /**
+     *  Telling the service not to run new operations from front users,
+     *  but existing queries can still be finished normally
+     */
+    DECOMMISSIONING,
+
     /** stopped. No further state transitions are permitted */
     STOPPED
   }
@@ -62,6 +69,15 @@ public interface Service {
    * operation failed and an exception was raised.
    */
   void start();
+
+  /**
+   * Imply the service not to run new requests from client.
+   *
+   * The transition should be from {@link STATE#STARTED} to {@link STATE#DECOMMISSIONING}
+   */
+  default void decommission() {
+    // no op
+  }
 
   /**
    * Stop the service.

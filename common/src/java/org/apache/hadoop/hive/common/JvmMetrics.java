@@ -9,18 +9,18 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common;
 
 import static org.apache.hadoop.hive.common.JvmMetricsInfo.*;
 
-import org.apache.hadoop.log.metrics.EventCounter;
 import org.apache.hadoop.metrics2.MetricsCollector;
 import org.apache.hadoop.metrics2.MetricsInfo;
 import org.apache.hadoop.metrics2.MetricsRecordBuilder;
@@ -52,8 +52,12 @@ public class JvmMetrics implements MetricsSource {
     JvmMetrics impl;
 
     synchronized JvmMetrics init(String processName, String sessionId) {
+      return init(processName, sessionId, DefaultMetricsSystem.instance());
+    }
+
+    synchronized JvmMetrics init(String processName, String sessionId, MetricsSystem ms) {
       if (impl == null) {
-        impl = create(processName, sessionId, DefaultMetricsSystem.instance());
+        impl = create(processName, sessionId, ms);
       }
       return impl;
     }
@@ -88,6 +92,10 @@ public class JvmMetrics implements MetricsSource {
     return Singleton.INSTANCE.init(processName, sessionId);
   }
 
+  public static JvmMetrics initSingleton(String processName, String sessionId, MetricsSystem ms) {
+    return Singleton.INSTANCE.init(processName, sessionId, ms);
+  }
+
   @Override
   public void getMetrics(MetricsCollector collector, boolean all) {
     MetricsRecordBuilder rb = collector.addRecord(JvmMetrics)
@@ -96,7 +104,6 @@ public class JvmMetrics implements MetricsSource {
     getMemoryUsage(rb);
     getGcUsage(rb);
     getThreadUsage(rb);
-    getEventCounters(rb);
   }
 
   private void getMemoryUsage(MetricsRecordBuilder rb) {
@@ -152,6 +159,16 @@ public class JvmMetrics implements MetricsSource {
   }
 
   private void getThreadUsage(MetricsRecordBuilder rb) {
+    ThreadCountResult result = getThreadCountResult(threadMXBean);
+    rb.addGauge(ThreadsNew, result.threadsNew)
+        .addGauge(ThreadsRunnable, result.threadsRunnable)
+        .addGauge(ThreadsBlocked, result.threadsBlocked)
+        .addGauge(ThreadsWaiting, result.threadsWaiting)
+        .addGauge(ThreadsTimedWaiting, result.threadsTimedWaiting)
+        .addGauge(ThreadsTerminated, result.threadsTerminated);
+  }
+
+  public static ThreadCountResult getThreadCountResult(ThreadMXBean threadMXBean) {
     int threadsNew = 0;
     int threadsRunnable = 0;
     int threadsBlocked = 0;
@@ -170,18 +187,25 @@ public class JvmMetrics implements MetricsSource {
         case TERMINATED:    threadsTerminated++;    break;
       }
     }
-    rb.addGauge(ThreadsNew, threadsNew)
-        .addGauge(ThreadsRunnable, threadsRunnable)
-        .addGauge(ThreadsBlocked, threadsBlocked)
-        .addGauge(ThreadsWaiting, threadsWaiting)
-        .addGauge(ThreadsTimedWaiting, threadsTimedWaiting)
-        .addGauge(ThreadsTerminated, threadsTerminated);
+    return new ThreadCountResult(threadsNew, threadsRunnable, threadsBlocked, threadsWaiting, threadsTimedWaiting, threadsTerminated);
   }
 
-  private void getEventCounters(MetricsRecordBuilder rb) {
-    rb.addCounter(LogFatal, EventCounter.getFatal())
-        .addCounter(LogError, EventCounter.getError())
-        .addCounter(LogWarn, EventCounter.getWarn())
-        .addCounter(LogInfo, EventCounter.getInfo());
+  public static class ThreadCountResult {
+    public final int threadsNew;
+    public final int threadsRunnable;
+    public final int threadsBlocked;
+    public final int threadsWaiting;
+    public final int threadsTimedWaiting;
+    public final int threadsTerminated;
+
+    public ThreadCountResult(int threadsNew, int threadsRunnable, int threadsBlocked, int threadsWaiting, int threadsTimedWaiting,
+        int threadsTerminated) {
+      this.threadsNew = threadsNew;
+      this.threadsRunnable = threadsRunnable;
+      this.threadsBlocked = threadsBlocked;
+      this.threadsWaiting = threadsWaiting;
+      this.threadsTimedWaiting = threadsTimedWaiting;
+      this.threadsTerminated = threadsTerminated;
+    }
   }
 }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -29,7 +30,6 @@ import org.apache.hadoop.hive.metastore.api.ThriftHiveMetastore;
 import org.apache.hadoop.hive.metastore.security.TUGIContainingTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hive.metastore.api.ThriftHiveMetastore.Iface;
 import org.apache.hadoop.hive.metastore.api.ThriftHiveMetastore.set_ugi_args;
 import org.apache.hadoop.hive.metastore.api.ThriftHiveMetastore.set_ugi_result;
@@ -56,7 +56,7 @@ import org.apache.thrift.protocol.TType;
 public class TUGIBasedProcessor<I extends Iface> extends TSetIpAddressProcessor<Iface> {
 
   private final I iface;
-  private final Map<String,  org.apache.thrift.ProcessFunction<Iface, ? extends  TBase>>
+  private final Map<String,  org.apache.thrift.ProcessFunction<Iface, ? extends  TBase, ? extends  TBase>>
     functions;
   static final Logger LOG = LoggerFactory.getLogger(TUGIBasedProcessor.class);
 
@@ -74,7 +74,7 @@ public class TUGIBasedProcessor<I extends Iface> extends TSetIpAddressProcessor<
    setIpAddress(in);
 
    final TMessage msg = in.readMessageBegin();
-   final ProcessFunction<Iface, ? extends  TBase> fn = functions.get(msg.name);
+   final ProcessFunction<Iface, ? extends  TBase, ? extends  TBase> fn = functions.get(msg.name);
    if (fn == null) {
      TProtocolUtil.skip(in, TType.STRUCT);
      in.readMessageEnd();
@@ -117,7 +117,6 @@ public class TUGIBasedProcessor<I extends Iface> extends TSetIpAddressProcessor<
      };
      try {
        clientUgi.doAs(pvea);
-       return;
      } catch (RuntimeException rte) {
        if (rte.getCause() instanceof TException) {
          throw (TException)rte.getCause();
@@ -127,12 +126,6 @@ public class TUGIBasedProcessor<I extends Iface> extends TSetIpAddressProcessor<
        throw new RuntimeException(ie); // unexpected!
      } catch (IOException ioe) {
        throw new RuntimeException(ioe); // unexpected!
-     } finally {
-         try {
-           FileSystem.closeAllForUGI(clientUgi);
-         } catch (IOException e) {
-           LOG.error("Could not clean up file-system handles for UGI: " + clientUgi, e);
-         }
      }
    }
   }

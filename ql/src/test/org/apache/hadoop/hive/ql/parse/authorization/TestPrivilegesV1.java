@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.authorization;
 
@@ -42,6 +43,8 @@ public class TestPrivilegesV1 extends PrivilegesTestBase{
     queryState = new QueryState.Builder().build();
     db = Mockito.mock(Hive.class);
     HiveConf hiveConf = queryState.getConf();
+    // the test doesn't involve DAG execution, skip TezSessionState initialization
+    hiveConf.setBoolean(HiveConf.ConfVars.HIVE_CLI_TEZ_INITIALIZE_SESSION.varname, false);
     table = new Table(DB, TABLE);
     partition = new Partition(table);
     hiveConf

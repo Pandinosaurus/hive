@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -61,7 +61,7 @@ public class LoadPartitionDoneEvent extends HiveMetaStoreAuthorizableEvent {
     List<HivePrivilegeObject> ret   = new ArrayList<>();
     PreLoadPartitionDoneEvent event = (PreLoadPartitionDoneEvent) preEventContext;
 
-    ret.add(new HivePrivilegeObject(HivePrivilegeObjectType.TABLE_OR_VIEW, event.getDbName(), event.getTableName()));
+    ret.add(new HivePrivilegeObject(HivePrivilegeObjectType.TABLE_OR_VIEW, event.getCatName(), event.getDbName(), event.getTableName()));
 
     LOG.debug("<== DropTableEvent.getOutputHObjs(): ret={}", ret);
 

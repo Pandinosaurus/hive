@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.vector.ptf;
 
@@ -140,10 +141,6 @@ class VectorSpillBlockContainer {
     boolean[] isLastGroupBatch;
 
     /**
-     * Stores the isInputExpressionEvaluated property for buffered/spilled batches.
-     */
-    boolean[] isInputExpressionEvaluated;
-    /**
      * <pre>
       * Deserializer needs to know which columns to put the deserialized values into. Basically,
       * deserialization can happen in 2 cases:
@@ -165,7 +162,6 @@ class VectorSpillBlockContainer {
       startBatchIndex = blockIndex * blockSize;
       startRowIndex = new int[blockSize];
       isLastGroupBatch = new boolean[blockSize];
-      isInputExpressionEvaluated = new boolean[blockSize];
     }
 
     void releaseRowBytesContainer() {
@@ -180,7 +176,7 @@ class VectorSpillBlockContainer {
         spillRowBytesContainer = new VectorRowBytesContainer(spillLocalDirs);
 
         if (bufferedBatchVectorSerializeRow == null) {
-          initSerizalization();
+          initSerialization();
         }
       }
       return spillRowBytesContainer;
@@ -188,12 +184,12 @@ class VectorSpillBlockContainer {
 
     VectorSerializeRow getVectorSerializeRow() throws HiveException {
       if (bufferedBatchVectorSerializeRow == null) {
-        initSerizalization();
+        initSerialization();
       }
       return bufferedBatchVectorSerializeRow;
     }
 
-    private void initSerizalization() throws HiveException {
+    private void initSerialization() throws HiveException {
       initVectorSerializeRow();
       initVectorDeserializeRow();
     }
@@ -264,7 +260,7 @@ class VectorSpillBlockContainer {
         for (int logicalIndex = 0; logicalIndex < size; logicalIndex++) {
           final int batchIndex = (selectedInUse ? selected[logicalIndex] : logicalIndex);
 
-          Output output = rowBytesContainer.getOuputForRowBytes();
+          Output output = rowBytesContainer.getOutputForRowBytes();
           vectorSerializeRow.setOutputAppend(output);
           vectorSerializeRow.serializeWrite(batch, batchIndex);
           rowBytesContainer.finishRow();
@@ -277,7 +273,7 @@ class VectorSpillBlockContainer {
     /**
      * Reads a single row from a VectorRowBytesContainer. Caller is responsible for calling and
      * checking readNext in advance.
-     * 
+     *
      * @param batch
      * @param vectorDeserializeRow
      * @param rowBytesContainer

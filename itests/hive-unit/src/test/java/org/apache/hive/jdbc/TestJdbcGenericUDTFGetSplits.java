@@ -6,12 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc;
@@ -38,15 +41,25 @@ import static org.junit.Assert.assertTrue;
 public class TestJdbcGenericUDTFGetSplits extends AbstractTestJdbcGenericUDTFGetSplits {
 
   @Test(timeout = 200000)
-  @Ignore("HIVE-23394")
-  public void testGenericUDTFOrderBySplitCount1() throws Exception {
-    super.testGenericUDTFOrderBySplitCount1("get_splits", new int[]{10, 1, 0, 2, 2, 2, 1, 10});
+  public void testGetSplitsOrderBySplitCount1() throws Exception {
+    testGenericUDTFOrderBySplitCount1("get_splits", new int[] { 10, 5, 0, 2, 2, 2, 5 });
   }
 
   @Test(timeout = 200000)
-  public void testGenericUDTFOrderBySplitCount1OnPartitionedTable() throws Exception {
-    super.testGenericUDTFOrderBySplitCount1OnPartitionedTable("get_splits", new int[]{5, 5, 1, 1, 1});
+  public void testGetLlapSplitsOrderBySplitCount1() throws Exception {
+    testGenericUDTFOrderBySplitCount1("get_llap_splits", new int[] { 12, 7, 1, 4, 4, 4, 7 });
   }
+
+  @Test(timeout = 200000)
+  public void testGetSplitsOrderBySplitCount1OnPartitionedTable() throws Exception {
+    testGenericUDTFOrderBySplitCount1OnPartitionedTable("get_splits", new int[]{5, 5, 1, 1, 1});
+  }
+
+  @Test(timeout = 200000)
+  public void testGetLlapSplitsOrderBySplitCount1OnPartitionedTable() throws Exception {
+    testGenericUDTFOrderBySplitCount1OnPartitionedTable("get_llap_splits", new int[]{7, 7, 3, 3, 3});
+  }
+
 
 
   @Test

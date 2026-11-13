@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.txn.compactor;
 
@@ -21,10 +22,9 @@ import com.google.common.collect.Lists;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.ValidWriteIdList;
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.metastore.api.Partition;
+import org.apache.hadoop.hive.metastore.api.CompactionType;
 import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
-import org.apache.hadoop.hive.metastore.txn.CompactionInfo;
 import org.apache.hadoop.hive.ql.io.AcidDirectory;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.slf4j.Logger;
@@ -40,36 +40,49 @@ final class MmMinorQueryCompactor extends QueryCompactor {
 
   private static final Logger LOG = LoggerFactory.getLogger(MmMinorQueryCompactor.class.getName());
 
-  @Override void runCompaction(HiveConf hiveConf, Table table, Partition partition,
-      StorageDescriptor storageDescriptor, ValidWriteIdList writeIds, CompactionInfo compactionInfo,
-      AcidDirectory dir) throws IOException {
+  @Override
+  public boolean run(CompactorContext context) throws IOException {
+    HiveConf hiveConf = context.getConf();
+    Table table = context.getTable();
+    AcidDirectory dir = context.getAcidDirectory();
     LOG.debug(
         "Going to delete directories for aborted transactions for MM table " + table.getDbName()
             + "." + table.getTableName());
     QueryCompactor.Util.removeFilesForMmTable(hiveConf, dir);
+    StorageDescriptor storageDescriptor = context.getSd();
+    ValidWriteIdList writeIds = context.getValidWriteIdList();
 
+    // Set up the session for driver.
     HiveConf driverConf = setUpDriverSession(hiveConf);
 
-    String tmpPrefix = table.getDbName() + ".tmp_minor_compactor_" + table.getTableName() + "_";
-    String tmpTableName = tmpPrefix + System.currentTimeMillis();
+    String tmpTableName = getTempTableName(table);
     String resultTmpTableName = tmpTableName + "_result";
     Path resultDeltaDir = QueryCompactor.Util.getCompactionResultDir(storageDescriptor, writeIds, driverConf,
-        false, false, false, dir);
+        false, false, dir);
 
     List<String> createTableQueries = getCreateQueries(tmpTableName, table, storageDescriptor, dir,
         writeIds, resultDeltaDir);
     List<String> compactionQueries = getCompactionQueries(tmpTableName, resultTmpTableName, table);
     List<String> dropQueries = getDropQueries(tmpTableName);
-    runCompactionQueries(driverConf, tmpTableName, storageDescriptor, writeIds, compactionInfo,
-        Lists.newArrayList(resultDeltaDir), createTableQueries, compactionQueries, dropQueries);
+    runCompactionQueries(driverConf, tmpTableName, context.getCompactionInfo(), Lists.newArrayList(resultDeltaDir), 
+        createTableQueries, compactionQueries, dropQueries, table.getParameters());
+    return true;
+  }
+
+  @Override
+  protected HiveConf setUpDriverSession(HiveConf hiveConf) {
+    HiveConf conf = super.setUpDriverSession(hiveConf);
+    conf.setBoolVar(HiveConf.ConfVars.HIVE_STATS_FETCH_COLUMN_STATS, false);
+    conf.setBoolVar(HiveConf.ConfVars.HIVE_STATS_ESTIMATE_STATS, false);
+    return conf;
   }
 
   /**
-   * Move files from "result table" directory to table/partition to compact's directory.
+   * Clean up the empty table dir of 'tmpTableName'.
    */
-  @Override protected void commitCompaction(String dest, String tmpTableName, HiveConf conf,
-      ValidWriteIdList actualWriteIds, long compactorTxnId) throws IOException, HiveException {
-    Util.cleanupEmptyDir(conf, tmpTableName);
+  @Override
+  protected void commitCompaction(String tmpTableName, HiveConf conf) throws IOException, HiveException {
+    Util.cleanupEmptyTableDir(conf, tmpTableName + "_result");
   }
 
   /**
@@ -105,12 +118,12 @@ final class MmMinorQueryCompactor extends QueryCompactor {
 
   private String getCreateQuery(String newTableName, Table t, StorageDescriptor sd,
       String location, boolean isPartitioned) {
-    return new CompactionQueryBuilder(
-        CompactionQueryBuilder.CompactionType.MINOR_INSERT_ONLY,
-        CompactionQueryBuilder.Operation.CREATE,
-        newTableName)
-        .setSourceTab(t)
+    return new CompactionQueryBuilderFactory().getCompactionQueryBuilder(
+        CompactionType.MINOR, true)
+        .setOperation(CompactionQueryBuilder.Operation.CREATE)
+        .setResultTableName(newTableName)
         .setStorageDescriptor(sd)
+        .setSourceTab(t)
         .setLocation(location)
         .setPartitioned(isPartitioned)
         .build();
@@ -126,8 +139,10 @@ final class MmMinorQueryCompactor extends QueryCompactor {
    */
   private String buildAlterTableQuery(String tableName, AcidDirectory dir,
       ValidWriteIdList validWriteIdList) {
-    return new CompactionQueryBuilder(CompactionQueryBuilder.CompactionType.MINOR_INSERT_ONLY,
-        CompactionQueryBuilder.Operation.ALTER, tableName)
+    return new CompactionQueryBuilderFactory().getCompactionQueryBuilder(
+        CompactionType.MINOR, true)
+        .setOperation(CompactionQueryBuilder.Operation.ALTER)
+        .setResultTableName(tableName)
         .setDir(dir)
         .setValidWriteIdList(validWriteIdList)
         .build();
@@ -147,13 +162,13 @@ final class MmMinorQueryCompactor extends QueryCompactor {
   private List<String> getCompactionQueries(String sourceTmpTableName, String resultTmpTableName,
       Table sourceTable) {
     return Lists.newArrayList(
-        new CompactionQueryBuilder(
-            CompactionQueryBuilder.CompactionType.MINOR_INSERT_ONLY,
-            CompactionQueryBuilder.Operation.INSERT,
-            resultTmpTableName)
-        .setSourceTabForInsert(sourceTmpTableName)
-        .setSourceTab(sourceTable)
-        .build()
+        new CompactionQueryBuilderFactory().getCompactionQueryBuilder(
+            CompactionType.MINOR, true)
+            .setOperation(CompactionQueryBuilder.Operation.INSERT)
+            .setResultTableName(resultTmpTableName)
+            .setSourceTabForInsert(sourceTmpTableName)
+            .setSourceTab(sourceTable)
+            .build()
     );
   }
 
@@ -170,17 +185,10 @@ final class MmMinorQueryCompactor extends QueryCompactor {
   }
 
   private String getDropQuery(String tableToDrop) {
-    return new CompactionQueryBuilder(
-        CompactionQueryBuilder.CompactionType.MINOR_INSERT_ONLY,
-        CompactionQueryBuilder.Operation.DROP,
-        tableToDrop).build();
-  }
-
-  private HiveConf setUpDriverSession(HiveConf hiveConf) {
-    HiveConf driverConf = new HiveConf(hiveConf);
-    driverConf.set(HiveConf.ConfVars.HIVE_QUOTEDID_SUPPORT.varname, "column");
-    driverConf.setBoolVar(HiveConf.ConfVars.HIVE_STATS_FETCH_COLUMN_STATS, false);
-    driverConf.setBoolVar(HiveConf.ConfVars.HIVE_STATS_ESTIMATE_STATS, false);
-    return driverConf;
+    return new CompactionQueryBuilderFactory().getCompactionQueryBuilder(
+        CompactionType.MINOR, true)
+        .setOperation(CompactionQueryBuilder.Operation.DROP)
+        .setResultTableName(tableToDrop)
+        .build();
   }
 }

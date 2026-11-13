@@ -9,22 +9,26 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.calcite.reloperators;
 
-import org.apache.calcite.sql.fun.SqlAbstractTimeFunction;
-import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.sql.SqlFunction;
+import org.apache.calcite.sql.SqlFunctionCategory;
+import org.apache.calcite.sql.SqlKind;
+import org.apache.calcite.sql.type.ReturnTypes;
 
-public class HiveDateSubSqlOperator extends SqlAbstractTimeFunction {
-  public static final HiveDateSubSqlOperator INSTANCE = new HiveDateSubSqlOperator();
+public final class HiveDateSubSqlOperator {
+  public static final SqlFunction INSTANCE =
+      new SqlFunction("DATE_SUB", SqlKind.OTHER_FUNCTION, ReturnTypes.DATE_NULLABLE, null, null,
+          SqlFunctionCategory.TIMEDATE);
 
-  protected HiveDateSubSqlOperator() {
-    super("DATE_SUB", SqlTypeName.DATE);
+  private HiveDateSubSqlOperator() {
   }
 }

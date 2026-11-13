@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -111,7 +112,7 @@ public abstract class GenericUDFBaseNumeric extends GenericUDFBaseBinary impleme
     // (where there should be valid HiveConf from SessionState).  Plan serialization will ensure
     // we have access to these values in the map/reduce tasks.
     if (confLookupNeeded) {
-      CompatLevel compatLevel = HiveCompat.getCompatLevel(SessionState.get().getConf());
+      CompatLevel compatLevel = HiveCompat.getCompatLevel(SessionState.getSessionConf());
       ansiSqlArithmetic = compatLevel.ordinal() > CompatLevel.HIVE_0_12.ordinal();
       confLookupNeeded = false;
     }

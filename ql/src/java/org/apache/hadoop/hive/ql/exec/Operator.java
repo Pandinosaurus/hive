@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -34,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.StatsSetupConst;
@@ -685,7 +686,7 @@ public abstract class Operator<T extends OperatorDesc> implements Serializable,C
     // call the operator specific close routine
     closeOp(abort);
 
-    // closeOp can be overriden
+    // closeOp can be Overridden
     if (conf != null && conf.getRuntimeStatsTmpDir() != null) {
       publishRunTimeStats();
     }
@@ -1554,5 +1555,15 @@ public abstract class Operator<T extends OperatorDesc> implements Serializable,C
     for (Operator<? extends OperatorDesc> c : getChildOperators()) {
       c.replaceTabAlias(oldAlias, newAlias);
     }
+  }
+
+  /**
+   * There are aggregate implementations where the contents of the batch are processed in an async way,
+   * (e.g. in executors/thread pool), in which cases we have to create a new batch every time. This leads to
+   * minor GC pressure, so this feature should be only used when you have the evidence that there is an expression
+   * which relies on this, and its implementation has benefits over the default, non-cloned approach.
+   */
+  public boolean batchNeedsClone() {
+    return false;
   }
 }

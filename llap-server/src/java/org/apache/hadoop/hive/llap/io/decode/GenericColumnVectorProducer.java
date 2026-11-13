@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.io.decode;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
@@ -58,6 +60,7 @@ import org.apache.orc.OrcProto.ColumnEncoding;
 import org.apache.orc.OrcProto.RowIndex;
 import org.apache.orc.OrcProto.RowIndexEntry;
 import org.apache.orc.OrcProto.Type;
+import org.apache.orc.StripeInformation;
 import org.apache.orc.TypeDescription;
 
 public class GenericColumnVectorProducer implements ColumnVectorProducer {
@@ -220,6 +223,9 @@ public class GenericColumnVectorProducer implements ColumnVectorProducer {
         case TIMESTAMP:
           type.setKind(OrcProto.Type.Kind.TIMESTAMP);
           break;
+        case TIMESTAMP_INSTANT:
+          type.setKind(OrcProto.Type.Kind.TIMESTAMP_INSTANT);
+          break;
         case DATE:
           type.setKind(OrcProto.Type.Kind.DATE);
           break;
@@ -299,6 +305,16 @@ public class GenericColumnVectorProducer implements ColumnVectorProducer {
     @Override
     public CalendarKind getCalendar() {
       return CalendarKind.JULIAN_GREGORIAN;
+    }
+
+    @Override
+    public List<StripeInformation> getStripes() {
+      return Collections.emptyList();
+    }
+
+    @Override
+    public int getRowIndexStride() {
+      return 0;
     }
   }
 }

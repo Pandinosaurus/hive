@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common.format.datetime;
@@ -847,8 +848,10 @@ public class HiveSqlDateTimeFormatter implements Serializable {
         !(temporalFields.contains(ChronoField.MONTH_OF_YEAR) &&
             temporalFields.contains(ChronoField.DAY_OF_MONTH) ||
             temporalFields.contains(ChronoField.DAY_OF_YEAR))) {
-      throw new IllegalArgumentException("Missing day of year or (month of year + day of month)"
-          + " tokens.");
+      throw new IllegalArgumentException("""
+          Missing day of year or (month of year + day of month)\
+           tokens.\
+          """);
     }
     if (containsIsoFields &&
         !(temporalFields.contains(IsoFields.WEEK_OF_WEEK_BASED_YEAR) &&
@@ -856,8 +859,10 @@ public class HiveSqlDateTimeFormatter implements Serializable {
       throw new IllegalArgumentException("Missing week of year (iw) or day of week (id) tokens.");
     }
     if (roundYearCount > 0 && yearCount > 0) {
-      throw new IllegalArgumentException("Invalid duplication of format element: Both year and"
-          + "round year are provided");
+      throw new IllegalArgumentException("""
+          Invalid duplication of format element: Both year and\
+          round year are provided\
+          """);
     }
     for (TemporalField tokenType : temporalFields) {
       if (Collections.frequency(temporalFields, tokenType) > 1) {
@@ -1281,8 +1286,10 @@ public class HiveSqlDateTimeFormatter implements Serializable {
         return 0;
       }
       if ("0".equals(substring)) {
-        throw new IllegalArgumentException("Value of hour of day (hh/hh12) in input is 0. "
-            + "The value should be between 1 and 12.");
+        throw new IllegalArgumentException("""
+            Value of hour of day (hh/hh12) in input is 0. \
+            The value should be between 1 and 12.\
+            """);
       }
     }
     if (token.temporalField == ChronoField.YEAR

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -91,5 +92,19 @@ public class TestGenericUDFFromUtcTimestamp {
     runAndVerify(udf,
         new Text("2015-03-28 18:00:00.123456789"), new Text("Europe/London"),
         Timestamp.valueOf("2015-03-28 18:00:00.123456789"));
+  }
+
+  @Test
+  public void testInvalidTimestamp() throws Exception {
+    ObjectInspector valueOI = PrimitiveObjectInspectorFactory.writableStringObjectInspector;
+    GenericUDFFromUtcTimestamp udf = new GenericUDFFromUtcTimestamp();
+    ObjectInspector[] args2 = {valueOI, valueOI};
+    udf.initialize(args2);
+
+    try {
+      runAndVerify(udf, new Text("2015-03-28 17:00:00"), new Text("InvalidTimestamp"), null);
+    }catch (Exception exception){
+      assertEquals("Unknown time-zone ID: InvalidTimestamp", exception.getMessage());
+    }
   }
 }

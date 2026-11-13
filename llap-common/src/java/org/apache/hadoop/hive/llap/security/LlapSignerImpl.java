@@ -9,16 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.security;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.security.MessageDigest;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -58,7 +59,9 @@ public class LlapSignerImpl implements LlapSigner {
   public void checkSignature(byte[] message, byte[] signature, int keyId)
       throws SecurityException {
     byte[] expectedSignature = secretManager.signWithKey(message, keyId);
-    if (Arrays.equals(signature, expectedSignature)) return;
+    if (MessageDigest.isEqual(signature, expectedSignature)) {
+      return;
+    }
     throw new SecurityException("Message signature does not match");
   }
 

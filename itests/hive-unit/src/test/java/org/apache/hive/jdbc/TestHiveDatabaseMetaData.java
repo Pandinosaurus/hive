@@ -9,17 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc;
 
-import org.apache.hive.jdbc.HiveConnection;
-import org.apache.hive.jdbc.Utils;
 import org.apache.hive.jdbc.Utils.JdbcConnectionParams;
 
 import java.util.LinkedHashMap;
@@ -52,14 +51,10 @@ public class TestHiveDatabaseMetaData {
   }
 
   @Test
-  public void testGetHiveDefaultNullsLastNullConfig() {
+  public void testGetHiveDefaultNullsLastNullConfig() throws SQLException {
     map.remove(Utils.JdbcConnectionParams.HIVE_DEFAULT_NULLS_LAST_KEY);
-    try {
-      hiveDatabaseMetaData.nullsAreSortedLow();
-      fail("SQLException is expected");
-    } catch (Exception e) {
-      assertTrue(e.getMessage().contains("HIVE_DEFAULT_NULLS_LAST is not available"));
-    }
+    assertTrue(hiveDatabaseMetaData.nullsAreSortedHigh());
+    assertFalse(hiveDatabaseMetaData.nullsAreSortedLow());
   }
 
   @Test
@@ -106,5 +101,17 @@ public class TestHiveDatabaseMetaData {
     assertEquals("false", jdbcConnectionParams.getHiveConfs()
         .get(Utils.JdbcConnectionParams.HIVE_CONF_PREFIX + "hive.default.nulls.last"));
 
+  }
+
+  @Test
+  public void testGetUserName() throws SQLException {
+    HiveConnection hiveConnection = new HiveConnection("jdbc:hive2:///;user=foo", new Properties());
+    hiveDatabaseMetaData = new HiveDatabaseMetaData(hiveConnection, null, null);
+    assertEquals("foo", hiveDatabaseMetaData.getUserName());
+  }
+
+  @Test
+  public void testGetURL() {
+    assertEquals(connection.getConnectedUrl(), hiveDatabaseMetaData.getURL());
   }
 }

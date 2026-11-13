@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql;
@@ -36,7 +37,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.nio.charset.StandardCharsets;
 
+import com.google.common.base.Strings;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.Schema;
 import org.apache.hadoop.hive.ql.ddl.DDLDesc.DDLDescWithWriteId;
 import org.apache.hadoop.hive.ql.exec.ConditionalTask;
@@ -107,18 +110,17 @@ public class QueryPlan implements Serializable {
 
   private String queryId;
   private org.apache.hadoop.hive.ql.plan.api.Query query;
-  private final Map<String, Map<String, Long>> counters =
-      new ConcurrentHashMap<String, Map<String, Long>>();
-  private final Set<String> done = Collections.newSetFromMap(new
-      ConcurrentHashMap<String, Boolean>());
-  private final Set<String> started = Collections.newSetFromMap(new
-      ConcurrentHashMap<String, Boolean>());
+  
+  private final Map<String, Map<String, Long>> counters = new ConcurrentHashMap<>();
+  private final Set<String> done = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private final Set<String> started = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private QueryProperties queryProperties;
 
   private transient Long queryStartTime;
   private final HiveOperation operation;
   private final boolean acidResourcesInQuery;
+  private final boolean requiresOpenTransaction;
   private final Set<FileSinkDesc> acidSinks; // Note: both full-ACID and insert-only sinks.
   private final WriteEntity acidAnalyzeTable;
   private final DDLDescWithWriteId acidDdlDesc;
@@ -134,6 +136,7 @@ public class QueryPlan implements Serializable {
     this.reducerTimeStatsPerJobList = new ArrayList<>();
     this.operation = command;
     this.acidResourcesInQuery = false;
+    this.requiresOpenTransaction = false;
     this.acidSinks = Collections.emptySet();
     this.acidDdlDesc = null;
     this.acidAnalyzeTable = null;
@@ -166,6 +169,7 @@ public class QueryPlan implements Serializable {
     this.resultSchema = resultSchema;
     // TODO: all this ACID stuff should be in some sub-object
     this.acidResourcesInQuery = sem.hasTransactionalInQuery();
+    this.requiresOpenTransaction = sem.isRequiresOpenTransaction();
     this.acidSinks = sem.getAcidFileSinks();
     this.acidDdlDesc = sem.getAcidDdlDesc();
     this.acidAnalyzeTable = sem.getAcidAnalyzeTable();
@@ -178,6 +182,10 @@ public class QueryPlan implements Serializable {
    */
   public boolean hasAcidResourcesInQuery() {
     return acidResourcesInQuery;
+  }
+
+  public boolean isRequiresOpenTransaction() {
+    return requiresOpenTransaction;
   }
 
   public WriteEntity getAcidAnalyzeTable() {
@@ -304,6 +312,37 @@ public class QueryPlan implements Serializable {
         .get(Calendar.MINUTE), gc.get(Calendar.SECOND))
         + "_"
         + UUID.randomUUID().toString();
+  }
+
+  /**
+   * Compute a compact per-query uniqueness tag used by the non-ACID rename branch of
+   * {@link Hive#mvFile} to make each concurrent writer's destination key unique on filesystems
+   * whose {@code rename} is not atomic-if-absent. The tag becomes the copy suffix
+   * ({@code basename_copy_<tag>}) in place of the numeric {@code _copy_N} counter.
+   * <p>
+   * Reads {@code hive.query.id} from the passed {@link HiveConf} and delegates to
+   * {@link QueryPlan#extractUniquenessTag(String)} for the actual UUID → hex derivation.
+   * The shape matches {@link ParsedOutputFileName}'s copy-index group so downstream filename
+   * parsing (taskId, attemptId, copyIndex) keeps working.
+   */
+  public static String extractUniquenessTag(HiveConf conf) {
+    String qid = HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_QUERY_ID);
+    if (Strings.isNullOrEmpty(qid)) {
+      throw new IllegalStateException("hive.query.id is required to derive a unique destination name");
+    }
+    return QueryPlan.extractUniquenessTag(qid);
+  }
+
+  /**
+   * Extract a compact per-query uniqueness tag (16 lowercase hex chars) from a query id emitted
+   * by {@link #makeQueryId()}. The tag is the {@code getMostSignificantBits()} half of the UUID
+   * at the tail of the id, rendered as 16-char lowercase hex. Used by callers that need a stable
+   * per-query filename component — e.g. {@code Hive.mvFile}'s destination naming on filesystems
+   * whose {@code rename} is not atomic-if-absent.
+   */
+  public static String extractUniquenessTag(String queryId) {
+    UUID uuid = UUID.fromString(queryId.substring(queryId.lastIndexOf('_') + 1));
+    return String.format("%016x", uuid.getMostSignificantBits());
   }
 
   /**

@@ -9,19 +9,22 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.jdbc;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.withSettings;
 
 import java.sql.SQLException;
 
@@ -47,7 +50,6 @@ import java.io.ByteArrayInputStream;
 
 public class TestHivePreparedStatement {
 
-  @Mock
   private HiveConnection connection;
   @Mock
   private Iface client;
@@ -65,6 +67,7 @@ public class TestHivePreparedStatement {
 
   @Before
   public void before() throws Exception {
+    connection = mock(HiveConnection.class, withSettings().useConstructor());
     MockitoAnnotations.initMocks(this);
     when(tExecStatementResp.getStatus()).thenReturn(tStatusSuccess);
     when(tExecStatementResp.getOperationHandle()).thenReturn(tOperationHandle);
@@ -208,5 +211,18 @@ public class TestHivePreparedStatement {
     verify(client, times(2)).ExecuteStatement(argument.capture());
     assertEquals("select * from table where value='\\'anyValue\\' or 1=1'",
         argument.getValue().getStatement());
+  }
+
+  @Test
+  public void testColumnRegex() throws Exception {
+    String sql = "select `(col)?.` from x where a=?";
+    HivePreparedStatement ps = new HivePreparedStatement(connection, client, sessHandle, sql);
+    ps.setString(1, "asd");
+    ps.execute();
+
+    ArgumentCaptor<TExecuteStatementReq> argument =
+            ArgumentCaptor.forClass(TExecuteStatementReq.class);
+    verify(client).ExecuteStatement(argument.capture());
+    assertEquals("select `(col)?.` from x where a='asd'", argument.getValue().getStatement());
   }
 }

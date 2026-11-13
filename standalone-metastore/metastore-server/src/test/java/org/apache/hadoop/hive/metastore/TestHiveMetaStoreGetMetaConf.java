@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -60,7 +61,6 @@ public class TestHiveMetaStoreGetMetaConf {
     Configuration metastoreConf = MetastoreConf.newMetastoreConf();
     MetastoreConf.setClass(metastoreConf, ConfVars.EXPRESSION_PROXY_CLASS,
       MockPartitionExpressionForMetastore.class, PartitionExpressionProxy.class);
-    MetastoreConf.setBoolVar(metastoreConf, ConfVars.TRY_DIRECT_SQL_DDL, false);
     MetaStoreTestUtils.setConfForStandloneMode(metastoreConf);
     int msPort = MetaStoreServerUtils.startMetaStore(metastoreConf);
     conf = MetastoreConf.newMetastoreConf();
@@ -93,14 +93,6 @@ public class TestHiveMetaStoreGetMetaConf {
   public void testGetMetaConfDefaultEmptyString() throws TException {
     ConfVars metaConfVar = ConfVars.PARTITION_NAME_WHITELIST_PATTERN;
     String expected = "";
-    String actual = hmsc.getMetaConf(metaConfVar.toString());
-    assertEquals(expected, actual);
-  }
-
-  @Test
-  public void testGetMetaConfOverridden() throws TException {
-    ConfVars metaConfVar = ConfVars.TRY_DIRECT_SQL_DDL;
-    String expected = "false";
     String actual = hmsc.getMetaConf(metaConfVar.toString());
     assertEquals(expected, actual);
   }

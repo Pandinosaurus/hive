@@ -39,7 +39,7 @@
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <includes>
                 <include>org.apache.hadoop:hadoop-common:jar</include>
-                <include>org.apache.hive:hive-beeline:jar</include>
+                <include>org.apache.hive:hive-beeline:jar:standalone</include>
                 <include>org.apache.hive:hive-common:jar</include>
                 <include>org.apache.hive:hive-exec:jar</include>
                 <include>org.apache.hive:hive-jdbc</include>
@@ -48,11 +48,11 @@
                 <include>org.apache.hive:hive-service-rpc:jar</include>
                 <include>commons-cli:commons-cli:jar</include>
                 <include>commons-io:commons-io:jar</include>
-                <include>commons-logging:commons-logging:jar</include>
-                <include>jline:jline:jar</include>
+                <include>org.jline:jline:jar</include>
                 <include>org.apache.thrift:libthrift:jar</include>
                 <include>org.slf4j:slf4j-api:jar</include>
                 <include>net.sf.supercsv:super-csv:jar</include>
+                <include>dnsjava:dnsjava:jar</include>
             </includes>
             <excludes>
                 <exclude>org.apache.hive:hive-jdbc:*:standalone</exclude>
@@ -72,15 +72,6 @@
                 <include>bin/hive-config.sh</include>
             </includes>
             <outputDirectory>/</outputDirectory>
-        </fileSet>
-
-        <fileSet>
-            <fileMode>755</fileMode>
-            <directory>${project.parent.basedir}/beeline/target</directory>
-            <outputDirectory>lib</outputDirectory>
-            <includes>
-                <include>jar-with-dependencies.jar</include>
-            </includes>
         </fileSet>
     </fileSets>
 

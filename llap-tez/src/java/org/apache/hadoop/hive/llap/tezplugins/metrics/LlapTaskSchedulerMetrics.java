@@ -6,13 +6,17 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
+
 package org.apache.hadoop.hive.llap.tezplugins.metrics;
 
 import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerClusterNodeCount;
@@ -25,11 +29,14 @@ import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerIn
 import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerPendingPreemptionTaskCount;
 import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerPendingTaskCount;
 import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerPreemptedTaskCount;
+import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerDagStatus;
 import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerRunningTaskCount;
 import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerSchedulableTaskCount;
 import static org.apache.hadoop.hive.llap.tezplugins.metrics.LlapTaskSchedulerInfo.SchedulerSuccessfulTaskCount;
 import static org.apache.hadoop.metrics2.impl.MsInfo.ProcessName;
 import static org.apache.hadoop.metrics2.impl.MsInfo.SessionId;
+
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.hive.common.JvmMetrics;
 import org.apache.hadoop.hive.llap.metrics.LlapMetricsSystem;
@@ -51,6 +58,9 @@ import org.apache.hadoop.metrics2.lib.MutableGaugeLong;
  */
 @Metrics(about = "Llap Task Scheduler Metrics", context = "scheduler")
 public class LlapTaskSchedulerMetrics implements MetricsSource {
+  private static final ConcurrentHashMap<String, LlapTaskSchedulerMetrics> METRICS =
+      new ConcurrentHashMap<>();
+
   private final String name;
   private final JvmMetrics jvmMetrics;
   private final String sessionId;
@@ -79,6 +89,8 @@ public class LlapTaskSchedulerMetrics implements MetricsSource {
   @Metric
   MutableCounterInt completedDagcount;
   @Metric
+  MutableGaugeInt dagRunning;
+  @Metric
   MutableCounterInt pendingPreemptionTasksCount;
   @Metric
   MutableGaugeInt wmUnusedGuaranteedCount;
@@ -102,10 +114,12 @@ public class LlapTaskSchedulerMetrics implements MetricsSource {
   }
 
   public static LlapTaskSchedulerMetrics create(String displayName, String sessionId) {
-    MetricsSystem ms = LlapMetricsSystem.instance();
-    JvmMetrics jm = JvmMetrics.create(MetricsUtils.METRICS_PROCESS_NAME, sessionId, ms);
-    return ms.register(displayName, "Llap Task Scheduler Metrics",
-        new LlapTaskSchedulerMetrics(displayName, jm, sessionId));
+    return METRICS.computeIfAbsent(displayName, name -> {
+      MetricsSystem ms = LlapMetricsSystem.instance();
+      JvmMetrics jm = JvmMetrics.initSingleton(MetricsUtils.METRICS_PROCESS_NAME, sessionId, ms);
+      return ms.register(name, "Llap Task Scheduler Metrics",
+          new LlapTaskSchedulerMetrics(name, jm, sessionId));
+    });
   }
 
   @Override
@@ -269,6 +283,7 @@ public class LlapTaskSchedulerMetrics implements MetricsSource {
         .addGauge(SchedulerMemoryPerInstance, memoryPerInstance.value())
         .addGauge(SchedulerCpuCoresPerInstance, cpuCoresPerInstance.value())
         .addGauge(SchedulerDisabledNodeCount, disabledNodeCount.value())
+        .addGauge(SchedulerDagStatus, dagRunning.value())
         .addCounter(SchedulerPendingTaskCount, pendingTasksCount.value())
         .addCounter(SchedulerSchedulableTaskCount, schedulableTasksCount.value())
         .addCounter(SchedulerRunningTaskCount, runningTasksCount.value())
@@ -276,6 +291,10 @@ public class LlapTaskSchedulerMetrics implements MetricsSource {
         .addCounter(SchedulerPendingPreemptionTaskCount, pendingPreemptionTasksCount.value())
         .addCounter(SchedulerPreemptedTaskCount, preemptedTasksCount.value())
         .addCounter(SchedulerCompletedDagCount, completedDagcount.value());
+  }
+
+  public void setDagRunning(boolean running) {
+    dagRunning.set(running ? 1 : 0);
   }
 
   public JvmMetrics getJvmMetrics() {

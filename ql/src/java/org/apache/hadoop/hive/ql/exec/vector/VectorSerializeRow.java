@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector;
@@ -175,6 +176,10 @@ public final class VectorSerializeRow<T extends SerializeWrite> {
         List<TypeInfo> objectTypeInfos = unionTypeInfo.getAllUnionObjectTypeInfos();
         field.children = createFields(objectTypeInfos.toArray(new TypeInfo[objectTypeInfos.size()]));
         field.writer = new VectorSerializeUnionWriter();
+        break;
+      case UNKNOWN:
+        field.children = new Field[0];
+        field.writer = new VectorSerializeUnknownWriter();
         break;
       default:
         throw new RuntimeException();
@@ -576,6 +581,13 @@ public final class VectorSerializeRow<T extends SerializeWrite> {
     void serialize(Object colInfo, Field field, int adjustedBatchIndex) throws IOException {
       serializeWrite.writeHiveIntervalDayTime(
               ((IntervalDayTimeColumnVector) colInfo).asScratchIntervalDayTime(adjustedBatchIndex));
+    }
+  }
+
+  class VectorSerializeUnknownWriter extends VectorSerializeWriter {
+    @Override
+    void serialize(Object colInfo, Field field, int adjustedBatchIndex) throws IOException {
+      // Unknown type values are always null and handled before the writer is invoked.
     }
   }
 

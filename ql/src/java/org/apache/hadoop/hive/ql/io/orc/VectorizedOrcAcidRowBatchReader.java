@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.orc;
@@ -55,6 +56,7 @@ import org.apache.hadoop.hive.ql.metadata.VirtualColumn;
 import org.apache.hadoop.hive.ql.plan.MapWork;
 import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hadoop.hive.ql.plan.TableScanDesc;
+import org.apache.hadoop.hive.ql.txn.compactor.MRCompactor;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.shims.HadoopShims;
 import org.apache.hadoop.io.NullWritable;
@@ -209,8 +211,7 @@ public class VectorizedOrcAcidRowBatchReader
         return innerReader.getProgress();
       }
     };
-    final boolean useDecimal64ColumnVectors = HiveConf
-      .getVar(conf, ConfVars.HIVE_VECTORIZED_INPUT_FORMAT_SUPPORTS_ENABLED).equalsIgnoreCase("decimal_64");
+    final boolean useDecimal64ColumnVectors = HiveConf.isDecimal64VectorizationEnabled(conf);
     if (useDecimal64ColumnVectors) {
       this.vectorizedRowBatchBase = ((RecordReaderImpl) innerReader).createRowBatch(true);
     } else {
@@ -260,7 +261,7 @@ public class VectorizedOrcAcidRowBatchReader
     }
 
     String txnString = conf.get(ValidWriteIdList.VALID_WRITEIDS_KEY);
-    this.validWriteIdList = (txnString == null) ? new ValidReaderWriteIdList() : new ValidReaderWriteIdList(txnString);
+    this.validWriteIdList = (txnString == null) ? new ValidReaderWriteIdList() : ValidReaderWriteIdList.fromValue(txnString);
     LOG.info("Read ValidWriteIdList: " + this.validWriteIdList.toString()
             + ":" + orcSplit);
 
@@ -274,7 +275,7 @@ public class VectorizedOrcAcidRowBatchReader
       }
       PartitionDesc partitionDesc =
           LlapHiveUtils.partitionDescForPath(orcSplit.getPath(), mapWork.getPathToPartitionInfo());
-      cacheTag = LlapHiveUtils.getDbAndTableNameForMetrics(orcSplit.getPath(), true, partitionDesc);
+      cacheTag = LlapHiveUtils.getCacheTag(orcSplit.getPath(), true, partitionDesc);
     } else {
       cacheTag = null;
     }
@@ -704,7 +705,8 @@ public class VectorizedOrcAcidRowBatchReader
     return keyIntervalTmp;
   }
 
-  private static class ReaderData implements Closeable {
+  @VisibleForTesting
+  static class ReaderData implements Closeable {
     OrcTail orcTail;
     Reader reader;
 
@@ -726,12 +728,15 @@ public class VectorizedOrcAcidRowBatchReader
    * @return ReaderData object where the orcTail is not null. Reader can be null, but if we had to create
    * one we return that as well for further reuse.
    */
-  private static ReaderData getOrcReaderData(Path path, Configuration conf, CacheTag cacheTag, Object fileKey) throws IOException {
+  @VisibleForTesting
+  static ReaderData getOrcReaderData(Path path, Configuration conf, CacheTag cacheTag, Object fileKey)
+      throws IOException {
     ReaderData readerData = new ReaderData();
     if (shouldReadDeleteDeltasWithLlap(conf, true)) {
       try {
-        readerData.orcTail = LlapProxy.getIo().getOrcTailFromCache(path, conf, cacheTag, fileKey);
+        readerData.orcTail = LlapProxy.getIo().orc().getTailFromCache(path, conf, cacheTag, fileKey);
         readerData.reader = OrcFile.createReader(path, OrcFile.readerOptions(conf).orcTail(readerData.orcTail));
+        return readerData;
       } catch (IllegalCacheConfigurationException icce) {
         throw new IOException("LLAP cache is not configured properly while delete delta caching is turned on", icce);
       }
@@ -787,7 +792,7 @@ public class VectorizedOrcAcidRowBatchReader
 
     String txnString = conf.get(ValidWriteIdList.VALID_WRITEIDS_KEY);
     ValidWriteIdList validWriteIdList = (txnString == null) ? new ValidReaderWriteIdList() :
-        new ValidReaderWriteIdList(txnString);
+        ValidReaderWriteIdList.fromValue(txnString);
 
     long rowIdOffset = 0;
     OrcRawRecordMerger.TransactionMetaData syntheticTxnInfo =
@@ -904,7 +909,7 @@ public class VectorizedOrcAcidRowBatchReader
    * Major compaction will attach these values to each row permanently.
    * It's critical that these generated column values are assigned exactly the same way by each
    * read of the same row and by the Compactor.
-   * See {@link org.apache.hadoop.hive.ql.txn.compactor.CompactorMR} and
+   * See {@link MRCompactor} and
    * {@link OrcRawRecordMerger.OriginalReaderPairToCompact} for the Compactor read path.
    * (Longer term should make compactor use this class)
    *
@@ -1242,7 +1247,7 @@ public class VectorizedOrcAcidRowBatchReader
         int bucket = AcidUtils.parseBucketId(orcSplit.getPath());
         String txnString = conf.get(ValidWriteIdList.VALID_WRITEIDS_KEY);
         this.validWriteIdList
-                = (txnString == null) ? new ValidReaderWriteIdList() : new ValidReaderWriteIdList(txnString);
+                = (txnString == null) ? new ValidReaderWriteIdList() : ValidReaderWriteIdList.fromValue(txnString);
         LOG.debug("Using SortMergedDeleteEventRegistry");
         Map<String, Integer> deltaToAttemptId = AcidUtils.getDeltaToAttemptIdMap(pathToDeltaMetaData, deleteDeltas, bucket);
         OrcRawRecordMerger.Options mergerOptions = new OrcRawRecordMerger.Options().isDeleteReader(true);
@@ -1511,8 +1516,7 @@ public class VectorizedOrcAcidRowBatchReader
 
         this.bucketForSplit = bucket;
 
-        final boolean useDecimal64ColumnVector = HiveConf.getVar(conf, ConfVars
-          .HIVE_VECTORIZED_INPUT_FORMAT_SUPPORTS_ENABLED).equalsIgnoreCase("decimal_64");
+        final boolean useDecimal64ColumnVector = HiveConf.isDecimal64VectorizationEnabled(conf);
         if (useDecimal64ColumnVector) {
           this.batch = acidEmptyStructSchema.createRowBatchV2();
         } else {
@@ -1656,7 +1660,7 @@ public class VectorizedOrcAcidRowBatchReader
           c.set(ConvertAstToSearchArg.SARG_PUSHDOWN, sargToKryo(deleteDeltaSarg));
         }
         return wrapLlapVectorizedRecordReader(
-            LlapProxy.getIo().llapVectorizedOrcReaderForPath(fileId, deleteDeltaFile, tag,
+            LlapProxy.getIo().orc().vectorizedReaderForPath(fileId, deleteDeltaFile, tag,
             DELETE_DELTA_INCLUDE_COLUMNS, c, 0L, Long.MAX_VALUE, null)
         );
       }
@@ -1925,7 +1929,8 @@ public class VectorizedOrcAcidRowBatchReader
       this.testMode = conf.getBoolean(ConfVars.HIVE_IN_TEST.varname, false);
       int bucket = AcidUtils.parseBucketId(orcSplit.getPath());
       String txnString = conf.get(ValidWriteIdList.VALID_WRITEIDS_KEY);
-      ValidWriteIdList validWriteIdList = (txnString == null) ? new ValidReaderWriteIdList() : new ValidReaderWriteIdList(txnString);
+      ValidWriteIdList validWriteIdList = (txnString == null) ? new ValidReaderWriteIdList()
+              : ValidReaderWriteIdList.fromValue(txnString);
       LOG.debug("Using ColumnizedDeleteEventRegistry");
       this.sortMerger = new TreeMap<>();
       this.rowIds = null;

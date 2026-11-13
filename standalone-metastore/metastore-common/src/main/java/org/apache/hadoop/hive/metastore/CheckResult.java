@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -36,6 +38,9 @@ public class CheckResult {
   private Set<PartitionResult> partitionsNotInMs = new TreeSet<>();
   private Set<PartitionResult> expiredPartitions = new TreeSet<>();
   private Set<PartitionResult> correctPartitions = new TreeSet<>();
+
+  private Map<String, String> smallFilesStats = new HashMap<>();
+
   private long maxWriteId;
   private long maxTxnId;
 
@@ -113,6 +118,14 @@ public class CheckResult {
 
   public void setCorrectPartitions(final Set<PartitionResult> correctPartitions) {
     this.correctPartitions = correctPartitions;
+  }
+
+  public Map<String, String> getSmallFilesStats() {
+    return this.smallFilesStats;
+  }
+
+  public void setSmallFilesStats(Map<String, String> smallFilesStats) {
+    this.smallFilesStats = smallFilesStats;
   }
 
   public long getMaxWriteId() {

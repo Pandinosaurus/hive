@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -81,6 +82,9 @@ public class ColumnType {
   public static final String STRUCT_TYPE_NAME = "struct";
 
   public static final String UNION_TYPE_NAME = "uniontype";
+
+  public static final String VARIANT_TYPE_NAME = "variant";
+  public static final String UNKNOWN_TYPE_NAME = "unknown";
 
   public static final String LIST_COLUMNS = "columns";
 
@@ -197,6 +201,8 @@ public class ColumnType {
     MAP_TYPE_NAME,
     STRUCT_TYPE_NAME,
     UNION_TYPE_NAME,
+    VARIANT_TYPE_NAME,
+    UNKNOWN_TYPE_NAME,
     LIST_COLUMNS,
     LIST_COLUMN_TYPES,
     COLUMN_NAME_DELIMITER
@@ -204,7 +210,7 @@ public class ColumnType {
 
   /**
    * Given a type string return the type name.  For example, passing in the type string
-   * <tt>varchar(256)</tt> will return <tt>varchar</tt>.
+   * <pre>varchar(256)</pre> will return <pre>varchar</pre>.
    * @param typeString Type string
    * @return type name, guaranteed to be in lower case
    */

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -239,7 +240,7 @@ public abstract class CommonJoinOperator<T extends JoinDesc> extends
     this.hconf = hconf;
 
     heartbeatInterval = HiveConf.getIntVar(hconf,
-        HiveConf.ConfVars.HIVESENDHEARTBEAT);
+        HiveConf.ConfVars.HIVE_SEND_HEARTBEAT);
     countAfterReport = 0;
 
     totalSz = 0;
@@ -296,9 +297,9 @@ public abstract class CommonJoinOperator<T extends JoinDesc> extends
     dummyObjVectors = new RowContainer[numAliases];
 
     joinEmitInterval = HiveConf.getIntVar(hconf,
-        HiveConf.ConfVars.HIVEJOINEMITINTERVAL);
+        HiveConf.ConfVars.HIVE_JOIN_EMIT_INTERVAL);
     joinCacheSize = HiveConf.getIntVar(hconf,
-        HiveConf.ConfVars.HIVEJOINCACHESIZE);
+        HiveConf.ConfVars.HIVE_JOIN_CACHE_SIZE);
 
     logEveryNRows = HiveConf.getLongVar(hconf,
         HiveConf.ConfVars.HIVE_LOG_N_RECORDS);
@@ -949,6 +950,8 @@ public abstract class CommonJoinOperator<T extends JoinDesc> extends
         if (!alw.hasRows()) {
           alw.addRow(dummyObj[i]);
           hasNulls = true;
+        } else if (alw.isSingleRow() && alw.rowIter().first() == dummyObj[i]) {
+          hasNulls = true;
         } else if (condn[i].getPreserved()) {
           preserve = true;
         }
@@ -988,7 +991,13 @@ public abstract class CommonJoinOperator<T extends JoinDesc> extends
         } else {
           if (!alw.hasRows()) {
             hasEmpty = true;
-            alw.addRow(dummyObj[i]);
+            if (!isRightOfAntiJoin) {
+              alw.addRow(dummyObj[i]);
+            }
+          } else if (isRightOfAntiJoin && !needsPostEvaluation)  {
+            // For anti join the right side should be empty. For needsPostEvaluation case we will
+            // wait till evaluation is done. For other cases we can directly return from here.
+            return;
           } else if (!hasEmpty && alw.isSingleRow()) {
             if (hasAnyFiltered(alias, alw.rowIter().first())) {
               hasEmpty = true;

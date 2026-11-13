@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.lockmgr;
@@ -25,6 +26,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.common.StringInternUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.ql.metadata.DummyPartition;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -71,20 +73,21 @@ public class HiveLockObject {
     /**
      * Constructor
      * 
-     * @param data String of the form "queryId:lockTime:lockMode:queryStr". 
-     * No ':' characters are allowed in any of the components.
+     * @param data String of the form "queryId:lockTime:lockMode:queryStr[:clientIp]". 
+     * No ':' characters are allowed in any of the first four components, but the clientIp can contain colons (IPv6).
      */
     public HiveLockObjectData(String data) {
       if (data == null) {
         return;
       }
 
-      String[] elem = data.split(":");
+      String[] elem = data.split(":", 5);
       queryId = elem[0];
       lockTime = StringInternUtils.internIfNotNull(elem[1]);
       lockMode = elem[2];
       queryStr = StringInternUtils.internIfNotNull(elem[3]);
       if (elem.length >= 5) {
+        // The client IP is the suffix after the 4th colon, this can be IPv6 with colons
         clientIp = elem[4];
       }
     }
@@ -197,12 +200,17 @@ public class HiveLockObject {
     this.data = lockData;
   }
 
+  public HiveLockObject(Database db, HiveLockObjectData lockData) {
+    this(new String[] {db.getCatalogName(), FileUtils.escapePathName(db.getName()).toLowerCase()}, lockData);
+  }
+
   public HiveLockObject(Table tbl, HiveLockObjectData lockData) {
-    this(new String[] {tbl.getDbName(), FileUtils.escapePathName(tbl.getTableName()).toLowerCase()}, lockData);
+    this(new String[] {tbl.getCatName(), tbl.getDbName(),
+            FileUtils.escapePathName(tbl.getTableName()).toLowerCase()}, lockData);
   }
 
   public HiveLockObject(Partition par, HiveLockObjectData lockData) {
-    this(new String[] {par.getTable().getDbName(),
+    this(new String[] {par.getTable().getCatalogName(), par.getTable().getDbName(),
         FileUtils.escapePathName(par.getTable().getTableName()).toLowerCase(), par.getName()}, lockData);
   }
 
@@ -211,7 +219,7 @@ public class HiveLockObject {
   }
 
   /**
-   * Creates a locking object for a table (when partition spec is not provided)
+   * Creates a locking object for a database or table (when partition spec is not provided)
    * or a table partition
    * @param hiveDB    an object to communicate with the metastore
    * @param tableName the table to create the locking object on
@@ -219,27 +227,32 @@ public class HiveLockObject {
    * @return  the locking object
    * @throws HiveException
    */
-  public static HiveLockObject createFrom(Hive hiveDB, String tableName,
+  public static HiveLockObject createFrom(Hive hiveDB, String dbName, String tableName,
       Map<String, String> partSpec) throws HiveException {
-    Table  tbl = hiveDB.getTable(tableName);
-    if (tbl == null) {
-      throw new HiveException("Table " + tableName + " does not exist ");
-    }
+    if (tableName != null) {
+      Table tbl = hiveDB.getTable(tableName);
+      if (tbl == null) {
+        throw new HiveException("Table " + tableName + " does not exist");
+      }
 
-    HiveLockObject obj = null;
+      if (partSpec == null) {
+        return new HiveLockObject(tbl, null);
+      }
 
-    if  (partSpec == null) {
-      obj = new HiveLockObject(tbl, null);
-    }
-    else {
       Partition par = hiveDB.getPartition(tbl, partSpec, false);
       if (par == null) {
-        throw new HiveException("Partition " + partSpec + " for table " +
-            tableName + " does not exist");
+        throw new HiveException("Partition " + partSpec + " for table " + tableName + " does not exist");
       }
-      obj = new HiveLockObject(par, null);
+      return new HiveLockObject(par, null);
+    } else if (dbName != null) {
+      Database db = hiveDB.getDatabase(dbName);
+      if (db == null) {
+        throw new HiveException("Database " + dbName + " does not exist");
+      }
+      return new HiveLockObject(db, null);
     }
-    return obj;
+
+    return null;
   }
 
   public String[] getPaths() {
@@ -267,13 +280,18 @@ public class HiveLockObject {
     if (pathNames.length == 1) {
       return pathNames[0];
     }
-    else if (pathNames.length == 2) {
-      return pathNames[0] + "@" + pathNames[1];
+
+    if (pathNames.length == 2) {
+      return pathNames[1];
     }
 
-    String ret = pathNames[0] + "@" + pathNames[1] + "@";
+    else if (pathNames.length == 3) {
+      return pathNames[1] + "@" + pathNames[2];
+    }
+
+    String ret = pathNames[1] + "@" + pathNames[2] + "@";
     boolean first = true;
-    for (int i = 2; i < pathNames.length; i++) {
+    for (int i = 3; i < pathNames.length; i++) {
       if (!first) {
         ret = ret + "/";
       } else {

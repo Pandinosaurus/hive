@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -26,14 +27,13 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.hadoop.yarn.util.SystemClock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.security.PrivilegedExceptionAction;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -48,7 +48,6 @@ public class HiveProtoEventsCleanerTask implements MetastoreTaskThread {
   private Configuration conf;
   private long ttl;
   private static String expiredDatePtn = null;
-  private static final SystemClock clock = SystemClock.getInstance();
 
   @Override
   public void setConf(Configuration conf) {
@@ -95,9 +94,11 @@ public class HiveProtoEventsCleanerTask implements MetastoreTaskThread {
    * Compute the expired date partition, using the underlying clock in UTC time.
    */
   private static void computeExpiredDatePtn(long ttl) {
+    LocalDate expiredDate = LocalDate.ofInstant(
+        Instant.now().minusMillis(ttl),
+        ZoneOffset.UTC
+    );
     // Use UTC date to ensure reader date is same on all timezones.
-    LocalDate expiredDate
-            = LocalDateTime.ofEpochSecond((clock.getTime() - ttl) / 1000, 0, ZoneOffset.UTC).toLocalDate();
     expiredDatePtn = "date=" + DateTimeFormatter.ISO_LOCAL_DATE.format(expiredDate);
   }
 

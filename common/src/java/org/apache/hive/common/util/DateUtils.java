@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.common.util;
@@ -52,7 +53,7 @@ public class DateUtils {
     if (strVal != null) {
       result = Integer.parseInt(strVal);
       if (result < minValue || result > maxValue) {
-        throw new IllegalArgumentException(String.format("%s value %d outside range [%d, %d]",
+        throw new IllegalArgumentException("%s value %d outside range [%d, %d]".formatted(
             fieldName, result, minValue, maxValue));
       }
     }
@@ -73,7 +74,7 @@ public class DateUtils {
    * @param field the calendar field
    * @return the calendar field name
    * @exception IndexOutOfBoundsException if <code>field</code> is negative,
-   * equal to or greater then <code>FIELD_COUNT</code>.
+   * equal to or greater than <code>FIELD_COUNT</code>.
    */
   public static String getFieldName(int field) {
       return FIELD_NAME[field];

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.client;
@@ -377,12 +378,20 @@ public class TestFunctions extends MetaStoreClientTest {
     for(Function function : allFunctions) {
       if (function.getDbName().equals(OTHER_DATABASE)) {
         Assert.assertEquals("Comparing functions", testFunctions[3], function);
+        Assert.assertEquals("Checking function's resourceUris",
+            testFunctions[3].getResourceUris().toString(), function.getResourceUris().toString());
       } else if (function.getFunctionName().equals("test_function_hidden_1")) {
         Assert.assertEquals("Comparing functions", testFunctions[2], function);
+        Assert.assertEquals("Checking function's resourceUris",
+            testFunctions[2].getResourceUris().toString(), function.getResourceUris().toString());
       } else if (function.getFunctionName().equals("test_function_to_find_2")) {
         Assert.assertEquals("Comparing functions", testFunctions[1], function);
+        Assert.assertEquals("Checking function's resourceUris",
+            testFunctions[1].getResourceUris().toString(), function.getResourceUris().toString());
       } else {
         Assert.assertEquals("Comparing functions", testFunctions[0], function);
+        Assert.assertEquals("Checking function's resourceUris",
+            testFunctions[0].getResourceUris().toString(), function.getResourceUris().toString());
       }
     }
 

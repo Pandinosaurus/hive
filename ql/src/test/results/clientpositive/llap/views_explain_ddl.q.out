@@ -152,7 +152,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@v1_n17
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -167,7 +167,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v1_n17` AS SELECT `table1_n19`.`key`, `table1_n19`.`value` FROM `db1`.`table1_n19`;
 
@@ -179,7 +179,7 @@ EXPLAIN CBO select  * FROM db1.v1_n17;
 
 
 EXPLAIN VECTORIZED select  * FROM db1.v1_n17;
-CBO PLAN:HiveProject(key=[$0], value=[$1])
+CBO PLAN:HiveProject(v1_n17.key=[$0], v1_n17.value=[$1])
   HiveTableScan(table=[[db1, table1_n19]], table:alias=[table1_n19])
 
 PLAN VECTORIZATION:
@@ -213,7 +213,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@v2_n10
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -228,7 +228,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v2_n10` AS SELECT `t1`.`key`, `t1`.`value` FROM `db1`.`table1_n19` `t1`;
 
@@ -237,7 +237,7 @@ EXPLAIN select  * FROM db1.v2_n10;
 EXPLAIN CBO select  * FROM db1.v2_n10;
 
 EXPLAIN VECTORIZED select  * FROM db1.v2_n10;
-CBO PLAN:HiveProject(key=[$0], value=[$1])
+CBO PLAN:HiveProject(v2_n10.key=[$0], v2_n10.value=[$1])
   HiveTableScan(table=[[db1, table1_n19]], table:alias=[t1])
 
 PLAN VECTORIZATION:
@@ -273,21 +273,7 @@ POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@table2_n13
 POSTHOOK: Input: db1@v3_n3
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
-CREATE TABLE `db1`.`table2_n13`(
-  `key` string, 
-  `value` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -302,8 +288,22 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table2_n13 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+CREATE TABLE `db1`.`table2_n13`(
+  `key` string, 
+  `value` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table2_n13` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v3_n3` AS SELECT `t1`.`key`, `t1`.`value`, `t2`.`key` `k` FROM `db1`.`table1_n19` `t1` JOIN `db1`.`table2_n13` `t2` ON `t1`.`key` = `t2`.`key`;
 
@@ -312,13 +312,14 @@ EXPLAIN select  * FROM db1.v3_n3;
 EXPLAIN CBO select  * FROM db1.v3_n3;
 
 EXPLAIN VECTORIZED select  * FROM db1.v3_n3;
-CBO PLAN:HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
-  HiveProject(key=[$0], value=[$1])
-    HiveFilter(condition=[IS NOT NULL($0)])
-      HiveTableScan(table=[[db1, table1_n19]], table:alias=[t1])
-  HiveProject(key=[$0])
-    HiveFilter(condition=[IS NOT NULL($0)])
-      HiveTableScan(table=[[db1, table2_n13]], table:alias=[t2])
+CBO PLAN:HiveProject(v3_n3.key=[$0], v3_n3.value=[$1], v3_n3.k=[$2])
+  HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
+    HiveProject(key=[$0], value=[$1])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[db1, table1_n19]], table:alias=[t1])
+    HiveProject(key=[$0])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[db1, table2_n13]], table:alias=[t2])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -439,7 +440,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@v4_n3
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -454,7 +455,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v4_n3` AS SELECT `table1_n19`.`key`, `table1_n19`.`value` FROM `db1`.`table1_n19`;
 
@@ -463,7 +464,7 @@ EXPLAIN select  * FROM db1.v4_n3;
 EXPLAIN CBO select  * FROM db1.v4_n3;
 
 EXPLAIN VECTORIZED select  * FROM db1.v4_n3;
-CBO PLAN:HiveProject(key=[$0], value=[$1])
+CBO PLAN:HiveProject(v4_n3.key=[$0], v4_n3.value=[$1])
   HiveTableScan(table=[[db1, table1_n19]], table:alias=[table1_n19])
 
 PLAN VECTORIZATION:
@@ -497,7 +498,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@v5_n1
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -512,7 +513,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v5_n1` AS SELECT `t1`.`key`, `t1`.`value` FROM `db1`.`table1_n19` `t1`;
 
@@ -521,7 +522,7 @@ EXPLAIN select  * FROM db1.v5_n1;
 EXPLAIN CBO select  * FROM db1.v5_n1;
 
 EXPLAIN VECTORIZED select  * FROM db1.v5_n1;
-CBO PLAN:HiveProject(key=[$0], value=[$1])
+CBO PLAN:HiveProject(v5_n1.key=[$0], v5_n1.value=[$1])
   HiveTableScan(table=[[db1, table1_n19]], table:alias=[t1])
 
 PLAN VECTORIZATION:
@@ -557,21 +558,7 @@ POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@table2_n13
 POSTHOOK: Input: db1@v6
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
-CREATE TABLE `db1`.`table2_n13`(
-  `key` string, 
-  `value` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -586,8 +573,22 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table2_n13 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+CREATE TABLE `db1`.`table2_n13`(
+  `key` string, 
+  `value` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table2_n13` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v6` AS SELECT `t1`.`key`, `t1`.`value`, `t2`.`key` `k` FROM `db1`.`table1_n19` `t1` JOIN `db1`.`table2_n13` `t2` ON `t1`.`key` = `t2`.`key`;
 
@@ -596,13 +597,14 @@ EXPLAIN select  * FROM db1.v6;
 EXPLAIN CBO select  * FROM db1.v6;
 
 EXPLAIN VECTORIZED select  * FROM db1.v6;
-CBO PLAN:HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
-  HiveProject(key=[$0], value=[$1])
-    HiveFilter(condition=[IS NOT NULL($0)])
-      HiveTableScan(table=[[db1, table1_n19]], table:alias=[t1])
-  HiveProject(key=[$0])
-    HiveFilter(condition=[IS NOT NULL($0)])
-      HiveTableScan(table=[[db1, table2_n13]], table:alias=[t2])
+CBO PLAN:HiveProject(v6.key=[$0], v6.value=[$1], v6.k=[$2])
+  HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
+    HiveProject(key=[$0], value=[$1])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[db1, table1_n19]], table:alias=[t1])
+    HiveProject(key=[$0])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[db1, table2_n13]], table:alias=[t2])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -723,7 +725,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@v7
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -738,7 +740,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v7` AS SELECT `table1_n19`.`key` from `db1`.`table1_n19`;
 
@@ -747,7 +749,7 @@ EXPLAIN select  * FROM db1.v7;
 EXPLAIN CBO select  * FROM db1.v7;
 
 EXPLAIN VECTORIZED select  * FROM db1.v7;
-CBO PLAN:HiveProject(key=[$0])
+CBO PLAN:HiveProject(v7.key=[$0])
   HiveTableScan(table=[[db1, table1_n19]], table:alias=[table1_n19])
 
 PLAN VECTORIZATION:
@@ -781,7 +783,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: db1@table1_n19
 POSTHOOK: Input: db1@v8
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS db1;
+CREATE DATABASE IF NOT EXISTS `db1`;
 CREATE TABLE `db1`.`table1_n19`(
   `key` string, 
   `value` string)
@@ -796,7 +798,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE db1.table1_n19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `db1`.`table1_n19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 CREATE VIEW `db1`.`v8` AS SELECT `table1_n19`.`key` from `db1`.`table1_n19`;
 
@@ -805,7 +807,7 @@ EXPLAIN select  * FROM db1.v8;
 EXPLAIN CBO select  * FROM db1.v8;
 
 EXPLAIN VECTORIZED select  * FROM db1.v8;
-CBO PLAN:HiveProject(key=[$0])
+CBO PLAN:HiveProject(v8.key=[$0])
   HiveTableScan(table=[[db1, table1_n19]], table:alias=[table1_n19])
 
 PLAN VECTORIZATION:

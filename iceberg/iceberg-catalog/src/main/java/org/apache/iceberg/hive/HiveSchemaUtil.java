@@ -20,24 +20,35 @@
 package org.apache.iceberg.hive;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
+import org.apache.hive.iceberg.com.fasterxml.jackson.core.type.TypeReference;
+import org.apache.hive.iceberg.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.data.GenericRecord;
+import org.apache.iceberg.data.Record;
+import org.apache.iceberg.expressions.Literal;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.apache.iceberg.types.Conversions;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.iceberg.util.Pair;
 
 
 public final class HiveSchemaUtil {
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private HiveSchemaUtil() {
   }
@@ -60,28 +71,30 @@ public final class HiveSchemaUtil {
    * @return An equivalent Iceberg Schema
    */
   public static Schema convert(List<FieldSchema> fieldSchemas) {
-    return convert(fieldSchemas, false);
+    return convert(fieldSchemas, Collections.emptyMap(), false);
   }
 
   /**
    * Converts a Hive schema (list of FieldSchema objects) to an Iceberg schema.
-   * @param fieldSchemas The list of the columns
-   * @param autoConvert If <code>true</code> then TINYINT and SMALLINT is converted to INTEGER and VARCHAR and CHAR is
-   *                    converted to STRING. Otherwise if these types are used in the Hive schema then exception is
-   *                    thrown.
+   *
+   * @param fieldSchemas  The list of the columns
+   * @param defaultValues Default values for columns, if any. The map is from column name to default value.
+   * @param autoConvert   If <code>true</code> then TINYINT and SMALLINT is converted to INTEGER and VARCHAR and CHAR is
+   *                      converted to STRING. Otherwise if these types are used in the Hive schema then exception is
+   *                      thrown.
    * @return An equivalent Iceberg Schema
    */
-  public static Schema convert(List<FieldSchema> fieldSchemas, boolean autoConvert) {
+  public static Schema convert(List<FieldSchema> fieldSchemas, Map<String, String> defaultValues, boolean autoConvert) {
     List<String> names = Lists.newArrayListWithExpectedSize(fieldSchemas.size());
     List<TypeInfo> typeInfos = Lists.newArrayListWithExpectedSize(fieldSchemas.size());
     List<String> comments = Lists.newArrayListWithExpectedSize(fieldSchemas.size());
 
     for (FieldSchema col : fieldSchemas) {
-      names.add(col.getName());
+      names.add(col.getName().toLowerCase());
       typeInfos.add(TypeInfoUtils.getTypeInfoFromTypeString(col.getType()));
       comments.add(col.getComment());
     }
-    return HiveSchemaConverter.convert(names, typeInfos, comments, autoConvert);
+    return HiveSchemaConverter.convert(names, typeInfos, comments, autoConvert, defaultValues);
   }
 
   /**
@@ -92,7 +105,7 @@ public final class HiveSchemaUtil {
    */
   public static PartitionSpec spec(Schema schema, List<FieldSchema> fieldSchemas) {
     PartitionSpec.Builder builder = PartitionSpec.builderFor(schema);
-    fieldSchemas.forEach(fieldSchema -> builder.identity(fieldSchema.getName()));
+    fieldSchemas.forEach(fieldSchema -> builder.identity(fieldSchema.getName().toLowerCase()));
     return builder.build();
   }
 
@@ -105,7 +118,7 @@ public final class HiveSchemaUtil {
    * @return The Iceberg schema
    */
   public static Schema convert(List<String> names, List<TypeInfo> types, List<String> comments) {
-    return HiveSchemaConverter.convert(names, types, comments, false);
+    return HiveSchemaConverter.convert(names, types, comments, false, Collections.emptyMap());
   }
 
   /**
@@ -119,7 +132,7 @@ public final class HiveSchemaUtil {
    * @return The Iceberg schema
    */
   public static Schema convert(List<String> names, List<TypeInfo> types, List<String> comments, boolean autoConvert) {
-    return HiveSchemaConverter.convert(names, types, comments, autoConvert);
+    return HiveSchemaConverter.convert(names, types, comments, autoConvert, Collections.emptyMap());
   }
 
   /**
@@ -133,23 +146,30 @@ public final class HiveSchemaUtil {
 
   /**
    * Converts a Hive typeInfo object to an Iceberg type.
-   * @param typeInfo The Hive type
+   *
+   * @param typeInfo     The Hive type
+   * @param defaultValue the default value for the column, if any
+   * @param shouldAddInitialDefault whether to set initial default for the column or not
    * @return The Iceberg type
    */
-  public static Type convert(TypeInfo typeInfo) {
-    return HiveSchemaConverter.convert(typeInfo, false);
+  public static Type convert(TypeInfo typeInfo, String defaultValue, boolean shouldAddInitialDefault) {
+    return HiveSchemaConverter.convert(typeInfo, false, defaultValue, shouldAddInitialDefault);
   }
 
   /**
    * Returns a SchemaDifference containing those fields which are present in only one of the collections, as well as
    * those fields which are present in both (in terms of the name) but their type or comment has changed.
-   * @param minuendCollection Collection of fields to subtract from
+   *
+   * @param minuendCollection    Collection of fields to subtract from
    * @param subtrahendCollection Collection of fields to subtract
-   * @param bothDirections Whether or not to compute the missing fields from the minuendCollection as well
+   * @param schema               the iceberg table schema, if available. Used to compare default values
+   * @param defaultValues        the column default values
+   * @param bothDirections       Whether or not to compute the missing fields from the minuendCollection as well
    * @return the difference between the two schemas
    */
   public static SchemaDifference getSchemaDiff(Collection<FieldSchema> minuendCollection,
-                                               Collection<FieldSchema> subtrahendCollection, boolean bothDirections) {
+      Collection<FieldSchema> subtrahendCollection, Schema schema, Map<String, String> defaultValues,
+      boolean bothDirections) {
     SchemaDifference difference = new SchemaDifference();
 
     for (FieldSchema first : minuendCollection) {
@@ -171,12 +191,63 @@ public final class HiveSchemaUtil {
     }
 
     if (bothDirections) {
-      SchemaDifference otherWay = getSchemaDiff(subtrahendCollection, minuendCollection, false);
+      SchemaDifference otherWay = getSchemaDiff(subtrahendCollection, minuendCollection, null, defaultValues, false);
       otherWay.getMissingFromSecond().forEach(difference::addMissingFromFirst);
+    }
+
+    if (schema != null) {
+      for (Types.NestedField field : schema.columns()) {
+        if (!isRemovedField(field, difference.getMissingFromFirst())) {
+          getDefaultValDiff(field, defaultValues, difference);
+        }
+      }
     }
 
     return difference;
   }
+
+  private static boolean isRemovedField(Types.NestedField field, List<FieldSchema> missingFields) {
+    for (FieldSchema fieldSchema : missingFields) {
+      if (fieldSchema.getName().equalsIgnoreCase(field.name())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Computes whether the default value has changed for the given field.
+   * @param field         the field to check for default value change
+   * @param defaultValues the default values for the table schema, if available. Used to compare default values
+   * @param difference    the SchemaDifference object to update with the default value change if any
+   */
+  private static void getDefaultValDiff(Types.NestedField field, Map<String, String> defaultValues,
+      SchemaDifference difference) {
+
+    String defaultStr = defaultValues.get(field.name());
+
+    // Skip if no default at all
+    if (defaultStr == null && field.writeDefault() == null) {
+      return;
+    }
+
+    if (field.type().isPrimitiveType()) {
+      Object expectedDefault = HiveSchemaUtil.getDefaultValue(defaultStr, field.type());
+      if (expectedDefault instanceof Literal<?>) {
+        expectedDefault = ((Literal<?>) expectedDefault).value();
+      }
+      if (!Objects.equals(expectedDefault, field.writeDefault())) {
+        difference.addDefaultChanged(field, expectedDefault);
+      }
+    } else if (field.type().isStructType()) {
+      Map<String, String> structDefaults = getDefaultValuesMap(field.type().asStructType().fields(), defaultStr);
+
+      for (Types.NestedField nested : field.type().asStructType().fields()) {
+        getDefaultValDiff(nested, structDefaults, difference);
+      }
+    }
+  }
+
 
   /**
    * Compares two lists of columns to each other to find the (singular) column that was moved. This works ideally for
@@ -241,6 +312,7 @@ public final class HiveSchemaUtil {
     private final List<FieldSchema> missingFromSecond = Lists.newArrayList();
     private final List<FieldSchema> typeChanged = Lists.newArrayList();
     private final List<FieldSchema> commentChanged = Lists.newArrayList();
+    private final Map<Types.NestedField, Object> defaultChanged = Maps.newHashMap();
 
     public List<FieldSchema> getMissingFromFirst() {
       return missingFromFirst;
@@ -258,9 +330,13 @@ public final class HiveSchemaUtil {
       return commentChanged;
     }
 
+    public Map<Types.NestedField, Object> getDefaultChanged() {
+      return defaultChanged;
+    }
+
     public boolean isEmpty() {
       return missingFromFirst.isEmpty() && missingFromSecond.isEmpty() && typeChanged.isEmpty() &&
-          commentChanged.isEmpty();
+          commentChanged.isEmpty() && defaultChanged.isEmpty();
     }
 
     void addMissingFromFirst(FieldSchema field) {
@@ -278,10 +354,14 @@ public final class HiveSchemaUtil {
     void addCommentChanged(FieldSchema field) {
       commentChanged.add(field);
     }
+
+    void addDefaultChanged(Types.NestedField field, Object defaultValue) {
+      defaultChanged.put(field, defaultValue);
+    }
   }
 
 
-  private static String convertToTypeString(Type type) {
+  public static String convertToTypeString(Type type) {
     switch (type.typeId()) {
       case BOOLEAN:
         return "boolean";
@@ -301,10 +381,16 @@ public final class HiveSchemaUtil {
         return "string";
       case TIMESTAMP:
         Types.TimestampType timestampType = (Types.TimestampType) type;
-        if (MetastoreUtil.hive3PresentOnClasspath() && timestampType.shouldAdjustToUTC()) {
+        if (HiveVersion.min(HiveVersion.HIVE_3) && timestampType.shouldAdjustToUTC()) {
           return "timestamp with local time zone";
         }
         return "timestamp";
+      case TIMESTAMP_NANO:
+        Types.TimestampNanoType timestampNanoType = (Types.TimestampNanoType) type;
+        if (timestampNanoType.shouldAdjustToUTC()) {
+          return "timestamp with local time zone(9)";
+        }
+        return "timestamp(9)";
       case FIXED:
       case BINARY:
         return "binary";
@@ -323,8 +409,221 @@ public final class HiveSchemaUtil {
       case MAP:
         final Types.MapType mapType = type.asMapType();
         return String.format("map<%s,%s>", convert(mapType.keyType()), convert(mapType.valueType()));
+      case VARIANT:
+        return "variant";
+      case UNKNOWN:
+        return "unknown";
       default:
         throw new UnsupportedOperationException(type + " is not supported");
     }
+  }
+
+  public static void setDefaultValues(Record record, List<Types.NestedField> missingFields) {
+    for (Types.NestedField field : missingFields) {
+      if (field.type().isStructType()) {
+        // Attempt to build the nested struct with its defaults
+        Record nestedRecord = buildStructFromDefaults(
+            field.type().asStructType(), Types.NestedField::writeDefault);
+        if (nestedRecord != null) {
+          record.setField(field.name(), nestedRecord);
+        }
+      } else if (field.writeDefault() != null) {
+        Object defaultValue = convertToWriteType(field.writeDefault(), field.type());
+        record.setField(field.name(), defaultValue);
+      }
+    }
+  }
+
+  /**
+   * Backfills struct column that is null on read using nested {@code initialDefault} metadata.
+   * This applies to rows written before {@code ADD COLUMNS} added the struct.
+   * Spec allows struct defaults as {@code {}} (see https://iceberg.apache.org/spec/#default-values), but
+   * {@code UpdateSchema} add column only supports defaults of underlying primitives and keeping the
+   * struct default as null due to which we need to backfill that nested default record while reading;
+   * if empty structs are allowed, this backfill can be removed.
+   */
+  public static void backfillStructInitialDefaults(
+      Record iceRecord, Map<String, Record> initialDefaultStructsByColumn) {
+    for (Map.Entry<String, Record> columnAndInitialDefaultStruct : initialDefaultStructsByColumn.entrySet()) {
+      String columnName = columnAndInitialDefaultStruct.getKey();
+      if (iceRecord.getField(columnName) == null) {
+        iceRecord.setField(columnName, columnAndInitialDefaultStruct.getValue());
+      }
+    }
+  }
+
+  /**
+   * Recursively builds a struct populated with underlying field defaults.
+   * @return A populated Record, or null if no nested fields have defaults.
+   */
+  public static Record buildStructFromDefaults(
+      Types.StructType structType, Function<Types.NestedField, Object> defaultForField) {
+    Record nestedRecord = GenericRecord.create(structType);
+    boolean hasAnyDefault = false;
+
+    for (Types.NestedField field : structType.fields()) {
+      Object defaultValue = defaultForField.apply(field);
+      if (defaultValue != null) {
+        nestedRecord.setField(field.name(), convertToWriteType(defaultValue, field.type()));
+        hasAnyDefault = true;
+      } else if (field.type().isStructType()) {
+        Record deeperRecord = buildStructFromDefaults(field.type().asStructType(), defaultForField);
+        if (deeperRecord != null) {
+          nestedRecord.setField(field.name(), deeperRecord);
+          hasAnyDefault = true;
+        }
+      }
+    }
+
+    return hasAnyDefault ? nestedRecord : null;
+  }
+
+  public static Map<String, Object> getStructInitialDefaults(Types.StructType structType) {
+    Map<String, Object> result = Maps.newHashMap();
+    for (Types.NestedField field : structType.fields()) {
+      if (field.initialDefault() != null) {
+        result.put(field.name(), field.initialDefault());
+      } else if (field.type().isStructType()) {
+        Map<String, Object> nested = getStructInitialDefaults(field.type().asStructType());
+        if (!nested.isEmpty()) {
+          result.put(field.name(), nested);
+        }
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Sets a value into a {@link Record} using a struct-only field path (top-level column or nested
+   * through structs). Intermediate struct records are created as needed.
+   *
+   * <p>If the path traverses a non-struct type (e.g. list/map), the operation is ignored.
+   */
+  public static void setStructField(Record root, String[] path, Object value) {
+    if (root == null || path == null || path.length == 0) {
+      return;
+    }
+    Record current = root;
+    Types.StructType currentStruct = root.struct();
+
+    for (int i = 0; i < path.length - 1; i++) {
+      String fieldName = path[i];
+      Types.NestedField field = currentStruct.field(fieldName);
+      if (field == null || !field.type().isStructType()) {
+        return;
+      }
+      Types.StructType nestedStruct = field.type().asStructType();
+      current = getOrCreateStructRecord(current, fieldName, nestedStruct);
+      currentStruct = nestedStruct;
+    }
+
+    current.setField(path[path.length - 1], value);
+  }
+
+  private static Record getOrCreateStructRecord(
+      Record parent, String fieldName, Types.StructType structType) {
+    Object value = parent.getField(fieldName);
+    if (value instanceof Record) {
+      return (Record) value;
+    }
+    Record record = GenericRecord.create(structType);
+    parent.setField(fieldName, record);
+    return record;
+  }
+
+  public static Object convertToWriteType(Object value, Type type) {
+    if (value == null) {
+      return null;
+    }
+
+    switch (type.typeId()) {
+      case DATE:
+        // Convert days since epoch (Integer) to LocalDate
+        if (value instanceof Integer) {
+          return DateTimeUtil.dateFromDays((Integer) value);
+        }
+        break;
+      case TIMESTAMP:
+        // Convert microseconds since epoch (Long) to LocalDateTime
+        if (value instanceof Long) {
+          Types.TimestampType timestampType = (Types.TimestampType) type;
+          return timestampType.shouldAdjustToUTC() ?
+              DateTimeUtil.timestamptzFromMicros((Long) value) :
+              DateTimeUtil.timestampFromMicros((Long) value);
+        }
+        break;
+      case TIMESTAMP_NANO:
+        // Convert nanoseconds since epoch (Long) to LocalDateTime
+        if (value instanceof Long) {
+          Types.TimestampNanoType timestampNanoType = (Types.TimestampNanoType) type;
+          return timestampNanoType.shouldAdjustToUTC() ?
+              DateTimeUtil.timestamptzFromNanos((Long) value) :
+              DateTimeUtil.timestampFromNanos((Long) value);
+        }
+        break;
+      default:
+        // For other types, no conversion needed
+        return value;
+    }
+
+    return value; // fallback
+  }
+
+  public static Map<String, String> getDefaultValuesMap(List<Types.NestedField> fields, String json) {
+    if (json == null || json.trim().isEmpty()) {
+      return Collections.emptyMap();
+    }
+    // 1. Strip the surrounding single or double quotes passed by Hive
+    String cleanJson = stripQuotes(json);
+
+    // 2. Check for NULL on the cleaned string
+    if (cleanJson.equalsIgnoreCase("NULL")) {
+      if (fields == null || fields.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      return fields.stream().collect(Collectors.toMap(Types.NestedField::name, f -> "NULL"));
+    }
+
+    Map<String, Object> parsed;
+    Map<String, String> result = Maps.newHashMap();
+    try {
+      // 3. Pass the cleaned JSON to the mapper
+      parsed = MAPPER.readValue(cleanJson, new TypeReference<>() {
+      });
+
+      for (Map.Entry<String, Object> entry : parsed.entrySet()) {
+        Object value = entry.getValue();
+
+        if (value == null) {
+          result.put(entry.getKey(), "NULL");
+        } else if (value instanceof Map || value instanceof List) {
+          result.put(entry.getKey(), MAPPER.writeValueAsString(value));
+        } else {
+          result.put(entry.getKey(), value.toString());
+        }
+      }
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Invalid default values JSON: " + json, e);
+    }
+    return result;
+  }
+
+  public static String stripQuotes(String val) {
+    if (val.charAt(0) == '\'' && val.charAt(val.length() - 1) == '\'' ||
+        val.charAt(0) == '"' && val.charAt(val.length() - 1) == '"') {
+      return val.substring(1, val.length() - 1);
+    }
+    return val;
+  }
+
+  public static Object getDefaultValue(String defaultValue, Type type) {
+    if (defaultValue == null || defaultValue.equalsIgnoreCase("NULL")) {
+      return null;
+    }
+    return switch (type.typeId()) {
+      case DATE, TIME, TIMESTAMP, TIMESTAMP_NANO ->
+          Literal.of(stripQuotes(defaultValue)).to(type);
+      default -> Conversions.fromPartitionString(type, stripQuotes(defaultValue));
+    };
   }
 }

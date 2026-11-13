@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.beeline;
@@ -85,12 +86,14 @@ public class TestCommands {
    */
   @Test
   public void testBeelineCommands() throws IOException {
- // avoid System.exit() call in beeline which causes JVM to exit and fails the test
+    // avoid System.exit() call in beeline which causes JVM to exit and fails the test
     System.setProperty(BeeLineOpts.PROPERTY_NAME_EXIT, "true");
     // Verify the command without ';' at the end also works fine
-    BeeLine.mainWithInputRedirection(new String[] {"-u", "jdbc:hive2://", "-e", "select 3"}, null);
+    BeeLine.mainWithInputRedirection(new String[] {"-u", "jdbc:hive2://", "-e", "select 3"}, null,
+        new BeeLineDummyTerminal());
     BeeLine.mainWithInputRedirection(
-        new String[] {"-u", "jdbc:hive2://", "-e", "create table t1(x int); show tables"}, null);
+        new String[] {"-u", "jdbc:hive2://", "-e", "create table t1(x int); show tables"}, null,
+        new BeeLineDummyTerminal());
   }
 
   /**

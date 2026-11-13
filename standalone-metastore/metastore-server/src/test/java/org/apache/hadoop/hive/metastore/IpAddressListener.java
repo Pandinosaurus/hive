@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -32,6 +33,7 @@ import org.apache.hadoop.hive.metastore.events.DropDatabaseEvent;
 import org.apache.hadoop.hive.metastore.events.DropPartitionEvent;
 import org.apache.hadoop.hive.metastore.events.DropTableEvent;
 import org.apache.hadoop.hive.metastore.events.LoadPartitionDoneEvent;
+import org.apache.hadoop.hive.metastore.handler.BaseHandler;
 import org.junit.Assert;
 
 /** An implementation for MetaStoreEventListener which checks that the IP Address stored in
@@ -48,7 +50,7 @@ public class IpAddressListener extends MetaStoreEventListener{
   private void checkIpAddress() {
     try {
       String localhostIp = InetAddress.getByName(LOCAL_HOST).getHostAddress();
-      Assert.assertEquals(localhostIp, HMSHandler.getThreadLocalIpAddress());
+      Assert.assertEquals(localhostIp, BaseHandler.getThreadLocalIpAddress());
     } catch (UnknownHostException e) {
       Assert.assertTrue("InetAddress.getLocalHost threw an exception: " + e.getMessage(), false);
     }

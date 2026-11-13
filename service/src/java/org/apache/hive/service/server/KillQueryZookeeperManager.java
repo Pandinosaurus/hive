@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.server;
 
@@ -31,7 +32,7 @@ import org.apache.curator.utils.CloseableUtils;
 import org.apache.curator.utils.PathUtils;
 import org.apache.curator.utils.ZKPaths;
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.registry.impl.ZookeeperUtils;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hive.service.AbstractService;
 import org.apache.hive.service.ServiceException;
 import org.apache.hive.service.cli.operation.OperationManager;
@@ -61,12 +62,11 @@ import java.util.concurrent.TimeUnit;
 public class KillQueryZookeeperManager extends AbstractService {
 
   private static final Logger LOG = LoggerFactory.getLogger(KillQueryZookeeperManager.class);
-  private static final String SASL_LOGIN_CONTEXT_NAME = "KillQueryZooKeeperClient";
   public static final int MAX_WAIT_ON_CONFIRMATION_SECONDS = 30;
   public static final int MAX_WAIT_ON_KILL_SECONDS = 180;
 
   private CuratorFramework zooKeeperClient;
-  private String zkPrincipal, zkKeytab, zkNameSpace;
+  private String zkNameSpace;
   private final KillQueryImpl localKillQueryImpl;
   private final HiveServer2 hiveServer2;
   private HiveConf conf;
@@ -86,8 +86,6 @@ public class KillQueryZookeeperManager extends AbstractService {
     zkNameSpace = HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_ZOOKEEPER_KILLQUERY_NAMESPACE);
     Preconditions.checkArgument(!StringUtils.isBlank(zkNameSpace),
         HiveConf.ConfVars.HIVE_ZOOKEEPER_KILLQUERY_NAMESPACE.varname + " cannot be null or empty");
-    this.zkPrincipal = HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_SERVER2_KERBEROS_PRINCIPAL);
-    this.zkKeytab = HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_SERVER2_KERBEROS_KEYTAB);
     this.zooKeeperClient = conf.getZKConfig().getNewZookeeperClient(getACLProviderForZKPath("/" + zkNameSpace));
     this.zooKeeperClient.getConnectionStateListenable().addListener(new ZkConnectionStateListener());
 
@@ -101,11 +99,11 @@ public class KillQueryZookeeperManager extends AbstractService {
       throw new ServiceException("Failed start zookeeperClient in KillQueryZookeeperManager");
     }
     try {
-      ZookeeperUtils.setupZookeeperAuth(this.getHiveConf(), SASL_LOGIN_CONTEXT_NAME, zkPrincipal, zkKeytab);
       zooKeeperClient.start();
       try {
         zooKeeperClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath("/" + zkNameSpace);
-        if (ZookeeperUtils.isKerberosEnabled(conf)) {
+        if (UserGroupInformation.isSecurityEnabled() &&
+            HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_ZOOKEEPER_USE_KERBEROS)) {
           zooKeeperClient.setACL().withACL(createSecureAcls()).forPath("/" + zkNameSpace);
         }
         LOG.info("Created the root namespace: " + zkNameSpace + " on ZooKeeper");
@@ -128,7 +126,8 @@ public class KillQueryZookeeperManager extends AbstractService {
   }
 
   private ACLProvider getACLProviderForZKPath(String zkPath) {
-    final boolean isSecure = ZookeeperUtils.isKerberosEnabled(conf);
+    final boolean isSecure = UserGroupInformation.isSecurityEnabled() &&
+        HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_ZOOKEEPER_USE_KERBEROS);
     return new ACLProvider() {
       @Override
       public List<ACL> getDefaultAcl() {

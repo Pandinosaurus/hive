@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.beeline.hs2connection;
 
@@ -35,7 +36,7 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
-import org.apache.hive.beeline.BeeLine;
+import org.apache.hive.beeline.BeeLineDummyTerminal;
 import org.apache.hive.jdbc.miniHS2.MiniHS2;
 import org.apache.hive.service.cli.CLIServiceClient;
 import org.apache.hive.service.cli.HiveSQLException;
@@ -75,11 +76,11 @@ public abstract class BeelineWithHS2ConnectionFileTestBase {
   public String transportMode =  null;
 
 
-  protected class TestBeeLine extends BeeLine {
+  protected class BeelineWithConfigFileManager extends BeeLineDummyTerminal {
     UserHS2ConnectionFileParser testHs2ConfigFileManager;
     ByteArrayOutputStream os;
 
-    TestBeeLine(List<String> defaultHS2ConnectionFiles) {
+    BeelineWithConfigFileManager(List<String> defaultHS2ConnectionFiles) {
       testHs2ConfigFileManager = new UserHS2ConnectionFileParser(defaultHS2ConnectionFiles);
       os = new ByteArrayOutputStream();
       PrintStream beelineOutputStream = new PrintStream(os);
@@ -87,7 +88,7 @@ public abstract class BeelineWithHS2ConnectionFileTestBase {
       setErrorStream(beelineOutputStream);
     }
 
-    TestBeeLine() {
+    BeelineWithConfigFileManager() {
       testHs2ConfigFileManager = new UserHS2ConnectionFileParser(null);
       os = new ByteArrayOutputStream();
       PrintStream beelineOutputStream = new PrintStream(os);
@@ -154,7 +155,6 @@ public abstract class BeelineWithHS2ConnectionFileTestBase {
   @BeforeClass
   public static void beforeTest() throws Exception {
     MiniHS2.cleanupLocalDir();
-    Class.forName(MiniHS2.getJdbcDriverName());
   }
 
   @AfterClass
@@ -225,14 +225,14 @@ public abstract class BeelineWithHS2ConnectionFileTestBase {
   }
 
   protected BeelineResult getBeelineOutput(String path, String[] beelineArgs) throws Exception {
-    TestBeeLine beeLine = null;
+    BeelineWithConfigFileManager beeLine = null;
     try {
       if(path != null) {
         List<String> testLocations = new ArrayList<>();
         testLocations.add(path);
-        beeLine = new TestBeeLine(testLocations);
+        beeLine = new BeelineWithConfigFileManager(testLocations);
       } else {
-        beeLine = new TestBeeLine();
+        beeLine = new BeelineWithConfigFileManager();
       }
       int exitCode = beeLine.begin(beelineArgs, null);
       String output = beeLine.getOutput();

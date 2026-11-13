@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.partition.drop;
@@ -85,7 +86,7 @@ abstract class AbstractDropPartitionAnalyzer extends AbstractAlterTableAnalyzer 
         // We just return in that case, no drop needed.
         return;
         // TODO : the contains message check is fragile, we should refactor SemanticException to be
-        // queriable for error code, and not simply have a message
+        // queryable for error code, and not simply have a message
         // NOTE : IF_EXISTS might also want to invoke this, but there's a good possibility
         // that IF_EXISTS is stricter about table existence, and applies only to the ptn.
         // Therefore, ignoring IF_EXISTS here.
@@ -108,9 +109,9 @@ abstract class AbstractDropPartitionAnalyzer extends AbstractAlterTableAnalyzer 
     boolean dropPartUseBase = HiveConf.getBoolVar(conf, ConfVars.HIVE_ACID_DROP_PARTITION_USE_BASE)
         || HiveConf.getBoolVar(conf, ConfVars.HIVE_ACID_LOCKLESS_READS_ENABLED)
       && AcidUtils.isTransactionalTable(table);
-    
+
     addTableDropPartsOutputs(table, partitionSpecs.values(), !ifExists, dropPartUseBase);
-    
+
     AlterTableDropPartitionDesc desc =
         new AlterTableDropPartitionDesc(tableName, partitionSpecs, mustPurge, replicationSpec, !dropPartUseBase, table);
 
@@ -131,7 +132,7 @@ abstract class AbstractDropPartitionAnalyzer extends AbstractAlterTableAnalyzer 
       boolean throwIfNonExistent, boolean  dropPartUseBase) throws SemanticException {
     WriteType writeType =
         dropPartUseBase ? WriteType.DDL_EXCL_WRITE : WriteType.DDL_EXCLUSIVE;
-    
+
     for (List<ExprNodeGenericFuncDesc> specs : partitionSpecs) {
       for (ExprNodeGenericFuncDesc partitionSpec : specs) {
         List<Partition> parts = new ArrayList<>();
@@ -140,7 +141,8 @@ abstract class AbstractDropPartitionAnalyzer extends AbstractAlterTableAnalyzer 
         try {
           hasUnknown = db.getPartitionsByExpr(table, partitionSpec, conf, parts);
         } catch (Exception e) {
-          throw new SemanticException(ErrorMsg.INVALID_PARTITION.getMsg(partitionSpec.getExprString()), e);
+          throw new SemanticException("Error fetching partitions for " + partitionSpec.getExprString() +
+             ", message: " + e.getMessage(), e);
         }
         if (hasUnknown) {
           throw new SemanticException("Unexpected unknown partitions for " + partitionSpec.getExprString());

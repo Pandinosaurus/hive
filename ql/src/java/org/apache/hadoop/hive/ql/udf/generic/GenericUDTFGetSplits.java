@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -33,8 +34,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import javax.security.auth.login.LoginException;
-
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -48,7 +47,6 @@ import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.llap.FieldDesc;
 import org.apache.hadoop.hive.llap.LlapInputSplit;
-import org.apache.hadoop.hive.llap.LlapUtil;
 import org.apache.hadoop.hive.llap.NotTezEventHelper;
 import org.apache.hadoop.hive.llap.Schema;
 import org.apache.hadoop.hive.llap.SubmitWorkInfo;
@@ -59,7 +57,6 @@ import org.apache.hadoop.hive.llap.registry.impl.LlapRegistryService;
 import org.apache.hadoop.hive.llap.ext.LlapDaemonInfo;
 import org.apache.hadoop.hive.llap.registry.LlapServiceInstance;
 import org.apache.hadoop.hive.llap.registry.LlapServiceInstanceSet;
-import org.apache.hadoop.hive.llap.security.LlapExtClientJwtHelper;
 import org.apache.hadoop.hive.llap.security.LlapSigner;
 import org.apache.hadoop.hive.llap.security.LlapSigner.Signable;
 import org.apache.hadoop.hive.llap.security.LlapSigner.SignedMessage;
@@ -238,7 +235,7 @@ public class GenericUDTFGetSplits extends GenericUDTF {
           + ConfVars.LLAP_HS2_ENABLE_COORDINATOR.varname + " enabled");
     }
     ApplicationId extClientAppId = coordinator.createExtClientAppId();
-    String externalDagName = SessionState.get().getConf().getVar(ConfVars.HIVEQUERYNAME);
+    String externalDagName = SessionState.get().getConf().getVar(ConfVars.HIVE_QUERY_NAME);
 
     StringBuilder sb = new StringBuilder();
     sb.append("Generated appID ").append(extClientAppId.toString()).append(" for LLAP splits");
@@ -271,8 +268,8 @@ public class GenericUDTFGetSplits extends GenericUDTF {
       throws HiveException {
 
     HiveConf conf = new HiveConf(SessionState.get().getConf());
-    HiveConf.setVar(conf, ConfVars.HIVEFETCHTASKCONVERSION, "none");
-    HiveConf.setVar(conf, ConfVars.HIVEQUERYRESULTFILEFORMAT, PlanUtils.LLAP_OUTPUT_FORMAT_KEY);
+    HiveConf.setVar(conf, ConfVars.HIVE_FETCH_TASK_CONVERSION, "none");
+    HiveConf.setVar(conf, ConfVars.HIVE_QUERY_RESULT_FILEFORMAT, PlanUtils.LLAP_OUTPUT_FORMAT_KEY);
 
     String originalMode = HiveConf.getVar(conf,
         ConfVars.HIVE_EXECUTION_MODE);
@@ -423,7 +420,7 @@ public class GenericUDTFGetSplits extends GenericUDTF {
     SplitResult splitResult = new SplitResult();
     splitResult.schemaSplit = new LlapInputSplit(
         0, new byte[0], new byte[0], new byte[0],
-        new SplitLocationInfo[0], new LlapDaemonInfo[0], schema, "", new byte[0], "");
+        new SplitLocationInfo[0], new LlapDaemonInfo[0], schema, "", new byte[0]);
     if (schemaSplitOnly) {
       // schema only
       return splitResult;
@@ -451,7 +448,7 @@ public class GenericUDTFGetSplits extends GenericUDTF {
 
       // Update the queryId to use the generated extClientAppId. See comment below about
       // why this is done.
-      HiveConf.setVar(wxConf, HiveConf.ConfVars.HIVEQUERYID, extClientAppId.toString());
+      HiveConf.setVar(wxConf, HiveConf.ConfVars.HIVE_QUERY_ID, extClientAppId.toString());
       Vertex wx = utils.createVertex(wxConf, mapWork, scratchDir, work,
           DagUtils.createTezLrMap(appJarLr, null));
       String vertexName = wx.getName();
@@ -465,7 +462,13 @@ public class GenericUDTFGetSplits extends GenericUDTF {
       Preconditions.checkState(HiveConf.getBoolVar(wxConf,
               ConfVars.LLAP_CLIENT_CONSISTENT_SPLITS));
 
-      HiveSplitGenerator splitGenerator = new HiveSplitGenerator(wxConf, mapWork, false, inputArgNumSplits);
+      // we're not interested in split fs serialization optimization in this case
+      // it was implemented for split generation in TezAM
+      // this can be removed any time when it turns out that's needed here too
+      HiveConf.setIntVar(wxConf, HiveConf.ConfVars.HIVE_TEZ_INPUT_FS_SERIALIZATION_THRESHOLD, -1);
+
+      HiveSplitGenerator splitGenerator =
+          new HiveSplitGenerator(wxConf, mapWork, false, inputArgNumSplits);
       List<Event> eventList = splitGenerator.initialize();
       int numGroupedSplitsGenerated = eventList.size() - 1;
       InputSplit[] result = new InputSplit[numGroupedSplitsGenerated];
@@ -537,7 +540,7 @@ public class GenericUDTFGetSplits extends GenericUDTF {
           if (generateLightWeightSplits) {
             splitResult.planSplit = new LlapInputSplit(
                 0, submitWorkBytes, new byte[0], new byte[0],
-                new SplitLocationInfo[0], new LlapDaemonInfo[0], new Schema(), "", new byte[0], "");
+                new SplitLocationInfo[0], new LlapDaemonInfo[0], new Schema(), "", new byte[0]);
           }
         }
 
@@ -550,22 +553,12 @@ public class GenericUDTFGetSplits extends GenericUDTF {
         // 5. populate info about llap daemons(to help client submit request and read data)
         LlapDaemonInfo[] llapDaemonInfos = populateLlapDaemonInfos(job, locations);
 
-        // 6. Generate JWT for external clients if it's a cloud deployment
-        // we inject extClientAppId in JWT which is same as what fragment contains.
-        // extClientAppId in JWT and in fragment are compared on LLAP when a fragment is submitted.
-        // see method ContainerRunnerImpl#verifyJwtForExternalClient
-        String jwt = "";
-        if (LlapUtil.isCloudDeployment(job)) {
-          LlapExtClientJwtHelper llapExtClientJwtHelper = new LlapExtClientJwtHelper(job);
-          jwt = llapExtClientJwtHelper.buildJwtForLlap(extClientAppId);
-        }
-
         if (generateLightWeightSplits) {
           result[i] = new LlapInputSplit(i, emptySubmitWorkBytes, eventBytes.message,
-              eventBytes.signature, locations, llapDaemonInfos, emptySchema, llapUser, tokenBytes, jwt);
+              eventBytes.signature, locations, llapDaemonInfos, emptySchema, llapUser, tokenBytes);
         } else {
           result[i] = new LlapInputSplit(i, submitWorkBytes, eventBytes.message,
-              eventBytes.signature, locations, llapDaemonInfos, schema, llapUser, tokenBytes, jwt);
+              eventBytes.signature, locations, llapDaemonInfos, schema, llapUser, tokenBytes);
         }
       }
       splitResult.actualSplits = result;
@@ -618,7 +611,7 @@ public class GenericUDTFGetSplits extends GenericUDTF {
       JobTokenIdentifier identifier = new JobTokenIdentifier(new Text(
           tokenIdentifier));
       Token<JobTokenIdentifier> sessionToken = new Token<JobTokenIdentifier>(identifier,
-          new JobTokenSecretManager());
+          new JobTokenSecretManager(new Configuration()));
       sessionToken.setService(identifier.getJobId());
       return sessionToken;
     }
@@ -663,12 +656,7 @@ public class GenericUDTFGetSplits extends GenericUDTF {
     LlapDaemonInfo[] llapDaemonInfos = new LlapDaemonInfo[llapServiceInstances.size()];
     int count = 0;
     for (LlapServiceInstance inst : llapServiceInstances) {
-      LlapDaemonInfo info;
-      if (LlapUtil.isCloudDeployment(job)) {
-        info = new LlapDaemonInfo(inst.getExternalHostname(), inst.getExternalClientsRpcPort(), inst.getOutputFormatPort());
-      } else {
-        info = new LlapDaemonInfo(inst.getHost(), inst.getRpcPort(), inst.getOutputFormatPort());
-      }
+      LlapDaemonInfo info = new LlapDaemonInfo(inst.getHost(), inst.getRpcPort(), inst.getOutputFormatPort());
       llapDaemonInfos[count++] = info;
     }
     return llapDaemonInfos;
@@ -733,13 +721,11 @@ public class GenericUDTFGetSplits extends GenericUDTF {
    * @return LocalResource corresponding to the localized hive exec resource.
    * @throws IOException
    *           when any file system related call fails.
-   * @throws LoginException
-   *           when we are unable to determine the user.
    * @throws URISyntaxException
    *           when current jar location cannot be determined.
    */
   private LocalResource createJarLocalResource(String localJarPath,
-      DagUtils utils, Configuration conf) throws IOException, LoginException,
+      DagUtils utils, Configuration conf) throws IOException,
       IllegalArgumentException, FileNotFoundException {
     FileStatus destDirStatus = utils.getHiveJarDirectory(conf);
     assert destDirStatus != null;

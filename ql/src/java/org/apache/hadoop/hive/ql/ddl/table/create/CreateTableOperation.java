@@ -9,16 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.create;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.StatsSetupConst;
@@ -27,6 +28,7 @@ import org.apache.hadoop.hive.conf.Constants;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
+import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.ql.ddl.DDLOperation;
 import org.apache.hadoop.hive.ql.ddl.DDLOperationContext;
@@ -37,6 +39,7 @@ import org.apache.hadoop.hive.ql.hooks.WriteEntity;
 import org.apache.hadoop.hive.ql.hooks.LineageInfo.DataContainer;
 import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.ql.io.HdfsUtils;
+import org.apache.hadoop.hive.ql.io.SchemaInferenceUtils;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.ReplicationSpec;
@@ -53,8 +56,23 @@ public class CreateTableOperation extends DDLOperation<CreateTableDesc> {
     super(context, desc);
   }
 
+  // Sets the tables columns using the FieldSchema inferred from the SerDe's SchemaInference
+  // implementation. This is used by CREATE TABLE LIKE FILE.
+  private void readSchemaFromFile() throws HiveException {
+    String fileFormat = desc.getLikeFileFormat();
+    String filePath = desc.getLikeFile();
+    List<FieldSchema> fieldSchema = SchemaInferenceUtils.readSchemaFromFile(context.getConf(), fileFormat, filePath);
+    LOG.debug("Inferred field schema for {} file {} was {}", fileFormat, filePath, fieldSchema);
+    desc.setCols(fieldSchema);
+  }
+
   @Override
   public int execute() throws HiveException {
+    // check if schema is being inferred via LIKE FILE
+    if (desc.getLikeFile() != null) {
+      readSchemaFromFile();
+    }
+
     // create the table
     Table tbl = desc.toTable(context.getConf());
     LOG.debug("creating table {} on {}", tbl.getFullyQualifiedName(), tbl.getDataLocation());
@@ -144,7 +162,8 @@ public class CreateTableOperation extends DDLOperation<CreateTableDesc> {
     if (desc.isCTAS()) {
       Table createdTable = context.getDb().getTable(tbl.getDbName(), tbl.getTableName());
       DataContainer dc = new DataContainer(createdTable.getTTable());
-      context.getQueryState().getLineageState().setLineage(createdTable.getPath(), dc, createdTable.getCols());
+      context.getQueryState().getLineageState().setLineage(
+          createdTable.getPath(), dc, createdTable);
 
       // We did not create the table before moving the data files for a non-partitioned table i.e
       // we used load file instead of load table (see SemanticAnalyzer#getFileSinkPlan() for
@@ -176,7 +195,6 @@ public class CreateTableOperation extends DDLOperation<CreateTableDesc> {
       // TODO: why doesn't this check class name rather than toString?
       String sh = tbl.getStorageHandler().toString();
       retval = !"org.apache.hadoop.hive.hbase.HBaseStorageHandler".equals(sh) &&
-          !Constants.DRUID_HIVE_STORAGE_HANDLER_ID.equals(sh) &&
           !Constants.JDBC_HIVE_STORAGE_HANDLER_ID.equals(sh) &&
           !"org.apache.hadoop.hive.accumulo.AccumuloStorageHandler".equals(sh);
     }

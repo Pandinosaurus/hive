@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec;
 
@@ -426,7 +427,7 @@ public class JoinUtil {
   private static ObjectInspector unflattenObjInspector(ObjectInspector oi) {
     if (oi instanceof StructObjectInspector) {
       // Check if all fields start with "key." or "value."
-      // If so, then unflatten by adding an additional level of nested key and value structs
+      // If so, then unflatten by adding a level of nested key and value structs
       // Example: { "key.reducesinkkey0":int, "key.reducesinkkey1": int, "value._col6":int }
       // Becomes
       //   { "key": { "reducesinkkey0":int, "reducesinkkey1":int }, "value": { "_col6":int } }

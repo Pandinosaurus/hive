@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common.log;
 
@@ -149,14 +150,14 @@ public class InPlaceUpdate {
     //         VERTICES     STATUS  TOTAL  COMPLETED  RUNNING  PENDING  FAILED  KILLED
     // -------------------------------------------------------------------------------
     reprintLine(SEPARATOR);
-    reprintLineWithColorAsBold(String.format(HEADER_FORMAT, monitor.headers().toArray()),
+    reprintLineWithColorAsBold(HEADER_FORMAT.formatted(monitor.headers().toArray()),
       Ansi.Color.CYAN);
     reprintLine(SEPARATOR);
 
 
     // Map 1 .......... container  SUCCEEDED      7          7        0        0       0       0
     List<String> printReady =
-        monitor.rows().stream().map(row -> String.format(VERTEX_FORMAT, row.toArray())).collect(Collectors.toList());
+        monitor.rows().stream().map(row -> VERTEX_FORMAT.formatted(row.toArray())).collect(Collectors.toList());
     reprintMultiLine(StringUtils.join(printReady, "\n"));
 
     // -------------------------------------------------------------------------------
@@ -165,16 +166,23 @@ public class InPlaceUpdate {
     String progressStr = "" + (int) (monitor.progressedPercentage() * 100) + "%";
     float et = (float) (System.currentTimeMillis() - monitor.startTime()) / (float) 1000;
     String elapsedTime = "ELAPSED TIME: " + secondsFormatter.format(et) + " s";
-    String footer = String.format(
-      FOOTER_FORMAT,
-      monitor.footerSummary(),
-      getInPlaceProgressBar(monitor.progressedPercentage()),
-      progressStr,
-      elapsedTime);
+    String footer = 
+        FOOTER_FORMAT.formatted(
+        monitor.footerSummary(),
+        getInPlaceProgressBar(monitor.progressedPercentage()),
+        progressStr,
+        elapsedTime);
 
     reprintLine(SEPARATOR);
     reprintLineWithColorAsBold(footer, Ansi.Color.RED);
     reprintLine(SEPARATOR);
+
+    // Display queue metrics if available (may be multi-line: queue name + metrics)
+    String queueMetrics = monitor.queueMetrics();
+    if (queueMetrics != null && !queueMetrics.isEmpty()) {
+      reprintMultiLine(queueMetrics);
+      reprintLine(SEPARATOR);
+    }
   }
 
 

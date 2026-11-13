@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
@@ -33,6 +34,7 @@ import org.apache.hadoop.hive.ql.exec.Task;
 import org.apache.hadoop.hive.ql.exec.TaskFactory;
 import org.apache.hadoop.hive.ql.hooks.ReadEntity;
 import org.apache.hadoop.hive.ql.hooks.WriteEntity;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.HiveTableName;
 import org.apache.hadoop.hive.ql.parse.ReplicationSpec;
@@ -110,7 +112,7 @@ public class ImportTableDesc {
   }
 
   public String getTableName() throws SemanticException {
-    return createTblDesc.getTableName().getTable();
+    return createTblDesc.getFullTableName().getTable();
   }
 
   public List<FieldSchema> getPartCols() {
@@ -134,7 +136,7 @@ public class ImportTableDesc {
   }
 
   public String getSerName() {
-    return createTblDesc.getSerName();
+    return createTblDesc.getSerde();
   }
 
   public Map<String, String> getSerdeProps() {
@@ -175,7 +177,7 @@ public class ImportTableDesc {
     return TableType.MANAGED_TABLE;
   }
 
-  public Table toTable(HiveConf conf) throws Exception {
+  public Table toTable(HiveConf conf) throws HiveException {
     return createTblDesc.toTable(conf);
   }
 

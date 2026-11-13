@@ -9,16 +9,18 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.sarg;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -555,8 +557,10 @@ public class TestConvertAstToSearchArg {
         " </object> \n" +
         "</java> \n";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertFalse(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(9, leaves.size());
 
@@ -848,8 +852,10 @@ public class TestConvertAstToSearchArg {
         " </object> \n" +
         "</java> \n";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertFalse(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(4, leaves.size());
 
@@ -1285,8 +1291,10 @@ public class TestConvertAstToSearchArg {
         " </object> \n" +
         "</java> \n";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertTrue(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(3, leaves.size());
 
@@ -1513,8 +1521,10 @@ public class TestConvertAstToSearchArg {
         "</java> \n" +
         "\n";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertFalse(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(3, leaves.size());
 
@@ -1787,8 +1797,10 @@ public class TestConvertAstToSearchArg {
         " </object> \n" +
         "</java> \n";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertTrue(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(1, leaves.size());
 
@@ -2275,8 +2287,10 @@ public class TestConvertAstToSearchArg {
         " </object>\n" +
         "</java>";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertFalse(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(9, leaves.size());
 
@@ -2438,8 +2452,10 @@ public class TestConvertAstToSearchArg {
         " </object> \n" +
         "</java> ";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertTrue(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(0, leaves.size());
 
@@ -2575,8 +2591,10 @@ public class TestConvertAstToSearchArg {
         " </object> \n" +
         "</java> ";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertFalse(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(0, leaves.size());
 
@@ -2700,8 +2718,10 @@ public class TestConvertAstToSearchArg {
         " </object> \n" +
         "</java>";
 
+    ConvertAstToSearchArg.Result result = ConvertAstToSearchArg.createSearchArgument(conf, getFuncDesc(exprStr));
+    assertFalse(result.isPartial());
     SearchArgumentImpl sarg =
-        (SearchArgumentImpl) ConvertAstToSearchArg.create(conf, getFuncDesc(exprStr));
+        (SearchArgumentImpl) result.getSearchArgument();
     List<PredicateLeaf> leaves = sarg.getLeaves();
     assertEquals(1, leaves.size());
 
@@ -2745,9 +2765,9 @@ public class TestConvertAstToSearchArg {
         TypeInfoFactory.timestampTypeInfo, "ts", Timestamp.ofEpochMilli(1426595696000L));
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2761,9 +2781,9 @@ public class TestConvertAstToSearchArg {
         getColumnEqualsConstantExpression(TypeInfoFactory.dateTypeInfo, "dt", "2015-05-05");
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2777,9 +2797,9 @@ public class TestConvertAstToSearchArg {
         getColumnEqualsConstantExpression(TypeInfoFactory.decimalTypeInfo, "dec", 123);
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2793,9 +2813,9 @@ public class TestConvertAstToSearchArg {
         getColumnEqualsConstantExpression(TypeInfoFactory.charTypeInfo, "ch", "char      ");
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2809,9 +2829,9 @@ public class TestConvertAstToSearchArg {
         getColumnEqualsConstantExpression(TypeInfoFactory.varcharTypeInfo, "vc", "variable");
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();;
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2825,9 +2845,9 @@ public class TestConvertAstToSearchArg {
         getColumnEqualsConstantExpression(TypeInfoFactory.intTypeInfo, "bi", 12345);
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2856,9 +2876,9 @@ public class TestConvertAstToSearchArg {
         new GenericUDFOPAnd(), children);
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("(and leaf-0 leaf-1)", sarg.getExpression().toOldString());
     assertEquals(2, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2875,9 +2895,9 @@ public class TestConvertAstToSearchArg {
         getColumnEqualsConstantExpression(TypeInfoFactory.floatTypeInfo, "flt", 1.1f);
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);
@@ -2891,9 +2911,9 @@ public class TestConvertAstToSearchArg {
         getColumnEqualsConstantExpression(TypeInfoFactory.doubleTypeInfo, "dbl", 2.2);
     String serialAst = SerializationUtilities.serializeExpression(node);
 
-    SearchArgument sarg =
-        new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst))
-            .buildSearchArgument();
+    ConvertAstToSearchArg convertAstToSearchArg = new ConvertAstToSearchArg(conf, SerializationUtilities.deserializeExpression(serialAst));
+    assertFalse(convertAstToSearchArg.isPartial());
+    SearchArgument sarg = convertAstToSearchArg.buildSearchArgument();
     assertEquals("leaf-0", sarg.getExpression().toOldString());
     assertEquals(1, sarg.getLeaves().size());
     PredicateLeaf leaf = sarg.getLeaves().get(0);

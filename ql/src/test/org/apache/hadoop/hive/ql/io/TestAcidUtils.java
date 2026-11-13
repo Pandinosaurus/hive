@@ -9,18 +9,21 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io;
 
 import static org.apache.hadoop.hive.common.AcidConstants.SOFT_DELETE_TABLE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.spy;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -30,11 +33,15 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.common.ValidCleanerWriteIdList;
 import org.apache.hadoop.hive.common.ValidCompactorWriteIdList;
 import org.apache.hadoop.hive.common.ValidReadTxnList;
 import org.apache.hadoop.hive.common.ValidReaderWriteIdList;
 import org.apache.hadoop.hive.common.ValidTxnList;
+import org.apache.hadoop.hive.common.ValidWriteIdList;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
@@ -48,6 +55,7 @@ import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.shims.HadoopShims.HdfsFileStatusWithId;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class TestAcidUtils {
 
@@ -111,7 +119,7 @@ public class TestAcidUtils {
   }
 
   @Test
-  public void testParsing() throws Exception {
+  public void testParsing() {
     Configuration conf = new Configuration();
     MockFileSystem fs = new MockFileSystem(conf,
         //new MockFile("mock:/tmp/base_000123/bucket_00001", 500, new byte[0]),
@@ -176,7 +184,7 @@ public class TestAcidUtils {
         new MockFile("mock:/tbl/part1/_done", 0, new byte[0]),
         new MockFile("mock:/tbl/part1/subdir/000000_0", 0, new byte[0]));
     AcidDirectory dir = AcidUtils.getAcidState(fs, new MockPath(fs, "/tbl/part1"), conf,
-        new ValidReaderWriteIdList("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
+        ValidReaderWriteIdList.fromValue("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
     assertEquals(null, dir.getBaseDirectory());
     assertEquals(0, dir.getCurrentDirectories().size());
     assertEquals(0, dir.getObsolete().size());
@@ -212,7 +220,7 @@ public class TestAcidUtils {
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
     AcidDirectory dir = AcidUtils.getAcidState(fs, new MockPath(fs, "mock:/tbl/part1"), conf,
-        new ValidReaderWriteIdList("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
+        ValidReaderWriteIdList.fromValue("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
     assertEquals(null, dir.getBaseDirectory());
     List<Path> obsolete = dir.getObsolete();
     assertEquals(2, obsolete.size());
@@ -255,7 +263,7 @@ public class TestAcidUtils {
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
     AcidDirectory dir = AcidUtils.getAcidState(fs, new MockPath(fs, "mock:/tbl/part1"), conf,
-        new ValidReaderWriteIdList("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
+        ValidReaderWriteIdList.fromValue("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
     assertEquals("mock:/tbl/part1/base_49", dir.getBaseDirectory().toString());
     List<Path> obsoletes = dir.getObsolete();
     assertEquals(5, obsoletes.size());
@@ -305,7 +313,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:150:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:150:"
         + Long.MAX_VALUE + ":"), null, false);
     // Obsolete list should include the two original bucket files, and the old base dir
     List<Path> obsoletes = dir.getObsolete();
@@ -328,7 +336,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "mock:/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:100:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:100:"
         + Long.MAX_VALUE + ":"), null, false);
     assertEquals("mock:/tbl/part1/base_50", dir.getBaseDirectory().toString());
     List<Path> obsolete = dir.getObsolete();
@@ -365,7 +373,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "mock:/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:100:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:100:"
         + Long.MAX_VALUE + ":"), null, false);
     assertEquals("mock:/tbl/part1/base_50", dir.getBaseDirectory().toString());
     List<Path> obsolete = dir.getObsolete();
@@ -394,7 +402,7 @@ public class TestAcidUtils {
     //hypothetically, txn 50 is open and writing write ID 4
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[] {50}, new BitSet(), 1000, 55).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:100:4:4"), null,
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:100:4:4"), null,
         false);
     List<AcidUtils.ParsedDelta> delts = dir.getCurrentDirectories();
     assertEquals(2, delts.size());
@@ -419,7 +427,7 @@ public class TestAcidUtils {
     //hypothetically, txn 50 is open and writing write ID 4
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[] {50}, new BitSet(), 1000, 55).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:100:4:4"), null,
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:100:4:4"), null,
         false);
     List<AcidUtils.ParsedDelta> delts = dir.getCurrentDirectories();
     assertEquals(2, delts.size());
@@ -436,7 +444,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "mock:/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidCompactorWriteIdList("tbl:4:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidCompactorWriteIdList.fromValue("tbl:4:"
         + Long.MAX_VALUE), null, false);
     List<AcidUtils.ParsedDelta> delts = dir.getCurrentDirectories();
     assertEquals(1, delts.size());
@@ -455,7 +463,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "mock:/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidCompactorWriteIdList("tbl:3:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidCompactorWriteIdList.fromValue("tbl:3:"
         + Long.MAX_VALUE), null, false);
     List<AcidUtils.ParsedDelta> delts = dir.getCurrentDirectories();
     assertEquals(1, delts.size());
@@ -482,7 +490,7 @@ public class TestAcidUtils {
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
     AcidDirectory dir = AcidUtils.getAcidState(fs, new MockPath(fs, "mock:/tbl/part1"), conf,
-        new ValidReaderWriteIdList("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
+        ValidReaderWriteIdList.fromValue("tbl:100:" + Long.MAX_VALUE + ":"), null, false);
     assertEquals("mock:/tbl/part1/base_49", dir.getBaseDirectory().toString());
     List<Path> obsoletes = dir.getObsolete();
     assertEquals(7, obsoletes.size());
@@ -524,7 +532,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "mock:/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:100:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:100:"
         + Long.MAX_VALUE + ":"), null, false);
     assertEquals("mock:/tbl/part1/base_50", dir.getBaseDirectory().toString());
     List<Path> obsolete = dir.getObsolete();
@@ -555,7 +563,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "mock:/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:100:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:100:"
         + Long.MAX_VALUE + ":"), null, false);
     List<Path> obsolete = dir.getObsolete();
     assertEquals(1, obsolete.size());
@@ -584,7 +592,7 @@ public class TestAcidUtils {
     Path part = new MockPath(fs, "mock:/tbl/part1");
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[0], new BitSet(), 1000, Long.MAX_VALUE).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidCompactorWriteIdList("tbl:4:"
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidCompactorWriteIdList.fromValue("tbl:4:"
         + Long.MAX_VALUE + ":"), null, false);
     List<AcidUtils.ParsedDelta> delts = dir.getCurrentDirectories();
     assertEquals(2, delts.size());
@@ -609,7 +617,7 @@ public class TestAcidUtils {
     //hypothetically, txn 50 is open and writing write ID 4
     conf.set(ValidTxnList.VALID_TXNS_KEY,
         new ValidReadTxnList(new long[] {50}, new BitSet(), 1000, 55).writeToString());
-    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, new ValidReaderWriteIdList("tbl:100:4:4"), null,
+    AcidDirectory dir = AcidUtils.getAcidState(fs, part, conf, ValidReaderWriteIdList.fromValue("tbl:100:4:4"), null,
         false);
     List<AcidUtils.ParsedDelta> delts = dir.getCurrentDirectories();
     assertEquals(3, delts.size());
@@ -710,4 +718,262 @@ public class TestAcidUtils {
     parameters.remove(SOFT_DELETE_TABLE);
     Assert.assertFalse(AcidUtils.isTableSoftDeleteEnabled(table, conf));
   }
+
+  @Test
+  public void testShouldGetHDFSSnapShots() throws Exception {
+    MockFileSystem fs = new MockFileSystem(new HiveConf(),
+        new MockFile("mock:/tbl/part1/.hive-staging_dir/-ext-10002", 500, new byte[0]),
+        new MockFile("mock:/tbl/part2/.hive-staging_dir", 500, new byte[0]),
+        new MockFile("mock:/tbl/part1/_tmp_space.db", 500, new byte[0]),
+        new MockFile("mock:/tbl/part1/delta_1_1/bucket-0000-0000", 500, new byte[0]));
+    Path path = new MockPath(fs, "/tbl");
+
+    Map<Path, AcidUtils.HdfsDirSnapshot> hdfsDirSnapshots = AcidUtils.getHdfsDirSnapshots(fs, path);
+    assertEquals(1, hdfsDirSnapshots.size());
+    assertEquals("mock:/tbl/part1/delta_1_1", hdfsDirSnapshots.keySet().stream().findFirst().get().toString());
+  }
+
+  @Test
+  public void testShouldNotThrowFNFEWhenHiveStagingDirectoryIsRemovedWhileFetchingHDFSSnapshots() throws Exception {
+    MockFileSystem fs = new MockFileSystem(new HiveConf(),
+        new MockFile("mock:/tbl/part1/.hive-staging_dir/-ext-10002", 500, new byte[0]),
+        new MockFile("mock:/tbl/part2/.hive-staging_dir", 500, new byte[0]),
+        new MockFile("mock:/tbl/part1/_tmp_space.db", 500, new byte[0]),
+        new MockFile("mock:/tbl/part1/delta_1_1/bucket-0000-0000", 500, new byte[0]));
+    Path path = new MockPath(fs, "/tbl");
+    Path stageDir = new MockPath(fs, "mock:/tbl/part1/.hive-staging_dir");
+    FileSystem mockFs = spy(fs);
+    Mockito.doThrow(new FileNotFoundException("")).when(mockFs).listLocatedStatus(stageDir);
+    try {
+      Map<Path, AcidUtils.HdfsDirSnapshot> hdfsDirSnapshots = AcidUtils.getHdfsDirSnapshots(mockFs, path);
+      assertEquals(1, hdfsDirSnapshots.size());
+      assertEquals("mock:/tbl/part1/delta_1_1", hdfsDirSnapshots.keySet().stream().findFirst().get().toString());
+    }
+    catch (FileNotFoundException fnf) {
+      Assert.fail("Should not throw FileNotFoundException when a directory is removed while fetching HDFSSnapshots");
+    }
+  }
+
+  @Test
+  public void testIsValidBaseCompactedBaseOnlyHighWaterMarkSet() throws Exception {
+    // Only highWaterMark is set in the validWriteIdList. minOpenWriteId is not set and there are no exceptions
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {}, new BitSet(), 10L));
+
+    checkBase(0L, Long.MIN_VALUE, cleanerWriteIdList, true,
+        "Base after first compaction in case of non-acid to acid table conversion is always valid");
+    checkBase(2L, 2L, cleanerWriteIdList, true,
+        "Base with writeId smaller than highWaterMark should be valid");
+    checkBase(10L, 10L, cleanerWriteIdList, true,
+        "Base with writeId equals to highWaterMark should be valid");
+    checkBase(11L, 11L, cleanerWriteIdList, false,
+        "Base with writeId greater than highWaterMark should not be valid");
+  }
+
+  @Test
+  public void testIsValidBaseNotCompactedBaseOnlyHighWaterMarkSet() throws Exception {
+    // Only highWaterMark is set in the validWriteIdList. minOpenWriteId is not set and there are no exceptions
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {}, new BitSet(), 10L));
+
+    checkNotCompactedBase(2L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId smaller than highWaterMark should be valid");
+    checkNotCompactedBase(10L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId equals to highWaterMark should be valid");
+    checkNotCompactedBase(11L, cleanerWriteIdList, false,
+        "Non-compacted base with writeId greater than highWaterMark should not be valid");
+  }
+
+  @Test
+  public void testIsValidBaseCompactedBaseMinOpenWriteIdGreaterThanHighWaterMark() throws Exception {
+    // Both highWaterMark and the minOpenWriteId are set and minOpenWriteId > highWaterMark
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {13L}, new BitSet(), 10L, 13L));
+
+    checkBase(5L, 5L, cleanerWriteIdList, true,
+        "Base with writeId smaller than highWaterMark and minOpenWriteId should be valid");
+    checkBase(10L, 10L, cleanerWriteIdList, true,
+        "Base with writeId equals to highWaterMark and smaller than minOpenWriteId should be valid");
+    checkBase(11L, 11L, cleanerWriteIdList, false,
+        "Base with writeId greater than highWaterMark and smaller than minOpenWriteId should not be valid");
+  }
+
+  @Test
+  public void testIsValidBaseNotCompactedBaseMinOpenWriteIdGreaterThanHighWaterMark() throws Exception {
+    // Both highWaterMark and the minOpenWriteId are set and minOpenWriteId > highWaterMark
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {13L}, new BitSet(), 10L, 13L));
+
+    checkNotCompactedBase(5L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId smaller than highWaterMark and minOpenWriteId should be valid");
+    checkNotCompactedBase(10L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId equals to highWaterMark and smaller than minOpenWriteId should be valid");
+    checkNotCompactedBase(11L, cleanerWriteIdList, false,
+        "Non-compacted base with writeId greater than highWaterMark and smaller than minOpenWriteId should not be valid");
+  }
+
+  @Test
+  public void testIsValidBaseCompactedBaseMinOpenWriteIdSmallerThanHighWaterMark() throws Exception {
+    // Both highWaterMark and minOpenWriteId are set and minOpenWriteId < highWaterMark
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {4L}, new BitSet(), 10L, 4L));
+
+    checkBase(2L, 2L, cleanerWriteIdList, true,
+        "Base with writeId smaller than highWaterMark and minOpenWriteId should be valid");
+    checkBase(4L, 4L, cleanerWriteIdList, false,
+        "Base with writeId smaller than highWaterMark and equals to minOpenWriteId should not be valid");
+    checkBase(5L, 5L, cleanerWriteIdList, false,
+        "Base with writeId smaller than highWaterMark and greater than minOpenWriteId should not be valid");
+  }
+
+  @Test
+  public void testIsValidBaseNotCompactedBaseMinOpenWriteIdSmallerThanHighWaterMark() throws Exception {
+    // Both highWaterMark and minOpenWriteId are set and minOpenWriteId < highWaterMark
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {4L}, new BitSet(), 10L, 4L));
+
+    checkNotCompactedBase(2L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId smaller than highWaterMark and minOpenWriteId should be valid");
+    checkNotCompactedBase(4L, cleanerWriteIdList, false,
+        "Non-compacted base with writeId smaller than highWaterMark and equals to minOpenWriteId should not be valid");
+    checkNotCompactedBase(5L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId smaller than highWaterMark and greater than minOpenWriteId should be valid");
+  }
+
+  @Test
+  public void testIsValidBaseCompactedBaseWithAbortedWriteIds() throws Exception {
+    // minOpenWriteId is not set, but there are aborted writeIds
+    // For compacted base directories, the writeId is not checked against the exception list, as it is checked earlier
+    BitSet aborted = new BitSet();
+    aborted.set(0);
+    aborted.set(1);
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {3L, 5L}, aborted, 10L));
+
+    checkBase(2L, 2L, cleanerWriteIdList, true,
+        "Base with writeId smaller than highWaterMark should be valid");
+    checkBase(3L, 3L, cleanerWriteIdList, true,
+        "Base with writeId smaller than highWaterMark should be valid");
+    checkBase(5L, 5L, cleanerWriteIdList, true,
+        "Base with writeId smaller than highWaterMark should be valid");
+    checkBase(10L, 10L, cleanerWriteIdList, true,
+        "Base with writeId equals to highWaterMark should be valid");
+    checkBase(12L, 12L, cleanerWriteIdList, false,
+        "Base with writeId greater than highWaterMark should not be valid");
+  }
+
+  @Test
+  public void testIsValidBaseNotCompactedBaseWithAbortedWriteIds() throws Exception {
+    // minOpenWriteId is not set, but there are aborted writeIds
+    // For not compacted base directories, the writeId is checked if it is present in the exception list. If it is
+    // listed as exception, it should not be valid.
+    BitSet aborted = new BitSet();
+    aborted.set(0);
+    aborted.set(1);
+    ValidWriteIdList cleanerWriteIdList = new ValidCleanerWriteIdList(
+        new ValidReaderWriteIdList("testBaseTable", new long[] {3L, 5L}, aborted, 10L));
+
+    checkNotCompactedBase(0L, cleanerWriteIdList, true,
+        "Non-compacted base after first compaction in case of non-acid to acid table conversion is always valid");
+    checkNotCompactedBase(2L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId smaller than highWaterMark should be valid");
+    checkNotCompactedBase(3L, cleanerWriteIdList, false,
+        "Non-compacted base with aborted writeId should not be valid");
+    checkNotCompactedBase(5L, cleanerWriteIdList, false,
+        "Non-compacted base with aborted writeId should not be valid");
+    checkNotCompactedBase(10L, cleanerWriteIdList, true,
+        "Non-compacted base with writeId equals to highWaterMark should be valid");
+    checkNotCompactedBase(12L, cleanerWriteIdList, false,
+        "Non-compacted base with writeId greater than highWaterMark should not be valid");
+  }
+
+  private void checkNotCompactedBase(long writeId, ValidWriteIdList cleanerWriteIdList, boolean valid,
+      String errorMessage) throws IOException {
+    checkBase(writeId, 0L, cleanerWriteIdList, valid, errorMessage);
+  }
+
+  private void checkBase(long writeId, long visibilityTxnId, ValidWriteIdList cleanerWriteIdList, boolean valid,
+      String errorMessage) throws IOException {
+    AcidUtils.ParsedBaseLight p = new AcidUtils.ParsedBaseLight(writeId, visibilityTxnId,
+        new Path("testpath"));
+    if (valid) {
+      Assert.assertTrue(errorMessage, AcidUtils.isValidBase(p, cleanerWriteIdList, null,
+          new MockHdfsDirSnapshotImpl()));
+    } else {
+      Assert.assertFalse(errorMessage, AcidUtils.isValidBase(p, cleanerWriteIdList, null,
+          new MockHdfsDirSnapshotImpl()));
+    }
+  }
+
+  private final class MockHdfsDirSnapshotImpl implements AcidUtils.HdfsDirSnapshot {
+    @Override
+    public Path getPath() {
+      return null;
+    }
+    @Override
+    public void addOrcAcidFormatFile(FileStatus fStatus) {
+      // this method is not used by the tests, no need to add an implementation
+    }
+    @Override
+    public FileStatus getOrcAcidFormatFile() {
+      return null;
+    }
+    @Override
+    public void addMetadataFile(FileStatus fStatus) {
+      // this method is not used by the tests, no need to add an implementation
+    }
+    @Override
+    public FileStatus getMetadataFile() {
+      return null;
+    }
+    @Override
+    public List<FileStatus> getFiles() {
+      return null;
+    }
+    @Override
+    public void addFile(FileStatus file) {
+      // this method is not used by the tests, no need to add an implementation
+    }
+    @Override
+    public Long getFileId() {
+      return null;
+    }
+    @Override
+    public Boolean isRawFormat() {
+      return null;
+    }
+    @Override
+    public void setIsRawFormat(boolean isRawFormat) {
+      // this method is not used by the tests, no need to add an implementation
+    }
+    @Override
+    public Boolean isBase() {
+      return null;
+    }
+    @Override
+    public void setIsBase(boolean isBase) {
+      // this method is not used by the tests, no need to add an implementation
+    }
+    @Override
+    public Boolean isValidBase() {
+      return null;
+    }
+    @Override
+    public void setIsValidBase(boolean isValidBase) {
+      // this method is not used by the tests, no need to add an implementation
+    }
+    @Override
+    public Boolean isCompactedBase() {
+      return null;
+    }
+    @Override
+    public void setIsCompactedBase(boolean isCompactedBase) {
+      // this method is not used by the tests, no need to add an implementation
+    }
+    @Override
+    public boolean contains(Path path) {
+      return false;
+    }
+  }
+
 }

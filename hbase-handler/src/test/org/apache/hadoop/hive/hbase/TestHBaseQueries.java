@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.hbase;
@@ -27,6 +28,7 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.DriverFactory;
 import org.apache.hadoop.hive.ql.IDriver;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorException;
@@ -52,7 +54,7 @@ public class TestHBaseQueries {
    * databases, etc.), otherwise those will be visible for subsequent test methods too.
    */
   public TestHBaseQueries() throws Exception {
-    baseConf = new HiveConf(HBaseConfiguration.create(), TestHBaseQueries.class);
+    baseConf = new HiveConfForTest(HBaseConfiguration.create(), TestHBaseQueries.class);
     baseConf.set(HiveConf.ConfVars.HIVE_AUTHORIZATION_MANAGER.varname, SQLStdHiveAuthorizerFactory.class.getName());
 
     // set up Zookeeper
@@ -105,7 +107,7 @@ public class TestHBaseQueries {
     conf.setBoolVar(HiveConf.ConfVars.HIVE_STRICT_MANAGED_TABLES, true);
     conf.setBoolVar(HiveConf.ConfVars.CREATE_TABLES_AS_ACID, true);
     conf.setBoolVar(HiveConf.ConfVars.HIVE_CREATE_TABLES_AS_INSERT_ONLY, true);
-    conf.setVar(HiveConf.ConfVars.HIVEDEFAULTMANAGEDFILEFORMAT, "ORC");
+    conf.setVar(HiveConf.ConfVars.HIVE_DEFAULT_MANAGED_FILEFORMAT, "ORC");
 
     driver = DriverFactory.newDriver(conf);
 

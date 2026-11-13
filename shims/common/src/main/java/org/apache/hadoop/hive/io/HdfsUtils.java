@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.io;
@@ -39,6 +40,7 @@ import org.apache.hadoop.fs.permission.AclStatus;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 
+import org.apache.hadoop.util.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,9 +196,8 @@ public static class HadoopFileStatus {
   private final FileStatus fileStatus;
   private final AclStatus aclStatus;
 
-  public HadoopFileStatus(Configuration conf, FileSystem fs, Path file) throws IOException {
+  private HadoopFileStatus(Configuration conf, FileSystem fs, FileStatus fileStatus, Path file) {
 
-    FileStatus fileStatus = fs.getFileStatus(file);
     AclStatus aclStatus = null;
     if (Objects.equal(conf.get("dfs.namenode.acls.enabled"), "true")) {
       //Attempt extended Acl operations only if its enabled, but don't fail the operation regardless.
@@ -211,6 +212,12 @@ public static class HadoopFileStatus {
     this.aclStatus = aclStatus;
   }
 
+  public static HadoopFileStatus createInstance(Configuration conf, FileSystem fs, Path file) throws IOException {
+    FileStatus fileStatus = fs.getFileStatus(file);
+    return new HadoopFileStatus(conf, fs, fileStatus, file);
+  }
+
+  @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "intended")
   public FileStatus getFileStatus() {
     return fileStatus;
   }

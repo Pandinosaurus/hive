@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.tez;
 
@@ -95,6 +96,7 @@ public class ReduceRecordSource implements RecordSource {
 
   private VectorDeserializeRow<LazyBinaryDeserializeRead> valueLazyBinaryDeserializeToRow;
 
+  private VectorizedRowBatchCtx batchContext;
   private VectorizedRowBatch batch;
 
   // number of columns pertaining to keys in a vectorized row batch
@@ -178,6 +180,7 @@ public class ReduceRecordSource implements RecordSource {
 
         rowObjectInspector = Utilities.constructVectorizedReduceRowOI(keyStructInspector,
             valueStructInspectors);
+        this.batchContext = batchContext;
         batch = batchContext.createVectorizedRowBatch();
 
         // Setup vectorized deserialization for the key and value.
@@ -421,6 +424,9 @@ public class ReduceRecordSource implements RecordSource {
   private void processVectorGroup(BytesWritable keyWritable,
           Iterable<Object> values, byte tag) throws HiveException, IOException {
 
+    if (reducer.batchNeedsClone()) {
+      batch = batchContext.createVectorizedRowBatch();
+    }
     Preconditions.checkState(batch.size == 0);
 
     // Deserialize key into vector row columns.
@@ -496,7 +502,10 @@ public class ReduceRecordSource implements RecordSource {
         }
         reducer.process(batch, tag);
       }
-      batch.reset();
+      // reset only when we reuse the batch
+      if (!reducer.batchNeedsClone()) {
+        batch.reset();
+      }
     } catch (Exception e) {
       String rowString = null;
       try {
@@ -512,6 +521,14 @@ public class ReduceRecordSource implements RecordSource {
     }
   }
 
+
+  /**
+   * Closes resources and returns whether the records were successfully processed.
+   * @return boolean indicating the success status:
+   * - true: All data has been processed successfully without exceptions.
+   * - false: Exceptions were encountered during data processing.
+   * @throws Exception unexpected errors occur during closing.
+   */
   boolean close() throws Exception {
     try {
       if (handleGroupKey && groupKey != null) {
@@ -525,7 +542,7 @@ public class ReduceRecordSource implements RecordSource {
             + e.getMessage(), e);
       }
     }
-    return abort;
+    return !abort;
   }
 
   public ObjectInspector getObjectInspector() {

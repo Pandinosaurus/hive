@@ -9,16 +9,15 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
-
-import com.google.common.base.Preconditions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,6 @@ import org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFBaseCompare;
-import org.apache.hadoop.hive.ql.udf.generic.GenericUDFCase;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFWhen;
 import org.apache.hadoop.hive.serde2.objectinspector.ConstantObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
@@ -118,8 +116,7 @@ public class ExprNodeGenericFuncEvaluator extends ExprNodeEvaluator<ExprNodeGene
       }
     }
     genericUDF = expr.getGenericUDF();
-    if (isEager &&
-        (genericUDF instanceof GenericUDFCase || genericUDF instanceof GenericUDFWhen)) {
+    if (isEager && genericUDF instanceof GenericUDFWhen) {
       throw new HiveException("Stateful expressions cannot be used inside of CASE");
     }
   }
@@ -170,7 +167,7 @@ public class ExprNodeGenericFuncEvaluator extends ExprNodeEvaluator<ExprNodeGene
     // when "hive.fetch.task.conversion" occurs.
     if (context != null) {
       context.setup(genericUDF);
-    } else {
+    } else if (MapredContext.needConfigure(genericUDF)) {
       // It is a bit unfortunate that currently the UDF configuration signature expects a
       // MapredContext (even if execution is tez or another engine) - this causes an
       // impedence mismatch. For example: MapredContext has Reporter objects that may or

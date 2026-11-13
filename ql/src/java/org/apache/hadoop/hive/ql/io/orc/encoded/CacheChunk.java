@@ -7,13 +7,14 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io.orc.encoded;
 
@@ -25,13 +26,11 @@ import org.apache.hadoop.hive.common.io.DiskRange;
 import org.apache.hadoop.hive.common.io.DiskRangeList;
 import org.apache.hadoop.hive.common.io.encoded.MemoryBuffer;
 
-import com.google.common.annotations.VisibleForTesting;
-
 /**
- * DiskRange containing encoded, uncompressed data from cache.
- * It should be hidden inside EncodedReaderImpl, but we need to expose it for tests.
+ * DiskRange containing encoded, uncompressed data from cache. Beyond ORC's own EncodedReaderImpl,
+ * it is part of the cache's public read surface: any reader consuming cached chunks — ORC and
+ * Parquet alike — receives them typed as CacheChunk from the LowLevelCache.
  */
-@VisibleForTesting
 public class CacheChunk extends DiskRangeList {
   protected MemoryBuffer buffer;
 

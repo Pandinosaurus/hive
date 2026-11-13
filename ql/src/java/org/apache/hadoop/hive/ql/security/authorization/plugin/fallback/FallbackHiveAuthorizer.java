@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.security.authorization.plugin.fallback;
@@ -221,15 +222,15 @@ public class FallbackHiveAuthorizer extends AbstractHiveAuthorizer {
     if (sessionCtx.getClientType() == HiveAuthzSessionContext.CLIENT_TYPE.HIVESERVER2
             && hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_AUTHORIZATION_ENABLED)) {
 
-      // Configure PREEXECHOOKS with DisallowTransformHook to disallow transform queries
-      String hooks = hiveConf.getVar(HiveConf.ConfVars.PREEXECHOOKS).trim();
+      // Configure PRE_EXEC_HOOKS with DisallowTransformHook to disallow transform queries
+      String hooks = hiveConf.getVar(HiveConf.ConfVars.PRE_EXEC_HOOKS).trim();
       if (hooks.isEmpty()) {
         hooks = DisallowTransformHook.class.getName();
       } else {
         hooks = hooks + "," + DisallowTransformHook.class.getName();
       }
       LOG.debug("Configuring hooks : " + hooks);
-      hiveConf.setVar(HiveConf.ConfVars.PREEXECHOOKS, hooks);
+      hiveConf.setVar(HiveConf.ConfVars.PRE_EXEC_HOOKS, hooks);
 
       SettableConfigUpdater.setHiveConfWhiteList(hiveConf);
       String curBlackList = hiveConf.getVar(HiveConf.ConfVars.HIVE_SERVER2_BUILTIN_UDF_BLACKLIST);

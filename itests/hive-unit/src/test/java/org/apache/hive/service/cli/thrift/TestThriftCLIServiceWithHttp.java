@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service.cli.thrift;
@@ -47,9 +48,6 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.THttpClient;
 import org.apache.thrift.transport.TTransport;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -71,7 +69,7 @@ public class TestThriftCLIServiceWithHttp extends ThriftCLIServiceTest {
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
     // Set up the base class
-    ThriftCLIServiceTest.setUpBeforeClass();
+    initConf(TestThriftCLIServiceWithHttp.class);
 
     assertNotNull(port);
     assertNotNull(hiveServer2);
@@ -83,19 +81,12 @@ public class TestThriftCLIServiceWithHttp extends ThriftCLIServiceTest {
     hiveConf.setVar(ConfVars.HIVE_SERVER2_AUTHENTICATION, HiveAuthConstants.AuthTypes.NOSASL.toString());
     hiveConf.setVar(ConfVars.HIVE_SERVER2_TRANSPORT_MODE, transportMode);
     hiveConf.setVar(ConfVars.HIVE_SERVER2_THRIFT_HTTP_PATH, thriftHttpPath);
+    // query history adds no value to this test
+    // this should be handled with HiveConfForTests when it's used here too
+    hiveConf.setBoolVar(ConfVars.HIVE_QUERY_HISTORY_ENABLED, false);
 
     startHiveServer2WithConf(hiveConf);
 
     client = getServiceClientInternal();
   }
-
-  /**
-   * @throws java.lang.Exception
-   */
-  @AfterClass
-  public static void tearDownAfterClass() throws Exception {
-    ThriftCLIServiceTest.tearDownAfterClass();
-  }
-
-  
 }

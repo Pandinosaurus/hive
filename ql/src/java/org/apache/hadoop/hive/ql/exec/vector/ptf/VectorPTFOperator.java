@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.ptf;
@@ -21,6 +22,7 @@ package org.apache.hadoop.hive.ql.exec.vector.ptf;
 import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -28,7 +30,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.type.DataTypePhysicalVariation;
 import org.apache.hadoop.hive.common.type.HiveIntervalDayTime;
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.common.type.DataTypePhysicalVariation;
 import org.apache.hadoop.hive.ql.CompilationOpContext;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
@@ -55,6 +56,7 @@ import org.apache.hadoop.hive.ql.plan.VectorDesc;
 import org.apache.hadoop.hive.ql.plan.VectorPTFDesc;
 import org.apache.hadoop.hive.ql.plan.VectorPTFInfo;
 import org.apache.hadoop.hive.ql.plan.api.OperatorType;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
@@ -101,9 +103,6 @@ public class VectorPTFOperator extends Operator<PTFDesc>
   private String[] outputColumnNames;
   private TypeInfo[] outputTypeInfos;
   private DataTypePhysicalVariation[] outputDataTypePhysicalVariations;
-
-  private int evaluatorCount;
-  private String[] evaluatorFunctionNames;
 
   private int[] orderColumnMap;
   private Type[] orderColumnVectorTypes;
@@ -190,9 +189,6 @@ public class VectorPTFOperator extends Operator<PTFDesc>
      */
     vOutContext = new VectorizationContext(getName(), this.vContext);
     setupVOutContext();
-
-    evaluatorFunctionNames = this.vectorDesc.getEvaluatorFunctionNames();
-    evaluatorCount = evaluatorFunctionNames.length;
 
     orderColumnMap = vectorPTFInfo.getOrderColumnMap();
     orderColumnVectorTypes = vectorPTFInfo.getOrderColumnVectorTypes();
@@ -332,8 +328,7 @@ public class VectorPTFOperator extends Operator<PTFDesc>
     }
 
     streamingEvaluatorNums = VectorPTFDesc.getStreamingEvaluatorNums(evaluators);
-
-    allEvaluatorsAreStreaming = (streamingEvaluatorNums.length == evaluatorCount);
+    allEvaluatorsAreStreaming = VectorPTFDesc.getAllEvaluatorsAreStreaming(evaluators);
 
     groupBatches = new VectorPTFGroupBatches(
         hconf, vectorDesc.getVectorizedPTFMaxMemoryBufferingBatchCount());
@@ -348,6 +343,7 @@ public class VectorPTFOperator extends Operator<PTFDesc>
         bufferedTypeInfos,
         orderColumnMap,
         keyWithoutOrderColumnMap,
+        vectorPTFInfo.getPartitionColumnMap(),
         overflowBatch);
 
     isFirstPartition = true;
@@ -388,6 +384,18 @@ public class VectorPTFOperator extends Operator<PTFDesc>
       }
     }
 
+    /*
+     Evaluate input expressions on the original batch before it gets buffered.
+     This ensures that complex expressions read from the correct columns in
+     the original batch and write their results to scratch columns, which
+     are then buffered.
+    */
+    for (VectorPTFEvaluatorBase evaluator : evaluators) {
+      if (evaluator.inputVecExpr != null) {
+        evaluator.inputVecExpr.evaluate(batch);
+      }
+    }
+
     if (isFirstPartition) {
       isFirstPartition = false;
       setCurrentPartition(batch);
@@ -408,7 +416,7 @@ public class VectorPTFOperator extends Operator<PTFDesc>
     if (allEvaluatorsAreStreaming) {
       // We can process this batch immediately.
       groupBatches.evaluateStreamingGroupBatch(batch, isLastGroupBatch);
-      forward(batch, null);
+      vectorForward(batch);
     } else {
       // only collecting the batch for later evaluation
       groupBatches.bufferGroupBatch(batch, isLastGroupBatch);
@@ -428,10 +436,11 @@ public class VectorPTFOperator extends Operator<PTFDesc>
      * 1. order columns
      * 2. the non-key input columns
      * 3. any streaming columns that will already have their output values
-     * 4. scratch columns (as they're used by input expressions of evaluators)
+     * 4. scratch columns holding the results of evaluator input expressions
      */
+    final int[] bufferedScratchIndices = getEvaluatorInputScratchIndices();
     int bufferedColumnCount = orderColumnMap.length + nonKeyInputColumnMap.length
-        + streamingEvaluatorNums.length + scratchColumnPositions.length;
+        + streamingEvaluatorNums.length + bufferedScratchIndices.length;
     this.bufferedColumnMap = new int[bufferedColumnCount];
     this.bufferedTypeInfos = new TypeInfo[bufferedColumnCount];
 
@@ -467,47 +476,53 @@ public class VectorPTFOperator extends Operator<PTFDesc>
       bufferedTypeInfos[bufferedMapIndex] = outputTypeInfos[streamingEvaluatorNum];
     }
 
-    for (int i = 0; i < scratchColumnPositions.length; i++) {
+    for (int i = 0; i < bufferedScratchIndices.length; i++) {
+      final int scratchIndex = bufferedScratchIndices[i];
       final int bufferedMapIndex = orderColumnCount + nonKeyInputColumnCount + streamingEvaluatorCount + i;
-      bufferedColumnMap[bufferedMapIndex] = scratchColumnPositions[i];
-      bufferedTypeInfos[bufferedMapIndex] = TypeInfoUtils.getTypeInfoFromTypeString(vOutContext.getScratchColumnTypeNames()[i]);
+      bufferedColumnMap[bufferedMapIndex] = scratchColumnPositions[scratchIndex];
+      bufferedTypeInfos[bufferedMapIndex] =
+          TypeInfoUtils.getTypeInfoFromTypeString(vOutContext.getScratchColumnTypeNames()[scratchIndex]);
     }
   }
 
+  /**
+   * Returns the indices (into scratchColumnPositions) of the scratch columns written by evaluator
+   * input expressions. Those are evaluated before a batch is buffered, so their results must be
+   * buffered too. The other scratch columns belong to child operators, which recompute them after
+   * the batch is forwarded; buffering them is wasted work and fails for complex types.
+   */
+  private int[] getEvaluatorInputScratchIndices() {
+    final Set<Integer> inputExprColumns = Arrays.stream(evaluators)
+        .filter(evaluator -> evaluator.inputVecExpr != null)
+        .map(evaluator -> evaluator.inputVecExpr.getOutputColumnNum())
+        .collect(Collectors.toSet());
+    return IntStream.range(0, scratchColumnPositions.length)
+        .filter(i -> inputExprColumns.contains(scratchColumnPositions[i]))
+        .toArray();
+  }
+
   private void initExpressionColumns() {
-    for (int i = 0; i < evaluators.length; i++) {
-      VectorPTFEvaluatorBase evaluator = evaluators[i];
+    for (VectorPTFEvaluatorBase evaluator : evaluators) {
       /*
-       * Non-streaming evaluators work on buffered batches, we need to adapt them. Before PTF
-       * bounded start vectorization (HIVE-24761), VectorExpression.outputColumnNum was closed and
-       * VectorExpression.inputColumnNum didn't even exist (even though the vast majority of
-       * VectorExpression subclasses use at least 1 input column). Since VectorPTFOperator and
-       * VectorPTFGroupBatches work on modified batches (by not storing all the columns, and having
-       * ordering columns first), the expressions planned in compile-time won't work with the
-       * original config (column layout). It would make sense to move this logic to compile time,
-       * because here in runtime, a very simple mapping (bufferedColumnMap) is used, so it might be
-       * used. However, vectorized expression compilation affects many layers of code (having
-       * VectorizationContext as the common scope), and moving the calculation of bufferedColumnMap
-       * and this override logic to compile-time would create much more complicated behavior there
-       * (probably involving hacking most of the time, or maybe a great re-design) just because of
-       * the optimized column layout of the PTF vectorization.
+       * Non-streaming window function evaluators (like SUM or LEAD) work on packed, buffered batches.
+       * VectorPTFOperator and VectorPTFGroupBatches significantly modify the batch structure to save memory
+       * (e.g. by dropping unused columns and moving ordering columns to the front).
+       *
+       * Because of this dense packing, the absolute column indices assigned by the compiler (e.g., Index 15)
+       * are no longer valid for the buffer (where it might now be Index 2).
+       * Therefore, we must dynamically map the evaluator's inputColumnNum to its new location in the packed array.
+       *
+       * NOTE: We ONLY patch the evaluator's input index here. We specifically DO NOT patch
+       * evaluator.inputVecExpr (the math expressions like A+B) because those are now evaluated eagerly
+       * on the original batch before any packing occurs, so their absolute indices remain perfectly valid.
        */
       if (!evaluator.streamsResult()) {
-        evaluator.inputColumnNum = IntStream.range(0, bufferedColumnMap.length)
-            .filter(j -> bufferedColumnMap[j] == evaluator.inputColumnNum).findFirst()
-            .orElseGet(() -> evaluator.inputColumnNum);
+        evaluator.inputColumnNum =
+            IntStream.range(0, bufferedColumnMap.length)
+                .filter(j -> bufferedColumnMap[j] == evaluator.inputColumnNum)
+                .findFirst()
+                .orElseGet(() -> evaluator.inputColumnNum);
 
-        if (evaluator.inputVecExpr != null) {
-          for (int j = 0; j <  evaluator.inputVecExpr.inputColumnNum.length; j++){
-            final int jj = j; // need a final in stream filter
-            evaluator.inputVecExpr.inputColumnNum[jj] = IntStream.range(0, bufferedColumnMap.length)
-                .filter(k -> bufferedColumnMap[k] == evaluator.inputVecExpr.inputColumnNum[jj])
-                .findFirst().orElseGet(() -> evaluator.inputVecExpr.inputColumnNum[jj]);
-          }
-          evaluator.inputVecExpr.outputColumnNum = IntStream.range(0, bufferedColumnMap.length)
-              .filter(j -> bufferedColumnMap[j] == evaluator.inputVecExpr.outputColumnNum)
-              .findFirst().orElseGet(() -> evaluator.inputVecExpr.outputColumnNum);
-        }
         evaluator.mapCustomColumns(bufferedColumnMap);
       }
     }
@@ -568,15 +583,19 @@ public class VectorPTFOperator extends Operator<PTFDesc>
   private static TypeInfo columnVectorTypeToTypeInfo(Type type) {
     switch (type) {
     case DOUBLE:
-      return TypeInfoUtils.getTypeInfoFromTypeString("double");
+      return TypeInfoUtils.getTypeInfoFromTypeString(serdeConstants.DOUBLE_TYPE_NAME);
     case BYTES:
-      return TypeInfoUtils.getTypeInfoFromTypeString("string");
+      return TypeInfoUtils.getTypeInfoFromTypeString(serdeConstants.STRING_TYPE_NAME);
     case DECIMAL:
-      return TypeInfoUtils.getTypeInfoFromTypeString("decimal");
+      return TypeInfoUtils.getTypeInfoFromTypeString(serdeConstants.DECIMAL_TYPE_NAME);
     case TIMESTAMP:
-      return TypeInfoUtils.getTypeInfoFromTypeString("timestamp");
+      return TypeInfoUtils.getTypeInfoFromTypeString(serdeConstants.TIMESTAMP_TYPE_NAME);
     case LONG:
-      return TypeInfoUtils.getTypeInfoFromTypeString("int");
+      return TypeInfoUtils.getTypeInfoFromTypeString(serdeConstants.INT_TYPE_NAME);
+    case INTERVAL_DAY_TIME:
+      return TypeInfoUtils.getTypeInfoFromTypeString(serdeConstants.INTERVAL_DAY_TIME_TYPE_NAME);
+    case VOID:
+      return TypeInfoUtils.getTypeInfoFromTypeString(serdeConstants.VOID_TYPE_NAME);
     default:
       throw new RuntimeException("Cannot convert column vector type: '" + type + "' to TypeInfo");
     }

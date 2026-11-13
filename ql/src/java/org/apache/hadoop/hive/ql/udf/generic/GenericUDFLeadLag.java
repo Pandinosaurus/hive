@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -91,7 +92,7 @@ public abstract class GenericUDFLeadLag extends GenericUDF {
       Object o = ((ConstantObjectInspector) amtOI).getWritableConstantValue();
       amt = ((IntWritable) o).get();
       if (amt < 0) {
-        throw new UDFArgumentTypeException(1,  " amount can not be nagative. Specified: " + amt);
+        throw new UDFArgumentTypeException(1,  " amount can not be negative. Specified: " + amt);
       }
     }
 

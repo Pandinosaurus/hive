@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -28,11 +29,11 @@ import java.io.Serializable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,10 +43,11 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.google.common.base.Joiner;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.jsonexplain.JsonParser;
-import org.apache.hadoop.hive.common.jsonexplain.JsonParserFactory;
+import org.apache.hadoop.hive.common.jsonexplain.tez.TezJsonParser;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
@@ -106,7 +108,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
   private static final String CBO_INFO_JSON_LABEL = "cboInfo";
   private static final String CBO_PLAN_JSON_LABEL = "CBOPlan";
   private static final String CBO_PLAN_TEXT_LABEL = "CBO PLAN:";
-  private final Set<Operator<?>> visitedOps = new HashSet<Operator<?>>();
+  private final Map<Operator<?>, Integer> operatorVisits = new HashMap<>();
   private boolean isLogical = false;
 
   /*
@@ -162,7 +164,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     if (cboPlan != null) {
       String ruleExclusionRegex = getRuleExcludedRegex();
       if (jsonOutput) {
-        outJSONObject.put(CBO_PLAN_JSON_LABEL, cboPlan);
+        outJSONObject.put(CBO_PLAN_JSON_LABEL, new JSONObject(cboPlan));
         if (!ruleExclusionRegex.isEmpty()) {
           outJSONObject.put(CBO_INFO_JSON_LABEL, EXCLUDED_RULES_PREFIX + ruleExclusionRegex);
         }
@@ -275,7 +277,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     return getJSONPlan(
             out, tasks, fetchTask, jsonOutput, isExtended,
             appendTaskType, cboInfo, cboPlan, optimizedSQL,
-            conf.getVar(ConfVars.HIVESTAGEIDREARRANGE));
+            conf.getVar(ConfVars.HIVE_STAGE_ID_REARRANGE));
   }
 
   public JSONObject getJSONPlan(PrintStream out, List<Task<?>> tasks, Task<?> fetchTask,
@@ -294,7 +296,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
 
     if (cboPlan != null) {
       if (jsonOutput) {
-        outJSONObject.put(CBO_PLAN_JSON_LABEL, cboPlan);
+        outJSONObject.put(CBO_PLAN_JSON_LABEL, new JSONObject(cboPlan));
         if (!ruleExclusionRegex.isEmpty()) {
           outJSONObject.put(CBO_INFO_JSON_LABEL, EXCLUDED_RULES_PREFIX + ruleExclusionRegex);
         }
@@ -455,7 +457,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
   public void addCreateTableStatement(Table table, List<String> tableCreateStmt , DDLPlanUtils ddlPlanUtils) {
     tableCreateStmt.add(ddlPlanUtils.getCreateTableCommand(table, false) + ";");
   }
-  
+
   public void addPKandBasicStats(Table tbl, List<String> basicDef, DDLPlanUtils ddlPlanUtils){
     String primaryKeyStmt = ddlPlanUtils.getAlterTableStmtPrimaryKeyConstraint(tbl.getPrimaryKeyInfo());
     if (primaryKeyStmt != null) {
@@ -464,9 +466,8 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     basicDef.add(ddlPlanUtils.getAlterTableStmtTableStatsBasic(tbl));
   }
 
-  public void addConstraints(Table tbl, List<String> constraints, Set<String> allTableNames,
-      DDLPlanUtils ddlPlanUtils){
-    constraints.addAll(ddlPlanUtils.populateConstraints(tbl, allTableNames));
+  public void addConstraints(Table tbl, List<String> constraints, DDLPlanUtils ddlPlanUtils){
+    constraints.addAll(ddlPlanUtils.populateConstraints(tbl));
   }
 
   public void addStats(Table table,List<String> alterTableStmt ,Map<String, List<Partition>> tablePartitionsMap,
@@ -475,9 +476,9 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     PerfLogger perfLogger = PerfLogger.getPerfLogger(conf, false);
     perfLogger.perfLogBegin(ExplainTask.class.getName(), PerfLogger.HIVE_GET_TABLE_COLUMN_STATS);
     if (table.isPartitioned()) {
-      alterTableStmt.addAll(ddlPlanUtils.getDDLPlanForPartitionWithStats(table, tablePartitionsMap));
+      alterTableStmt.addAll(ddlPlanUtils.getDDLPlanForPartitionWithStats(conf, table, tablePartitionsMap));
     } else {
-      alterTableStmt.addAll(ddlPlanUtils.getAlterTableStmtTableStatsColsAll(table));
+      alterTableStmt.addAll(ddlPlanUtils.getAlterTableStmtTableStatsColsAll(conf, table));
     }
     perfLogger.perfLogEnd(ExplainTask.class.getName(), PerfLogger.HIVE_GET_TABLE_COLUMN_STATS);
   }
@@ -489,12 +490,12 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
 
   public void getDDLPlan(PrintStream out) throws Exception {
     DDLPlanUtils ddlPlanUtils = new DDLPlanUtils();
-    Set<String> createDatabase = new TreeSet<String>();
-    List<String> tableCreateStmt = new LinkedList<String>();
-    List<String> tableBasicDef = new LinkedList<String>();
-    List<String> createViewList = new LinkedList<String>();
-    List<String> alterTableStmt = new LinkedList<String>();
-    List<String> explainStmt = new LinkedList<String>();
+    Set<String> createDatabase = new TreeSet<>();
+    List<String> tableCreateStmt = new LinkedList<>();
+    List<String> tableBasicDef = new LinkedList<>();
+    List<String> createViewList = new LinkedList<>();
+    List<String> alterTableStmt = new LinkedList<>();
+    List<String> explainStmt = new LinkedList<>();
     Map<String, Table> tableMap = new HashMap<>();
     Map<String, List<Partition>> tablePartitionsMap = new HashMap<>();
     for (ReadEntity ent : work.getInputs()) {
@@ -516,15 +517,14 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     //process the databases
     List<String> createDatabaseStmt = ddlPlanUtils.getCreateDatabaseStmt(createDatabase);
     //process the tables
-    for (String tableName : tableMap.keySet()) {
+    for (String tableName : tableMap.keySet().stream().sorted().collect(Collectors.toList())) {
       Table table = tableMap.get(tableName);
       if (table.isView()) {
         createViewList.add(ddlPlanUtils.getCreateViewStmt(table));
-        continue;
       } else {
         addCreateTableStatement(table, tableCreateStmt, ddlPlanUtils);
         addPKandBasicStats(table, tableBasicDef, ddlPlanUtils);
-        addConstraints(table, alterTableStmt, tableMap.keySet(), ddlPlanUtils);
+        addConstraints(table, alterTableStmt, ddlPlanUtils);
         addStats(table, alterTableStmt, tablePartitionsMap, ddlPlanUtils);
       }
     }
@@ -549,32 +549,33 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     try {
       Path resFile = work.getResFile();
       OutputStream outS = resFile.getFileSystem(conf).create(resFile);
-      out = new PrintStream(outS);
+      out = new PrintStream(outS, false, StandardCharsets.UTF_8.name());
+      JsonParser jsonParser = createParser();
 
       if(work.isDDL()){
         getDDLPlan(out);
       } else if (work.isCbo()) {
         JSONObject jsonCBOPlan = getJSONCBOPlan(out, work);
         if (work.isFormatted()) {
-          out.print(jsonCBOPlan);
+          jsonParser.print(jsonCBOPlan, out);
         }
       } else if (work.isLogical()) {
         JSONObject jsonLogicalPlan = getJSONLogicalPlan(out, work);
         if (work.isFormatted()) {
-          out.print(jsonLogicalPlan);
+          jsonParser.print(jsonLogicalPlan, out);
         }
       } else if (work.isAuthorize()) {
         JSONObject jsonAuth = collectAuthRelatedEntities(out, work);
         if (work.isFormatted()) {
-          out.print(jsonAuth);
+          jsonParser.print(jsonAuth, out);
         }
       } else if (work.getDependency()) {
         JSONObject jsonDependencies = getJSONDependencies(work);
-        out.print(jsonDependencies);
+        jsonParser.print(jsonDependencies, out);
       } else if (work.isLocks()) {
         JSONObject jsonLocks = getLocks(out, work);
         if(work.isFormatted()) {
-          out.print(jsonLocks);
+          jsonParser.print(jsonLocks, out);
         }
       } else if (work.isAst()) {
         // Print out the parse AST
@@ -583,9 +584,6 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
         }
       } else {
         if (work.isUserLevelExplain()) {
-          // Because of the implementation of the JsonParserFactory, we are sure
-          // that we can get a TezJsonParser.
-          JsonParser jsonParser = JsonParserFactory.getParser(conf);
           work.getConfig().setFormatted(true);
           JSONObject jsonPlan = getJSONPlan(out, work);
           if (work.getCboInfo() != null) {
@@ -604,13 +602,8 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
         } else {
           JSONObject jsonPlan = getJSONPlan(out, work);
           if (work.isFormatted()) {
-            // use the parser to get the output operators of RS
-            JsonParser jsonParser = JsonParserFactory.getParser(conf);
-            if (jsonParser != null) {
-              jsonParser.print(jsonPlan, null);
-              LOG.info("JsonPlan is augmented to {}", jsonPlan);
-            }
-            out.print(jsonPlan);
+            augmentJSONWithRSOutputs(jsonPlan);
+            jsonParser.print(jsonPlan, out);
           }
         }
       }
@@ -629,6 +622,42 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     }
   }
 
+  /**
+   * Augments the JSON plan with the outputs names of ReduceSink operators.
+   * @param jsonPlan the JSON plan object that is augmented
+   */
+  private void augmentJSONWithRSOutputs(JSONObject jsonPlan) throws Exception {
+    if ("tez".equals(HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_EXECUTION_ENGINE))) {
+      // The JSON object is augmented via side effect of TezJsonParser.print()
+      new TezJsonParser().print(jsonPlan, null);
+    }
+  }
+
+  /**
+   * Creates the appropriate JsonParser based on the ExplainWork configuration.
+   * @return a JsonParser
+   */
+  private JsonParser createParser() {
+    final JsonParser parser;
+    if (HiveConf.getBoolVar(conf, ConfVars.HIVE_EXPLAIN_FORMATTED_INDENT)) {
+      parser = (json, out) -> out.print(json.toString(2));
+    } else {
+      parser = (json, out) -> out.print(json.toString());
+    }
+    if (work.isCbo() || work.isLogical() || work.isAuthorize() || work.getDependency() || work.isLocks()) {
+      return parser;
+    } else if (work.isUserLevelExplain()) {
+      if ("tez".equals(HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_EXECUTION_ENGINE))) {
+        return new TezJsonParser();
+      } else {
+        LOG.error("Running explain user level is only supported for Tez engine.");
+        return (obj, out) -> {
+        };
+      }
+    }
+    return parser;
+  }
+
   @VisibleForTesting
   JSONObject collectAuthRelatedEntities(PrintStream out, ExplainWork work)
       throws Exception {
@@ -637,7 +666,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     HiveOperation operation = queryState.getHiveOperation();
 
     JSONObject object = new JSONObject(new LinkedHashMap<>());
-    Object jsonInput = toJson("INPUTS", toString(analyzer.getInputs()), out, work);
+    Object jsonInput = toJson("INPUTS", toString(analyzer.getAllInputs()), out, work);
     if (work.isFormatted()) {
       object.put("INPUTS", jsonInput);
     }
@@ -793,7 +822,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
   /**
    * Retruns a map which have either primitive or string keys.
    *
-   * This is neccessary to discard object level comparators which may sort the objects based on some non-trivial logic.
+   * This is necessary to discard object level comparators which may sort the objects based on some non-trivial logic.
    *
    * @param mp
    * @return
@@ -951,7 +980,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
   JSONObject outputPlan(Object work, PrintStream out,
       boolean extended, boolean jsonOutput, int indent, String appendToHeader) throws Exception {
     return outputPlan(work, out, extended, jsonOutput, indent, appendToHeader,
-            queryState.getConf().getBoolVar(ConfVars.HIVE_IN_TEST));
+              queryState != null && queryState.getConf().getBoolVar(ConfVars.HIVE_IN_TEST));
   }
 
   public JSONObject outputPlan(Object work, PrintStream out,
@@ -1003,6 +1032,12 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     if (work instanceof Operator) {
       Operator<? extends OperatorDesc> operator =
         (Operator<? extends OperatorDesc>) work;
+      final int visitCnt = operatorVisits.merge(operator, 1, Integer::sum);
+      final int limit = conf.getIntVar(ConfVars.HIVE_EXPLAIN_NODE_VISIT_LIMIT);
+      if (visitCnt == limit) {
+        throw new IllegalStateException(
+            operator + " reached " + ConfVars.HIVE_EXPLAIN_NODE_VISIT_LIMIT.varname + "(" + limit + ")");
+      }
       if (operator.getConf() != null) {
         String appender = isLogical ? " (" + operator.getOperatorId() + ")" : "";
         JSONObject jsonOut = outputPlan(operator.getConf(), out, extended,
@@ -1023,15 +1058,12 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
         }
       }
 
-      if (!visitedOps.contains(operator) || !isLogical) {
-        visitedOps.add(operator);
-        if (operator.getChildOperators() != null) {
-          int cindent = jsonOutput ? 0 : indent + 2;
-          for (Operator<? extends OperatorDesc> op : operator.getChildOperators()) {
-            JSONObject jsonOut = outputPlan(op, out, extended, jsonOutput, cindent, "", inTest);
-            if (jsonOutput) {
-              ((JSONObject)json.get(JSONObject.getNames(json)[0])).accumulate("children", jsonOut);
-            }
+      if ((visitCnt == 1 || !isLogical) && operator.getChildOperators() != null) {
+        int cindent = jsonOutput ? 0 : indent + 2;
+        for (Operator<? extends OperatorDesc> op : operator.getChildOperators()) {
+          JSONObject jsonOut = outputPlan(op, out, extended, jsonOutput, cindent, "", inTest);
+          if (jsonOutput) {
+            ((JSONObject) json.get(JSONObject.getNames(json)[0])).accumulate("children", jsonOut);
           }
         }
       }
@@ -1432,10 +1464,10 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
     PrintStream ps = new PrintStream(baos);
     try {
       List<Task<?>> rootTasks = sem.getAllRootTasks();
+      boolean isExtended = conf.getBoolVar(ConfVars.HIVE_LOG_EXPLAIN_OUTPUT_INCLUDE_EXTENDED);
       if (conf.getBoolVar(ConfVars.HIVE_SERVER2_WEBUI_SHOW_GRAPH)) {
         JSONObject jsonPlan = task.getJSONPlan(
-            null, rootTasks, sem.getFetchTask(), true,
-            conf.getBoolVar(ConfVars.HIVE_LOG_EXPLAIN_OUTPUT_INCLUDE_EXTENDED), true, sem.getCboInfo(),
+            null, rootTasks, sem.getFetchTask(), true, isExtended, true, sem.getCboInfo(),
             plan.getOptimizedCBOPlan(), plan.getOptimizedQueryString());
         if (jsonPlan.getJSONObject(ExplainTask.STAGE_DEPENDENCIES) != null &&
             jsonPlan.getJSONObject(ExplainTask.STAGE_DEPENDENCIES).length() <=
@@ -1445,7 +1477,7 @@ public class ExplainTask extends Task<ExplainWork> implements Serializable {
           ret = null;
         }
       } else {
-        task.getJSONPlan(ps, rootTasks, sem.getFetchTask(), false, true, true, sem.getCboInfo(),
+        task.getJSONPlan(ps, rootTasks, sem.getFetchTask(), false, isExtended, true, sem.getCboInfo(),
             plan.getOptimizedCBOPlan(), plan.getOptimizedQueryString());
         ret = baos.toString();
       }

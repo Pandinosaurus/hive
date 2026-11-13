@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.view.materialized.alter.rewrite;
@@ -25,10 +26,14 @@ import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.ddl.DDLOperation;
 import org.apache.hadoop.hive.ql.ddl.DDLOperationContext;
+import org.apache.hadoop.hive.ql.metadata.MaterializationValidationResult;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.CalcitePlanner;
 import org.apache.hadoop.hive.ql.parse.ParseUtils;
+
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.apache.hadoop.hive.ql.processors.CompileProcessor.console;
 
 /**
  * Operation process of enabling/disabling materialized view rewrite.
@@ -64,9 +69,12 @@ public class AlterMaterializedViewRewriteOperation extends DDLOperation<AlterMat
           }
           throw new HiveException(msg);
         }
-        if (!planner.isValidAutomaticRewritingMaterialization()) {
-          throw new HiveException("Cannot enable rewriting for materialized view. " +
-              planner.getInvalidAutomaticRewritingMaterializationReason());
+        MaterializationValidationResult validationResult = planner.getMaterializationValidationResult();
+        String validationErrorMessage = validationResult.getErrorMessage();
+        if (validationResult.getSupportedRewriteAlgorithms().isEmpty()) {
+          throw new HiveException(validationErrorMessage);
+        } else if (isNotBlank(validationErrorMessage)) {
+          console.printError(validationErrorMessage);
         }
       } catch (Exception e) {
         throw new HiveException(e);

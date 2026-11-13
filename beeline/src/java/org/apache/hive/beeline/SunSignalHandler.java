@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /*
@@ -27,6 +28,8 @@ import java.sql.Statement;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
+
+import org.apache.hadoop.util.ExitUtil;
 
 public class SunSignalHandler implements BeeLineSignalHandler, SignalHandler {
   private Statement stmt = null;
@@ -50,7 +53,7 @@ public class SunSignalHandler implements BeeLineSignalHandler, SignalHandler {
       // exit the JVM if Ctrl+C is received
       // and no current statement is executing
       if(stmt == null || stmt.isClosed()) {
-        System.exit(127);
+        ExitUtil.terminate(127);
       } else {
         beeLine.info(beeLine.loc("interrupt-ctrl-c"));
         stmt.cancel();

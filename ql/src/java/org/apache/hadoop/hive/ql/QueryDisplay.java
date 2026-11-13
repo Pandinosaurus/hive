@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql;
 
@@ -21,6 +22,9 @@ import org.apache.hadoop.hive.common.LogUtils;
 import org.apache.hadoop.hive.ql.exec.Task;
 import org.apache.hadoop.hive.ql.exec.TaskResult;
 import org.apache.hadoop.hive.ql.plan.api.StageType;
+import org.apache.tez.common.counters.CounterGroup;
+import org.apache.tez.common.counters.TezCounter;
+import org.apache.tez.common.counters.TezCounters;
 
 import java.io.IOException;
 import java.util.*;
@@ -37,6 +41,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 /**
  * Some limited query information to save for WebUI.
@@ -47,7 +52,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class QueryDisplay {
 
   /**
-   * Preffered objectmapper for this class.
+   * Preferred objectMapper for this class.
    *
    * It must be used to have things work in shaded environment (and its also more performant).
    */
@@ -58,6 +63,7 @@ public class QueryDisplay {
   private String explainPlan;
   private String errorMessage;
   private String queryId;
+  private TezCounters tezCounters;
   private long queryStartTime = System.currentTimeMillis();
 
   private final Map<Phase, Map<String, Long>> hmsTimingMap = new HashMap<Phase, Map<String, Long>>();
@@ -305,9 +311,35 @@ public class QueryDisplay {
     this.explainPlan = explainPlan;
   }
 
+  public synchronized void setTezCounters(TezCounters tc) {
+    this.tezCounters = tc;
+  }
+
+  public synchronized TezCounters getTezCounters() {
+    return this.tezCounters;
+  }
+
+  public synchronized Map<String, String> getCountersAsString() {
+    Map<String, String> allCounterGroups = new HashMap<>();
+    if (tezCounters != null) {
+      for (CounterGroup group : tezCounters) {
+        ObjectNode groupNode = OBJECT_MAPPER.createObjectNode();
+        for (TezCounter counter : group) {
+          groupNode.put(counter.getDisplayName(), counter.getValue());
+        }
+        String counterGroupName = group.getName();
+        String[] counterGroupSplits = counterGroupName.split("\\.");
+        counterGroupName = counterGroupName.contains(".") ? counterGroupSplits[counterGroupSplits.length - 1] :
+            counterGroupName + " Counter";
+        allCounterGroups.put(counterGroupName, groupNode.toString());
+      }
+    }
+    return allCounterGroups;
+  }
+
   /**
    * @param phase phase of query
-   * @return map of HMS Client method-calls and duration in miliseconds, during given phase.
+   * @return map of HMS Client method-calls and duration in milliseconds, during given phase.
    */
   public synchronized Map<String, Long> getHmsTimings(Phase phase) {
     return hmsTimingMap.get(phase);
@@ -315,7 +347,7 @@ public class QueryDisplay {
 
   /**
    * @param phase phase of query
-   * @param hmsTimings map of HMS Client method-calls and duration in miliseconds, during given phase.
+   * @param hmsTimings map of HMS Client method-calls and duration in milliseconds, during given phase.
    */
   public synchronized void setHmsTimings(Phase phase, Map<String, Long> hmsTimings) {
     hmsTimingMap.put(phase, hmsTimings);
@@ -323,7 +355,7 @@ public class QueryDisplay {
 
   /**
    * @param phase phase of query
-   * @return map of PerfLogger call-trace name and start time in miliseconds, during given phase.
+   * @return map of PerfLogger call-trace name and start time in milliseconds, during given phase.
    */
   public synchronized Map<String, Long> getPerfLogStarts(Phase phase) {
     return perfLogStartMap.get(phase);
@@ -331,7 +363,7 @@ public class QueryDisplay {
 
   /**
    * @param phase phase of query
-   * @param perfLogStarts map of PerfLogger call-trace name and start time in miliseconds, during given phase.
+   * @param perfLogStarts map of PerfLogger call-trace name and start time in milliseconds, during given phase.
    */
   public synchronized void setPerfLogStarts(Phase phase, Map<String, Long> perfLogStarts) {
     perfLogStartMap.put(phase, perfLogStarts);
@@ -339,7 +371,7 @@ public class QueryDisplay {
 
   /**
    * @param phase phase of query
-   * @return map of PerfLogger call-trace name and end time in miliseconds, during given phase.
+   * @return map of PerfLogger call-trace name and end time in milliseconds, during given phase.
    */
   public synchronized Map<String, Long> getPerfLogEnds(Phase phase) {
     return perfLogEndMap.get(phase);
@@ -347,7 +379,7 @@ public class QueryDisplay {
 
   /**
    * @param phase phase of query
-   * @param perfLogEnds map of PerfLogger call-trace name and end time in miliseconds, during given phase.
+   * @param perfLogEnds map of PerfLogger call-trace name and end time in milliseconds, during given phase.
    */
   public synchronized void setPerfLogEnds(Phase phase, Map<String, Long> perfLogEnds) {
     perfLogEndMap.put(phase, perfLogEnds);
@@ -355,7 +387,7 @@ public class QueryDisplay {
 
   /**
    * @param phase phase of query
-   * @return map of PerfLogger call-trace name and duration in miliseconds, during given phase.
+   * @return map of PerfLogger call-trace name and duration in milliseconds, during given phase.
    */
   public synchronized Map<String, Long> getPerfLogTimes(Phase phase) {
     Map<String, Long> times = new HashMap<>();

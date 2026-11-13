@@ -9,16 +9,18 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.datasource;
 
 import java.sql.SQLException;
-import java.util.Map;
+import java.time.Duration;
+import java.util.Collections;
 
 import javax.sql.DataSource;
 
@@ -30,8 +32,6 @@ import org.apache.commons.dbcp2.PoolingDataSource;
 import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.metastore.DatabaseProduct;
-import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +57,9 @@ public class DbCPDataSourceProvider implements DataSourceProvider {
 
   @SuppressWarnings({ "rawtypes", "unchecked" })
   @Override
-  public DataSource create(Configuration hdpConfig, int maxPoolSize) throws SQLException {
-    LOG.debug("Creating dbcp connection pool for the MetaStore");
+  public DataSource createPool(Configuration hdpConfig, int maxPoolSize) throws SQLException {
+    String poolName = DataSourceProvider.getDataSourceName(hdpConfig);
+    LOG.info("Creating dbcp connection pool for the MetaStore, maxPoolSize: {}, name: {}", maxPoolSize, poolName);
 
     String driverUrl = DataSourceProvider.getMetastoreJdbcDriverUrl(hdpConfig);
     String user = DataSourceProvider.getMetastoreJdbcUser(hdpConfig);
@@ -71,28 +72,22 @@ public class DbCPDataSourceProvider implements DataSourceProvider {
     dbcpDs.setDefaultReadOnly(false);
     dbcpDs.setDefaultAutoCommit(true);
 
-    DatabaseProduct dbProduct =  DatabaseProduct.determineDatabaseProduct(driverUrl, hdpConfig);
-    Map<String, String> props = dbProduct.getDataSourceProperties();
-    for (Map.Entry<String, String> kv : props.entrySet()) {
-      dbcpDs.setConnectionProperties(kv.getKey() + "=" + kv.getValue());
-    }
-
     long connectionTimeout = hdpConfig.getLong(CONNECTION_TIMEOUT_PROPERTY, 30000L);
     int connectionMaxIlde = hdpConfig.getInt(CONNECTION_MAX_IDLE_PROPERTY, 8);
     int connectionMinIlde = hdpConfig.getInt(CONNECTION_MIN_IDLE_PROPERTY, 0);
     boolean testOnBorrow = hdpConfig.getBoolean(CONNECTION_TEST_BORROW_PROPERTY,
         BaseObjectPoolConfig.DEFAULT_TEST_ON_BORROW);
     long evictionTimeMillis = hdpConfig.getLong(CONNECTION_MIN_EVICT_MILLIS_PROPERTY,
-        BaseObjectPoolConfig.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
+        BaseObjectPoolConfig.DEFAULT_MIN_EVICTABLE_IDLE_DURATION.toMillis());
     boolean testWhileIdle = hdpConfig.getBoolean(CONNECTION_TEST_IDLEPROPERTY,
         BaseObjectPoolConfig.DEFAULT_TEST_WHILE_IDLE);
     long timeBetweenEvictionRuns = hdpConfig.getLong(CONNECTION_TIME_BETWEEN_EVICTION_RUNS_MILLIS,
-        BaseObjectPoolConfig.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS);
+        BaseObjectPoolConfig.DEFAULT_DURATION_BETWEEN_EVICTION_RUNS.toMillis());
     int numTestsPerEvictionRun = hdpConfig.getInt(CONNECTION_NUM_TESTS_PER_EVICTION_RUN,
         BaseObjectPoolConfig.DEFAULT_NUM_TESTS_PER_EVICTION_RUN);
     boolean testOnReturn = hdpConfig.getBoolean(CONNECTION_TEST_ON_RETURN, BaseObjectPoolConfig.DEFAULT_TEST_ON_RETURN);
     long softMinEvictableIdleTimeMillis = hdpConfig.getLong(CONNECTION_SOFT_MIN_EVICTABLE_IDLE_TIME,
-        BaseObjectPoolConfig.DEFAULT_SOFT_MIN_EVICTABLE_IDLE_TIME_MILLIS);
+        BaseObjectPoolConfig.DEFAULT_SOFT_MIN_EVICTABLE_IDLE_DURATION.toMillis());
     boolean lifo = hdpConfig.getBoolean(CONNECTION_LIFO, BaseObjectPoolConfig.DEFAULT_LIFO);
 
     ConnectionFactory connFactory = new DataSourceConnectionFactory(dbcpDs);
@@ -100,21 +95,42 @@ public class DbCPDataSourceProvider implements DataSourceProvider {
 
     GenericObjectPool objectPool = new GenericObjectPool(poolableConnFactory);
     objectPool.setMaxTotal(maxPoolSize);
-    objectPool.setMaxWaitMillis(connectionTimeout);
+    objectPool.setMaxWait(Duration.ofMillis(connectionTimeout));
     objectPool.setMaxIdle(connectionMaxIlde);
     objectPool.setMinIdle(connectionMinIlde);
     objectPool.setTestOnBorrow(testOnBorrow);
     objectPool.setTestWhileIdle(testWhileIdle);
-    objectPool.setMinEvictableIdleTimeMillis(evictionTimeMillis);
-    objectPool.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRuns);
+    objectPool.setMinEvictableIdleDuration(Duration.ofMillis(evictionTimeMillis));
+    objectPool.setDurationBetweenEvictionRuns(Duration.ofMillis(timeBetweenEvictionRuns));
     objectPool.setNumTestsPerEvictionRun(numTestsPerEvictionRun);
     objectPool.setTestOnReturn(testOnReturn);
-    objectPool.setSoftMinEvictableIdleTimeMillis(softMinEvictableIdleTimeMillis);
+    objectPool.setSoftMinEvictableIdleDuration(Duration.ofMillis(softMinEvictableIdleTimeMillis));
     objectPool.setLifo(lifo);
 
-    String stmt = dbProduct.getPrepareTxnStmt();
-    if (stmt != null) {
-      poolableConnFactory.setValidationQuery(stmt);
+    // Enable TxnHandler#connPoolMutex to release the idle connection if possible,
+    // TxnHandler#connPoolMutex is mostly used for MutexAPI that is primarily designed to
+    // provide coarse-grained mutex support to maintenance tasks running inside the Metastore,
+    // this will make Metastore more scalable especially if there is a leader in the warehouse.
+    if ("mutex".equalsIgnoreCase(poolName)) {
+      if (timeBetweenEvictionRuns < 0) {
+        // When timeBetweenEvictionRunsMillis non-positive, no idle object evictor thread runs
+        objectPool.setDurationBetweenEvictionRuns(Duration.ofMillis(30 * 1000));
+      }
+      if (softMinEvictableIdleTimeMillis < 0) {
+        objectPool.setSoftMinEvictableIdleDuration(Duration.ofMillis(600 * 1000));
+      }
+    }
+    StringBuilder connectionProperties = new StringBuilder();
+    DataSourceProvider.preparePool(hdpConfig,
+        stmt -> poolableConnFactory.setConnectionInitSql(Collections.singletonList(stmt)),
+        kv -> {
+          if (!connectionProperties.isEmpty()) {
+            connectionProperties.append(';');
+          }
+          connectionProperties.append(kv.getKey()).append('=').append(kv.getValue());
+        });
+    if (!connectionProperties.isEmpty()) {
+      dbcpDs.setConnectionProperties(connectionProperties.toString());
     }
     return new PoolingDataSource(objectPool);
   }

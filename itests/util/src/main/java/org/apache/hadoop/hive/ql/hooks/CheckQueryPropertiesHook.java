@@ -9,15 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.hooks;
 
 import org.apache.hadoop.hive.ql.QueryProperties;
+import org.apache.hadoop.hive.ql.QueryProperties.QueryFeature;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.session.SessionState.LogHelper;
 
@@ -40,14 +42,15 @@ public class CheckQueryPropertiesHook implements ExecuteWithHookContext {
     QueryProperties queryProps = hookContext.getQueryPlan().getQueryProperties();
 
     if (queryProps != null) {
-      console.printError("Has Join: " + queryProps.hasJoin());
-      console.printError("Has Group By: " + queryProps.hasGroupBy());
-      console.printError("Has Sort By: " + queryProps.hasSortBy());
-      console.printError("Has Order By: " + queryProps.hasOrderBy());
-      console.printError("Has Group By After Join: " + queryProps.hasJoinFollowedByGroupBy());
-      console.printError("Uses Script: " + queryProps.usesScript());
-      console.printError("Has Distribute By: " + queryProps.hasDistributeBy());
-      console.printError("Has Cluster By: " + queryProps.hasClusterBy());
+      console.printError("Has Join: " + queryProps.hasFeature(QueryFeature.JOIN));
+      console.printError("Has Group By: " + queryProps.hasFeature(QueryFeature.GROUP_BY));
+      console.printError("Has Sort By: " + queryProps.hasFeature(QueryFeature.SORT_BY));
+      console.printError("Has Order By: " + queryProps.hasFeature(QueryFeature.ORDER_BY));
+      console.printError("Has Group By After Join: "
+          + queryProps.hasFeature(QueryFeature.JOIN_FOLLOWED_BY_GROUP_BY));
+      console.printError("Uses Script: " + queryProps.hasFeature(QueryFeature.USES_SCRIPT));
+      console.printError("Has Distribute By: " + queryProps.hasFeature(QueryFeature.DISTRIBUTE_BY));
+      console.printError("Has Cluster By: " + queryProps.hasFeature(QueryFeature.CLUSTER_BY));
     }
   }
 }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -100,11 +101,33 @@ public abstract class GenericUDF implements Closeable {
 
     @Override
     public void prepare(int version) throws HiveException {
+      // This implementation doesn't need to be prepared
     }
 
     @Override
     public Object get() throws HiveException {
       return value;
+    }
+  }
+
+  /**
+   * A basic implementation of DeferredObject which allows to set or get a Java Object reference.
+   */
+  public static class SettableDeferredJavaObject implements DeferredObject {
+    private Object value;
+
+    @Override
+    public void prepare(int version) throws HiveException {
+      // This implementation doesn't need to be prepared
+    }
+
+    @Override
+    public Object get() throws HiveException {
+      return value;
+    }
+
+    public void set(Object value) {
+      this.value = value;
     }
   }
 

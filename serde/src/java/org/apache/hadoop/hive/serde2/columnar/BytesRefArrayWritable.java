@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.serde2.columnar;
@@ -28,13 +29,13 @@ import org.apache.hadoop.io.WritableFactories;
 import org.apache.hadoop.io.WritableFactory;
 
 /**
- * <tt>BytesRefArrayWritable</tt> holds an array reference to BytesRefWritable,
+ * <pre>BytesRefArrayWritable</pre> holds an array reference to BytesRefWritable,
  * and is able to resize without recreating new array if not necessary.
  * <p>
  *
- * Each <tt>BytesRefArrayWritable holds</tt> instance has a <i>valid</i> field,
- * which is the desired valid number of <tt>BytesRefWritable</tt> it holds.
- * <tt>resetValid</tt> can reset the valid, but it will not care the underlying
+ * Each <pre>BytesRefArrayWritable holds</pre> instance has a <i>valid</i> field,
+ * which is the desired valid number of <pre>BytesRefWritable</pre> it holds.
+ * <pre>resetValid</pre> can reset the valid, but it will not care the underlying
  * BytesRefWritable.
  */
 

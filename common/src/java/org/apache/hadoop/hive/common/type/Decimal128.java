@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common.type;
@@ -168,7 +169,7 @@ public final class Decimal128 extends Number implements Comparable<Decimal128> {
   /**
    * Translates a {@code UnsignedInt128} unscaled value, an {@code int} scale,
    * and sign flag into a {@code Decimal128} . The value of the
-   * {@code Decimal128} is <tt>(unscaledVal &times; 10<sup>-scale</sup>)</tt>.
+   * {@code Decimal128} is <code>(unscaledVal &times; 10 <sup>-scale</sup>)</code>.
    *
    * @param unscaledVal
    *          unscaled value of the {@code Decimal128}.

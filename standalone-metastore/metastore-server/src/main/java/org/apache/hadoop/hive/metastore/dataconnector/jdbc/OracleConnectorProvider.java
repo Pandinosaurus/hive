@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.dataconnector.jdbc;
@@ -37,28 +38,6 @@ public class OracleConnectorProvider extends AbstractJDBCConnectorProvider {
     public OracleConnectorProvider(String dbName, DataConnector dataConn) {
         super(dbName, dataConn, DRIVER_CLASS);
         driverClassName = DRIVER_CLASS;
-    }
-
-    @Override protected ResultSet fetchTableMetadata(String tableName) throws MetaException {
-        ResultSet rs = null;
-        try {
-            rs = getConnection().getMetaData().getColumns(null, scoped_db, tableName, null);
-        } catch (Exception ex) {
-            LOG.warn("Could not retrieve table names from remote datasource, cause:" + ex.getMessage());
-            throw new MetaException("Could not retrieve table names from remote datasource, cause:" + ex);
-        }
-        return rs;
-    }
-
-    @Override protected ResultSet fetchTableNames() throws MetaException {
-        ResultSet rs = null;
-        try {
-            rs = getConnection().getMetaData().getTables(null, scoped_db, null, new String[] { "TABLE" });
-        } catch (SQLException sqle) {
-            LOG.warn("Could not retrieve table names from remote datasource, cause:" + sqle.getMessage());
-            throw new MetaException("Could not retrieve table names from remote datasource, cause:" + sqle);
-        }
-        return rs;
     }
 
     @Override protected String getCatalogName() {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd;
 
@@ -80,15 +81,15 @@ public class SQLStdHiveAuthorizationValidator implements HiveAuthorizationValida
 
     // check privileges on input and output objects
     List<String> deniedMessages = new ArrayList<String>();
-    checkPrivileges(hiveOpType, inputHObjs, metastoreClient, userName, IOType.INPUT, deniedMessages);
-    checkPrivileges(hiveOpType, outputHObjs, metastoreClient, userName, IOType.OUTPUT, deniedMessages);
+    checkPrivileges(hiveOpType, inputHObjs, metastoreClient, userName, IOType.INPUT, deniedMessages, false);
+    checkPrivileges(hiveOpType, outputHObjs, metastoreClient, userName, IOType.OUTPUT, deniedMessages, hiveOpType == HiveOperationType.ALTERTABLE_RENAME);
 
     SQLAuthorizationUtils.assertNoDeniedPermissions(new HivePrincipal(userName,
         HivePrincipalType.USER), hiveOpType, deniedMessages);
   }
 
   private void checkPrivileges(HiveOperationType hiveOpType, List<HivePrivilegeObject> hiveObjects,
-      IMetaStoreClient metastoreClient, String userName, IOType ioType, List<String> deniedMessages)
+      IMetaStoreClient metastoreClient, String userName, IOType ioType, List<String> deniedMessages, boolean ignoreUnknown)
       throws HiveAuthzPluginException, HiveAccessControlException {
 
     if (hiveObjects == null) {
@@ -143,7 +144,7 @@ public class SQLStdHiveAuthorizationValidator implements HiveAuthorizationValida
         continue;
       default:
         availPrivs = SQLAuthorizationUtils.getPrivilegesFromMetaStore(metastoreClient, userName,
-            hiveObj, privController.getCurrentRoleNames(), privController.isUserAdmin());
+            hiveObj, privController.getCurrentRoleNames(), privController.isUserAdmin(), ignoreUnknown);
       }
 
       // Verify that there are no missing privileges

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common.metrics.metrics2;
@@ -49,6 +50,7 @@ import org.apache.hadoop.hive.common.metrics.common.MetricsConstant;
 import org.apache.hadoop.hive.common.metrics.common.MetricsScope;
 import org.apache.hadoop.hive.common.metrics.common.MetricsVariable;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,6 +84,8 @@ public class CodahaleMetrics implements org.apache.hadoop.hive.common.metrics.co
   private LoadingCache<String, Counter> counters;
   private LoadingCache<String, Meter> meters;
   private ConcurrentHashMap<String, Gauge> gauges;
+
+  private boolean hadoopMetricsStarted = false;
 
   private Configuration conf;
   private final Set<Closeable> reporters = new HashSet<>();
@@ -196,6 +200,10 @@ public class CodahaleMetrics implements org.apache.hadoop.hive.common.metrics.co
     }
     for (Map.Entry<String, Metric> metric : metricRegistry.getMetrics().entrySet()) {
       metricRegistry.remove(metric.getKey());
+    }
+    if (hadoopMetricsStarted) {
+      DefaultMetricsSystem.shutdown();
+      hadoopMetricsStarted = false;
     }
     timers.invalidateAll();
     counters.invalidateAll();
@@ -402,7 +410,9 @@ public class CodahaleMetrics implements org.apache.hadoop.hive.common.metrics.co
       return false;
     }
 
-    for (String reporterClass : reporterClasses) {
+    // Removing duplicates from the list
+    Set<String> reporterClassesSet = new HashSet<>(reporterClasses);
+    for (String reporterClass : reporterClassesSet) {
       Class<?> name;
       try {
         name = conf.getClassByName(reporterClass);
@@ -417,6 +427,11 @@ public class CodahaleMetrics implements org.apache.hadoop.hive.common.metrics.co
         CodahaleReporter reporter = (CodahaleReporter) constructor.newInstance(metricRegistry, conf);
         reporter.start();
         reporters.add(reporter);
+        // hadoopMetricsStarted flag is set to true when Metrics2Reporter is initialised
+        // so that we could gracefully shutdown DefaultMetricsSystem in close() method
+        if (name.getName().equals(Metrics2Reporter.class.getName())) {
+          hadoopMetricsStarted = true;
+        }
       } catch (NoSuchMethodException | InstantiationException |
           IllegalAccessException | InvocationTargetException e) {
         LOGGER.error("Unable to instantiate using constructor(MetricRegistry, HiveConf) for"

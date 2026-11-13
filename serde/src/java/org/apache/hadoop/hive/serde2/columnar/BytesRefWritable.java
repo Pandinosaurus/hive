@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.serde2.columnar;
@@ -28,7 +29,7 @@ import org.apache.hadoop.io.WritableFactories;
 import org.apache.hadoop.io.WritableFactory;
 
 /**
- * <tt>BytesRefWritable</tt> referenced a section of byte array. It can be used
+ * <pre>BytesRefWritable</pre> referenced a section of byte array. It can be used
  * to avoid unnecessary byte copy.
  */
 public class BytesRefWritable implements Writable, Comparable<BytesRefWritable> {
@@ -50,7 +51,7 @@ public class BytesRefWritable implements Writable, Comparable<BytesRefWritable> 
   }
 
   /**
-   * Create a BytesRefWritable with <tt>length</tt> bytes.
+   * Create a BytesRefWritable with <pre>length</pre> bytes.
    */
   public BytesRefWritable(int length) {
     assert length > 0;
@@ -70,7 +71,7 @@ public class BytesRefWritable implements Writable, Comparable<BytesRefWritable> 
 
   /**
    * Create a BytesRefWritable referenced to one section of the given bytes. The
-   * section is determined by argument <tt>offset</tt> and <tt>len</tt>.
+   * section is determined by argument <pre>offset</pre> and <pre>len</pre>.
    */
   public BytesRefWritable(byte[] data, int offset, int len) {
     bytes = data;
@@ -80,10 +81,10 @@ public class BytesRefWritable implements Writable, Comparable<BytesRefWritable> 
 
   /**
    * Create a BytesRefWritable referenced to one section of the given bytes. The
-   * argument <tt>lazyDecompressData</tt> refers to a LazyDecompressionCallback
-   * object. The arguments <tt>offset</tt> and <tt>len</tt> are referred to
-   * uncompressed bytes of <tt>lazyDecompressData</tt>. Use <tt>offset</tt> and
-   * <tt>len</tt> after uncompressing the data.
+   * argument <pre>lazyDecompressData</pre> refers to a LazyDecompressionCallback
+   * object. The arguments <pre>offset</pre> and <pre>len</pre> are referred to
+   * uncompressed bytes of <pre>lazyDecompressData</pre>. Use <pre>offset</pre> and
+   * <pre>len</pre> after uncompressing the data.
    */
   public BytesRefWritable(LazyDecompressionCallback lazyDecompressData,
       int offset, int len) {

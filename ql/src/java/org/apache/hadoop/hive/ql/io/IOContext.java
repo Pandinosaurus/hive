@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io;
@@ -49,11 +50,15 @@ public class IOContext {
   /**
    * supports {@link org.apache.hadoop.hive.ql.metadata.VirtualColumn#ROWID}
    */
-  private  RecordIdentifier ri;
+  private RecordIdentifier ri;
   private boolean isDeletedRecord;
   private PositionDeleteInfo pdi;
+  private RowLineageInfo rowLineageInfo;
 
-  public static enum Comparison {
+  // the partition of the rows the reader currently serves
+  private String partitionName;
+
+  public enum Comparison {
     GREATER,
     LESS,
     EQUAL,
@@ -188,12 +193,28 @@ public class IOContext {
     }
   }
 
-  public void parsePositionDeleteInfo(Configuration configuration) {
-    this.pdi = PositionDeleteInfo.parseFromConf(configuration);
+  public void setPositionDeleteInfo(PositionDeleteInfo pdi) {
+    this.pdi = pdi;
   }
 
   public PositionDeleteInfo getPositionDeleteInfo() {
     return pdi;
+  }
+
+  public void setPartitionName(String partitionName) {
+    this.partitionName = partitionName;
+  }
+
+  public String getPartitionName() {
+    return partitionName;
+  }
+
+  public void setRowLineageInfo(RowLineageInfo rowLineageInfo) {
+    this.rowLineageInfo = rowLineageInfo;
+  }
+
+  public RowLineageInfo getRowLineageInfo() {
+    return rowLineageInfo;
   }
 
   public boolean isDeletedRecord() {

@@ -9,15 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.type;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.exec.FunctionInfo;
 import org.apache.hadoop.hive.ql.exec.FunctionRegistry;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
@@ -100,7 +102,7 @@ public class TestDecimalStringValidation {
 
   @Test
   public void testValidationDecimalWithCharacterFailsWhenStrictChecksEnabled() {
-    HiveConf conf = new HiveConf();
+    HiveConf conf = new HiveConfForTest(getClass());
     conf.setBoolVar(HiveConf.ConfVars.HIVE_STRICT_CHECKS_TYPE_SAFETY, true);
     try {
       validateCall(conf);
@@ -112,7 +114,7 @@ public class TestDecimalStringValidation {
 
   @Test
   public void testValidationDecimalWithCharacterSucceedsWhenStrictChecksDisabled() throws SemanticException {
-    HiveConf conf = new HiveConf();
+    HiveConf conf = new HiveConfForTest(getClass());
     conf.setBoolVar(HiveConf.ConfVars.HIVE_STRICT_CHECKS_TYPE_SAFETY, false);
     validateCall(conf);
   }

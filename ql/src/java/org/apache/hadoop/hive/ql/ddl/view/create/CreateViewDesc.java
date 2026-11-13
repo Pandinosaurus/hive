@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.view.create;
@@ -21,6 +22,7 @@ package org.apache.hadoop.hive.ql.ddl.view.create;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.parse.ReplicationSpec;
@@ -40,13 +42,14 @@ public class CreateViewDesc extends AbstractCreateViewDesc {
   private final boolean ifNotExists;
   private final boolean replace;
   private final List<FieldSchema> partitionColumns;
+  private final String storageHandlerClass;
 
   private ReplicationSpec replicationSpec = null;
   private String ownerName = null;
 
   public CreateViewDesc(String viewName, List<FieldSchema> schema, String comment, Map<String, String> properties,
       List<String> partitionColumnNames, boolean ifNotExists, boolean replace, String originalText,
-      String expandedText, List<FieldSchema> partitionColumns) {
+      String expandedText, List<FieldSchema> partitionColumns, String storageHandlerClass) {
     super(viewName, schema, originalText, expandedText);
     this.comment = comment;
     this.properties = properties;
@@ -54,6 +57,7 @@ public class CreateViewDesc extends AbstractCreateViewDesc {
     this.ifNotExists = ifNotExists;
     this.replace = replace;
     this.partitionColumns = partitionColumns;
+    this.storageHandlerClass = storageHandlerClass;
   }
 
   @Explain(displayName = "partition columns")
@@ -87,6 +91,19 @@ public class CreateViewDesc extends AbstractCreateViewDesc {
   @Explain(displayName = "replace", displayOnlyOnTrue = true)
   public boolean isReplace() {
     return replace;
+  }
+
+  /**
+   * @return FQCN of the {@link org.apache.hadoop.hive.ql.metadata.HiveStorageHandler} that stores view metadata in an
+   *         external catalog, or {@code null} for a classic HMS-only virtual view.
+   */
+  @Explain(displayName = "external logical view storage handler", displayOnlyOnTrue = true)
+  public String getStorageHandlerClass() {
+    return storageHandlerClass;
+  }
+
+  public boolean usesStorageHandler() {
+    return !StringUtils.isBlank(storageHandlerClass);
   }
 
   /**

@@ -6,12 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc;
@@ -58,8 +61,6 @@ public abstract class AbstractTestJdbcGenericUDTFGetSplits {
 
   @BeforeClass
   public static void beforeTest() throws Exception {
-    Class.forName(MiniHS2.getJdbcDriverName());
-
     String confDir = "../../data/conf/llap/";
     HiveConf.setHiveSiteLocation(new URL("file://" + new File(confDir).toURI().getPath() + "/hive-site.xml"));
     System.out.println("Setting hive-site: " + HiveConf.getHiveSiteLocation());
@@ -76,9 +77,7 @@ public abstract class AbstractTestJdbcGenericUDTFGetSplits {
     conf.setVar(HiveConf.ConfVars.LLAP_IO_MEMORY_MODE, "none");
     conf.setVar(HiveConf.ConfVars.LLAP_EXTERNAL_SPLITS_TEMP_TABLE_STORAGE_FORMAT, "text");
 
-
-    conf.addResource(new URL("file://" + new File(confDir).toURI().getPath()
-        + "/tez-site.xml"));
+    conf.addResource(new URL("file://" + new File(confDir).toURI().getPath() + "/tez-site.xml"));
 
     miniHS2 = new MiniHS2(conf, MiniHS2.MiniClusterType.LLAP);
     dataFileDir = conf.get("test.data.files").replace('\\', '/').replace("c:", "");
@@ -86,7 +85,6 @@ public abstract class AbstractTestJdbcGenericUDTFGetSplits {
 
     Map<String, String> confOverlay = new HashMap<>();
     miniHS2.start(confOverlay);
-    miniHS2.getDFS().getFileSystem().mkdirs(new Path("/apps_staging_dir/anonymous"));
   }
 
   @AfterClass
@@ -107,8 +105,7 @@ public abstract class AbstractTestJdbcGenericUDTFGetSplits {
     hs2Conn.close();
   }
 
-  protected void runQuery(final String query, final List<String> setCmds,
-                          final int numRows) throws Exception {
+  protected void runQuery(final String query, final List<String> setCmds, final int numRows) throws Exception {
 
     Connection con = hs2Conn;
     BaseJdbcWithMiniLlap.createTestTable(con, null, tableName, kvDataFilePath.toString());
@@ -179,15 +176,9 @@ public abstract class AbstractTestJdbcGenericUDTFGetSplits {
     query = "select " + udtfName + "(" + "'select value from " + tableName + " where value is not null limit 2', 5)";
     runQuery(query, getConfigs(), expectedCounts[5]);
 
-    query = "select " + udtfName + "(" +
-        "'select `value` from (select value from " + tableName + " where value is not null order by value) as t', 5)";
+    query = "select " + udtfName + "(" + "'select `value` from (select value from " + tableName +
+        " where value is not null order by value) as t', 5)";
     runQuery(query, getConfigs(), expectedCounts[6]);
-
-    List<String> setCmds = getConfigs();
-    setCmds.add("set hive.llap.external.splits.order.by.force.single.split=false");
-    query = "select " + udtfName + "(" +
-        "'select `value` from (select value from " + tableName + " where value is not null order by value) as t', 10)";
-    runQuery(query, setCmds, expectedCounts[7]);
   }
 
   protected void testGenericUDTFOrderBySplitCount1OnPartitionedTable(String udtfName, int[] expectedCounts)

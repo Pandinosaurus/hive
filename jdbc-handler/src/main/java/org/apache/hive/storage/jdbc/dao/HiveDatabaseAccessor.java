@@ -9,14 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.storage.jdbc.dao;
 
+import java.sql.ResultSet;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
@@ -55,5 +57,20 @@ public class HiveDatabaseAccessor extends GenericJdbcDatabaseAccessor {
       return sql;
     }
     return sql + " LIMIT " + limit;
+  }
+
+  @Override
+  protected List<String> getColNamesFromRS(ResultSet rs) throws Exception {
+    List<String> columnNames = super.getColNamesFromRS(rs);
+    return columnNames.stream()
+        .map(c -> {
+          int lastIndex = c.lastIndexOf(".");
+          return lastIndex == -1 ? c : c.substring(lastIndex + 1); })
+        .collect(Collectors.toList());
+  }
+
+  @Override
+  protected String getMetaDataQuery(String sql) {
+    return addLimitToQuery(sql, 0);
   }
 }

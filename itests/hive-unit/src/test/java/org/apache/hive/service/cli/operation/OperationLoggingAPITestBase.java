@@ -7,13 +7,14 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.cli.operation;
 
@@ -86,7 +87,7 @@ public abstract class OperationLoggingAPITestBase {
     client.executeStatement(sessionHandle, queryString, null);
     // verify whether the sql operation log is generated and fetch correctly.
     OperationHandle operationHandle = client.executeStatement(sessionHandle, sqlCntStar, null);
-    RowSet rowSetLog = client.fetchResults(operationHandle, FetchOrientation.FETCH_FIRST, 1000,
+    RowSet rowSetLog = client.fetchResults(operationHandle, FetchOrientation.FETCH_FIRST, 100000,
       FetchType.LOG);
     // Verbose Logs should contain everything, including execution and performance
     verifyFetchedLog(rowSetLog, expectedLogsVerbose);
@@ -101,7 +102,7 @@ public abstract class OperationLoggingAPITestBase {
       client.executeStatement(sessionHandle, queryString, null);
       // verify whether the sql operation log is generated and fetch correctly.
       OperationHandle operationHandle = client.executeStatement(sessionHandle, sqlCntStar, null);
-      RowSet rowSetLog = client.fetchResults(operationHandle, FetchOrientation.FETCH_FIRST, 1000,
+      RowSet rowSetLog = client.fetchResults(operationHandle, FetchOrientation.FETCH_FIRST, 100000,
         FetchType.LOG);
       // rowSetLog should contain execution as well as performance logs
       verifyFetchedLog(rowSetLog, expectedLogsExecution);

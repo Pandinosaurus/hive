@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc.saml;
@@ -203,7 +204,6 @@ public class HiveJdbcBrowserClient implements IJdbcBrowserClient {
   @VisibleForTesting
   protected void openBrowserWindow() throws HiveJdbcBrowserException {
     URI ssoUri = clientContext.getSsoUri();
-    Preconditions.checkNotNull(ssoUri, "SSO Url is null");
     try {
       if (Desktop.isDesktopSupported() && Desktop.getDesktop()
           .isSupported(Action.BROWSE)) {
@@ -212,18 +212,19 @@ public class HiveJdbcBrowserClient implements IJdbcBrowserClient {
         LOG.info(
             "Desktop mode is not supported. Attempting to use OS "
                 + "commands to open the default browser");
+        String ssoUriStr = ssoUri.toString();
         //Desktop is not supported, lets try to open the browser process
         OsType os = getOperatingSystem();
         switch (os) {
           case WINDOWS:
             Runtime.getRuntime()
-                .exec("rundll32 url.dll,FileProtocolHandler " + ssoUri.toString());
+                .exec("rundll32 url.dll,FileProtocolHandler " + ssoUriStr);
             break;
           case MAC:
-            Runtime.getRuntime().exec("open " + ssoUri.toString());
+            Runtime.getRuntime().exec("open " + ssoUriStr);
             break;
           case LINUX:
-            Runtime.getRuntime().exec("xdg-open " + ssoUri.toString());
+            Runtime.getRuntime().exec("xdg-open " + ssoUriStr);
             break;
           case UNKNOWN:
             throw new HiveJdbcBrowserException(

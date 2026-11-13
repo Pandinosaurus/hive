@@ -9,23 +9,23 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.beeline;
 
-import jline.console.completer.StringsCompleter;
+import org.apache.hive.common.util.MatchingStringsCompleter;
 
 /**
- * JLine completor boolean value (true/false)
+ * JLine completer boolean value (true/false)
  */
-class BooleanCompleter extends StringsCompleter {
+class BooleanCompleter extends MatchingStringsCompleter {
 
   public BooleanCompleter(){
-    super(new String[] {"true", "false"});
+    super("true", "false");
   }
-
 }

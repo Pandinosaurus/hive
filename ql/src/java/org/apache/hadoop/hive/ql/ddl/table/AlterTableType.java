@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table;
@@ -30,6 +31,7 @@ import com.google.common.collect.ImmutableSet;
 public enum AlterTableType {
   // column
   ADDCOLS("add columns"),
+  DROP_COLUMN("drop column"),
   REPLACE_COLUMNS("replace columns"),
   RENAME_COLUMN("rename column"),
   UPDATE_COLUMNS("update columns"),
@@ -40,6 +42,12 @@ public enum AlterTableType {
   ALTERPARTITION("alter partition"), // Note: this is never used in AlterTableDesc.
   SETPARTITIONSPEC("set partition spec"),
   EXECUTE("execute"),
+  CREATE_BRANCH("create branch"),
+  DROP_BRANCH("drop branch"),
+  RENAME_BRANCH("rename branch"),
+  CREATE_TAG("create tag"),
+  DROP_TAG("drop tag"),
+  REPLACE_SNAPSHOTREF("replace branch/tag"),
   // constraint
   ADD_CONSTRAINT("add constraint"),
   DROP_CONSTRAINT("drop constraint"),
@@ -66,7 +74,8 @@ public enum AlterTableType {
   COMPACT("compact"),
   TRUNCATE("truncate"),
   MERGEFILES("merge files"),
-  UPDATESTATS("update stats"); // Note: used in ColumnStatsUpdateWork, not here.
+  UPDATESTATS("update stats"), // Note: used in ColumnStatsUpdateWork, not here.
+  DROP_COL_STATS("drop column stats");
 
   private final String name;
 
@@ -82,6 +91,6 @@ public enum AlterTableType {
       ImmutableList.of(ADDPROPS, DROPPROPS, ADDCOLS, EXECUTE);
 
   public static final Set<AlterTableType> SUPPORT_PARTIAL_PARTITION_SPEC =
-      ImmutableSet.of(ADDCOLS, REPLACE_COLUMNS, RENAME_COLUMN, ADDPROPS, DROPPROPS, SET_SERDE,
+      ImmutableSet.of(ADDCOLS, DROP_COLUMN, REPLACE_COLUMNS, RENAME_COLUMN, ADDPROPS, DROPPROPS, SET_SERDE,
           SET_SERDE_PROPS, SET_FILE_FORMAT);
 }

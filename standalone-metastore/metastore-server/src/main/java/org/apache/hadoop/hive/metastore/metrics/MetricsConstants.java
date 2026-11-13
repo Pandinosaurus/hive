@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.metrics;
 
@@ -31,6 +32,10 @@ public class MetricsConstants {
   public static final String COMPACTION_CLEANER_CYCLE_DURATION = "compaction_cleaner_cycle_duration";
   public static final String COMPACTION_CLEANER_FAILURE_COUNTER = "compaction_cleaner_failure_counter";
   public static final String COMPACTION_WORKER_CYCLE = "compaction_worker_cycle";
+  public static final String COMPACTION_POOLS_INITIATED_ITEM_COUNT = "compaction_pools_initiated_item_count";
+  public static final String COMPACTION_POOLS_WORKING_ITEM_COUNT = "compaction_pools_working_item_count";
+  public static final String COMPACTION_POOLS_OLDEST_INITIATED_AGE = "compaction_pools_oldest_enqueue_age_in_sec";
+  public static final String COMPACTION_POOLS_OLDEST_WORKING_AGE = "compaction_pools_oldest_working_age_in_sec";
 
   public static final String OLDEST_OPEN_REPL_TXN_ID = "oldest_open_repl_txn_id";
   public static final String OLDEST_OPEN_NON_REPL_TXN_ID = "oldest_open_non_repl_txn_id";
@@ -67,6 +72,8 @@ public class MetricsConstants {
   public static final String DELETE_TOTAL_PARTITIONS = "delete_total_count_partitions";
 
   public static final String DIRECTSQL_ERRORS = "directsql_errors";
+  public static final String JDBC_SLOW_QUERIES = "jdbc_slow_queries";
+  public static final String JDBC_EXECUTION = "jdbc_";
 
   public static final String JVM_PAUSE_INFO = "jvm.pause.info-threshold";
   public static final String JVM_PAUSE_WARN = "jvm.pause.warn-threshold";

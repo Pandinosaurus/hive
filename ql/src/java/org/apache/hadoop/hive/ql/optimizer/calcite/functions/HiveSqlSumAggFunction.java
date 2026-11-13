@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.functions;
 
@@ -46,15 +48,14 @@ import com.google.common.collect.ImmutableList;
  * <code>long</code>, <code>float</code>, <code>double</code>), and the result
  * is the same type.
  */
-public class HiveSqlSumAggFunction extends SqlAggFunction implements CanAggregateDistinct{
-  final boolean isDistinct;
+public class HiveSqlSumAggFunction extends SqlAggFunction {
   final SqlReturnTypeInference returnTypeInference;
   final SqlOperandTypeInference operandTypeInference;
   final SqlOperandTypeChecker operandTypeChecker;
 
   //~ Constructors -----------------------------------------------------------
 
-  public HiveSqlSumAggFunction(boolean isDistinct, SqlReturnTypeInference returnTypeInference,
+  public HiveSqlSumAggFunction(SqlReturnTypeInference returnTypeInference,
     SqlOperandTypeInference operandTypeInference, SqlOperandTypeChecker operandTypeChecker) {
     super(
         "sum",
@@ -66,14 +67,9 @@ public class HiveSqlSumAggFunction extends SqlAggFunction implements CanAggregat
     this.returnTypeInference = returnTypeInference;
     this.operandTypeChecker = operandTypeChecker;
     this.operandTypeInference = operandTypeInference;
-    this.isDistinct = isDistinct;
   }
 
   //~ Methods ----------------------------------------------------------------
-  @Override
-  public boolean isDistinct() {
-    return isDistinct;
-  }
 
   @Override
   public <T> T unwrap(Class<T> clazz) {
@@ -89,7 +85,7 @@ public class HiveSqlSumAggFunction extends SqlAggFunction implements CanAggregat
     public AggregateCall other(RelDataTypeFactory typeFactory, AggregateCall e) {
       RelDataType countRetType = typeFactory.createTypeWithNullability(typeFactory.createSqlType(SqlTypeName.BIGINT), true);
       return AggregateCall.create(
-        new HiveSqlCountAggFunction(isDistinct, ReturnTypes.explicit(countRetType), operandTypeInference, operandTypeChecker),
+        new HiveSqlCountAggFunction(ReturnTypes.explicit(countRetType), operandTypeInference, operandTypeChecker),
         false, ImmutableIntList.of(), -1, countRetType, "count");
     }
 
@@ -114,14 +110,30 @@ public class HiveSqlSumAggFunction extends SqlAggFunction implements CanAggregat
         break;
       case 2:
         node = rexBuilder.makeCall(SqlStdOperatorTable.MULTIPLY, merges);
-        node = rexBuilder.makeAbstractCast(aggregateCall.type, node);
+        node = rexBuilder.makeAbstractCast(aggregateCall.type, node, false);
         break;
       default:
         throw new AssertionError("unexpected count " + merges);
       }
       int ordinal = extra.register(node);
-      return AggregateCall.create(new HiveSqlSumAggFunction(isDistinct, returnTypeInference, operandTypeInference, operandTypeChecker),
-          false, ImmutableList.of(ordinal), -1, aggregateCall.type, aggregateCall.name);
+      return AggregateCall.create(new HiveSqlSumAggFunction(returnTypeInference,
+              operandTypeInference,
+              operandTypeChecker),
+          false,
+          false,
+          false,
+          List.of(),
+          ImmutableList.of(ordinal),
+          -1,
+          aggregateCall.distinctKeys,
+          aggregateCall.collation,
+          aggregateCall.type,
+          aggregateCall.name);
     }
+  }
+
+  @Override
+  public SqlAggFunction getRollup() {
+    return this;
   }
 }

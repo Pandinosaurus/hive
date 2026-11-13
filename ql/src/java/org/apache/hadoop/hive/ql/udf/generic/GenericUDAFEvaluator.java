@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -147,7 +148,7 @@ public abstract class GenericUDAFEvaluator implements Closeable {
    *         compilation time,
    */
   public ObjectInspector init(Mode m, ObjectInspector[] parameters) throws HiveException {
-    // This function should be overriden in every sub class
+    // This function should be Overridden in every sub class
     // And the sub class should call super.init(m, parameters) to get mode set.
     mode = m;
     partitionEvaluator = null;
@@ -214,7 +215,8 @@ public abstract class GenericUDAFEvaluator implements Closeable {
     if (mode == Mode.PARTIAL1 || mode == Mode.COMPLETE) {
       iterate(agg, parameters);
     } else {
-      assert (parameters.length == 1);
+      // extra parameters are only used to initialize the UDAFs, it's OK
+      // to ignore them here and keep the column parameter (the first one)
       merge(agg, parameters[0]);
     }
   }

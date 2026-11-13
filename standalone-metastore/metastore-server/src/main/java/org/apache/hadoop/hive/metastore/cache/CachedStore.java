@@ -9,42 +9,42 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.cache;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.common.DatabaseName;
 import org.apache.hadoop.hive.common.StatsSetupConst;
 import org.apache.hadoop.hive.common.TableName;
 import org.apache.hadoop.hive.metastore.Deadline;
-import org.apache.hadoop.hive.metastore.FileMetadataHandler;
 import org.apache.hadoop.hive.metastore.ObjectStore;
 import org.apache.hadoop.hive.metastore.PartFilterExprUtil;
 import org.apache.hadoop.hive.metastore.PartitionExpressionProxy;
@@ -56,12 +56,14 @@ import org.apache.hadoop.hive.metastore.HiveAlterHandler;
 import org.apache.hadoop.hive.metastore.api.*;
 import org.apache.hadoop.hive.metastore.api.Package;
 import org.apache.hadoop.hive.metastore.cache.SharedCache.StatsType;
+import org.apache.hadoop.hive.metastore.client.builder.GetPartitionsArgs;
 import org.apache.hadoop.hive.metastore.columnstats.aggr.ColumnStatsAggregator;
 import org.apache.hadoop.hive.metastore.columnstats.aggr.ColumnStatsAggregatorFactory;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
 import org.apache.hadoop.hive.metastore.messaging.*;
-import org.apache.hadoop.hive.metastore.partition.spec.PartitionSpecProxy;
+import org.apache.hadoop.hive.metastore.model.MDatabase;
+import org.apache.hadoop.hive.metastore.model.MTable;
 import org.apache.hadoop.hive.metastore.txn.TxnUtils;
 import org.apache.hadoop.hive.metastore.utils.FileUtils;
 import org.apache.hadoop.hive.metastore.utils.JavaUtils;
@@ -75,7 +77,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import static org.apache.hadoop.hive.metastore.HMSHandler.getPartValsFromName;
+import static org.apache.hadoop.hive.metastore.utils.MetaStoreServerUtils.findStaleColumns;
+import static org.apache.hadoop.hive.metastore.utils.MetaStoreServerUtils.getPartValsFromName;
 import static org.apache.hadoop.hive.metastore.utils.MetaStoreUtils.getDefaultCatalog;
 import static org.apache.hadoop.hive.metastore.utils.StringUtils.normalizeIdentifier;
 
@@ -91,7 +94,17 @@ import static org.apache.hadoop.hive.metastore.utils.StringUtils.normalizeIdenti
 
 public class CachedStore implements RawStore, Configurable {
 
-  private static ScheduledExecutorService cacheUpdateMaster = null;
+  // volatile: read without a lock on the startCacheUpdateService fast path
+  private static volatile ScheduledExecutorService cacheUpdateMaster = null;
+  // Guards cacheUpdateMaster init/shutdown. startCacheUpdateService is called from setConf on
+  // every new worker thread's RawStore construction, so this lock must never be held for a long
+  // time; in particular it must not be shared with the long-running prewarm (HIVE-30052).
+  private static final Object CACHE_UPDATE_SERVICE_LOCK = new Object();
+  // Serializes notification-event replays and protects lastEventId: triggerUpdateUsingEvent is
+  // called both by the background update thread and, when metastore.cache.can.use.event is set,
+  // by every worker thread from commitTransaction, so replays must not interleave. Held only for
+  // the duration of one replay batch, never across prewarm (HIVE-30052).
+  private static final Object EVENT_UPDATE_LOCK = new Object();
   private static List<Pattern> whitelistPatterns = null;
   private static List<Pattern> blacklistPatterns = null;
   // Default value set to 100 milliseconds for test purpose
@@ -104,7 +117,9 @@ public class CachedStore implements RawStore, Configurable {
   // This is set to true only if we were able to cache all the metadata.
   // We may not be able to cache all metadata if we hit CACHED_RAW_STORE_MAX_CACHE_MEMORY limit.
   private static AtomicBoolean isCachedAllMetadata = new AtomicBoolean(false);
-  private static TablesPendingPrewarm tblsPendingPrewarm = new TablesPendingPrewarm();
+  // The prewarmer while a prewarm is in flight, so that getTable can promote requested tables
+  // to the front of the prewarm queue; null once prewarm has completed
+  private static volatile MetaCachePreWarm activePreWarmer = null;
   private RawStore rawStore = null;
   private Configuration conf;
   private static boolean areTxnStatsSupported;
@@ -139,26 +154,37 @@ public class CachedStore implements RawStore, Configurable {
     initBlackListWhiteList(conf);
   }
 
-  private static synchronized void triggerUpdateUsingEvent(RawStore rawStore) {
+  private static void triggerUpdateUsingEvent(RawStore rawStore) {
     if (!isCachePrewarmed.get()) {
       LOG.error("cache update should be done only after prewarm");
       throw new RuntimeException("cache update should be done only after prewarm");
     }
-    long startTime = System.nanoTime();
-    long preEventId = lastEventId;
-    try {
-      lastEventId = updateUsingNotificationEvents(rawStore, lastEventId);
-    } catch (Exception e) {
-      LOG.error(" cache update failed for start event id " + lastEventId + " with error ", e);
-      throw new RuntimeException(e.getMessage());
-    } finally {
-      long endTime = System.nanoTime();
-      LOG.info("Time taken in updateUsingNotificationEvents for num events : " + (lastEventId - preEventId) + " = "
-          + (endTime - startTime) / 1000000 + "ms");
+    synchronized (EVENT_UPDATE_LOCK) {
+      long startTime = System.nanoTime();
+      long preEventId = lastEventId;
+      try {
+        lastEventId = updateUsingNotificationEvents(rawStore, lastEventId);
+      } catch (Exception e) {
+        LOG.error(" cache update failed for start event id " + lastEventId + " with error ", e);
+        throw new RuntimeException(e.getMessage());
+      } finally {
+        long endTime = System.nanoTime();
+        LOG.info("Time taken in updateUsingNotificationEvents for num events : " + (lastEventId - preEventId) + " = "
+            + (endTime - startTime) / 1000000 + "ms");
+      }
     }
   }
 
-  private static synchronized void triggerPreWarm(RawStore rawStore) {
+  // Deliberately not synchronized (HIVE-30052): the only caller is the first run of the
+  // single-threaded cacheUpdateMaster executor, and prewarm() is idempotent via isCachePrewarmed.
+  // Holding a monitor here for the entire prewarm would block every thread that needs the same
+  // monitor: previously the shared class monitor blocked all RPC worker threads for the whole
+  // prewarm (in setConf via startCacheUpdateService, and in commitTransaction via
+  // triggerUpdateUsingEvent when event based updates are enabled).
+  private static void triggerPreWarm(RawStore rawStore) {
+    // Bookmark the current event id before prewarm starts so no events are lost while it runs.
+    // No lock needed: event replays cannot run until isCachePrewarmed is set at the end of
+    // prewarm, and that volatile write/read publishes this value to them.
     lastEventId = rawStore.getCurrentNotificationEventId().getEventId();
     prewarm(rawStore);
   }
@@ -203,46 +229,43 @@ public class CachedStore implements RawStore, Configurable {
     return sharedCache;
   }
 
-  private static ColumnStatistics updateStatsForAlterPart(RawStore rawStore, Table before, String catalogName,
+  private static void updateStatsForAlterPart(RawStore rawStore, Table before, String catalogName,
       String dbName, String tableName, Partition part) throws Exception {
     List<String> deletedCols = new ArrayList<>();
-    List<ColumnStatistics> multiColumnStats = HiveAlterHandler
-        .updateOrGetPartitionColumnStats(rawStore, catalogName, dbName, tableName, part.getValues(),
-            part.getSd().getCols(), before, part, null, deletedCols);
-    if (multiColumnStats.size() > 1) {
-      throw new RuntimeException("CachedStore can only be enabled for Hive engine");
+    // if this is the table rename, change the cache
+    boolean rename = !Objects.equals(before.getDbName(), dbName) ||
+        !Objects.equals(before.getTableName(), tableName);
+    if (rename) {
+      deletedCols = part.getSd().getCols().stream().map(FieldSchema::getName).toList();
+    } else {
+      HiveAlterHandler
+          .updateOrGetPartitionColumnStats(rawStore, catalogName, dbName, tableName, part.getValues(),
+              part.getSd().getCols(), before, part, deletedCols);
     }
-    ColumnStatistics colStats = multiColumnStats.isEmpty() ? null : multiColumnStats.get(0);
     for (String column : deletedCols) {
       sharedCache.removePartitionColStatsFromCache(catalogName, dbName, tableName, part.getValues(), column);
     }
-    if (colStats != null) {
-      sharedCache.alterPartitionAndStatsInCache(catalogName, dbName, tableName, part.getWriteId(), part.getValues(),
-          part.getParameters(), colStats.getStatsObj());
-    }
-    return colStats;
   }
 
   private static void updateStatsForAlterTable(RawStore rawStore, Table tblBefore, Table tblAfter, String catalogName,
       String dbName, String tableName) throws Exception {
-    ColumnStatistics colStats = null;
-    List<String> deletedCols = new ArrayList<>();
     if (tblBefore.isSetPartitionKeys()) {
       List<Partition> parts = sharedCache.listCachedPartitions(catalogName, dbName, tableName, -1);
       for (Partition part : parts) {
-        colStats = updateStatsForAlterPart(rawStore, tblBefore, catalogName, dbName, tableName, part);
+        updateStatsForAlterPart(rawStore, tblBefore, catalogName, dbName, tableName, part);
       }
     }
 
-    List<ColumnStatistics> multiColumnStats = HiveAlterHandler
-        .alterTableUpdateTableColumnStats(rawStore, tblBefore, tblAfter, null, null, rawStore.getConf(), deletedCols);
-    if (multiColumnStats.size() > 1) {
-      throw new RuntimeException("CachedStore can only be enabled for Hive engine");
-    }
-    List<ColumnStatisticsObj> statisticsObjs = multiColumnStats.isEmpty() ? null : multiColumnStats.get(0).getStatsObj();
-    if (colStats != null) {
-      sharedCache.alterTableAndStatsInCache(catalogName, dbName, tableName, tblAfter.getWriteId(), statisticsObjs,
-          tblAfter.getParameters());
+    rawStore.alterTable(catalogName, dbName, tblBefore.getTableName(), tblAfter, null);
+
+    // if this is the table rename, change the cache
+    boolean rename = !Objects.equals(tblBefore.getDbName(), tblAfter.getDbName()) ||
+        !Objects.equals(tblBefore.getTableName(), tblAfter.getTableName());
+    final List<String> deletedCols;
+    if (rename) {
+      deletedCols = tblBefore.getSd().getCols().stream().map(FieldSchema::getName).toList();
+    } else {
+      deletedCols = findStaleColumns(tblBefore.getSd().getCols(), tblAfter.getSd().getCols());
     }
     for (String column : deletedCols) {
       sharedCache.removeTableColStatsFromCache(catalogName, dbName, tableName, column);
@@ -311,6 +334,12 @@ public class CachedStore implements RawStore, Configurable {
         //TODO : Use the stat object stored in the alter table message to update the stats in cache.
         updateStatsForAlterPart(rawStore, alterPartitionMessage.getTableObj(), catalogName, dbName, tableName,
             alterPartitionMessage.getPtnObjAfter());
+        break;
+      case MessageBuilder.ALTER_PARTITIONS_EVENT:
+        AlterPartitionsMessage alterPtnsMessage = deserializer.getAlterPartitionsMessage(message);
+        List<List<String>> part_vals = new ArrayList<>();
+        alterPtnsMessage.getPartitionObjs().forEach(part -> part_vals.add(part.getValues()));
+        sharedCache.removePartitionsFromCache(catalogName, dbName, tableName, part_vals);
         break;
       case MessageBuilder.DROP_PARTITION_EVENT:
         DropPartitionMessage dropPartitionMessage = deserializer.getDropPartitionMessage(message);
@@ -439,170 +468,23 @@ public class CachedStore implements RawStore, Configurable {
     }
     long startTime = System.nanoTime();
     LOG.info("Prewarming CachedStore");
-    long sleepTime = 100;
-    while (!isCachePrewarmed.get()) {
-      // Prevents throwing exceptions in our raw store calls since we're not using RawStoreProxy
-      Deadline.registerIfNot(1000000);
-      Collection<String> catalogsToCache;
-      try {
-        catalogsToCache = catalogsToCache(rawStore);
-        LOG.info("Going to cache catalogs: " + org.apache.commons.lang3.StringUtils.join(catalogsToCache, ", "));
-        List<Catalog> catalogs = new ArrayList<>(catalogsToCache.size());
-        for (String catName : catalogsToCache) {
-          catalogs.add(rawStore.getCatalog(catName));
-        }
-        sharedCache.populateCatalogsInCache(catalogs);
-      } catch (MetaException | NoSuchObjectException e) {
-        LOG.warn("Failed to populate catalogs in cache, going to try again", e);
-        try {
-          Thread.sleep(sleepTime);
-          sleepTime = sleepTime * 2;
-        } catch (InterruptedException timerEx) {
-          LOG.info("sleep interrupted", timerEx.getMessage());
-        }
-        // try again
-        continue;
-      }
-      LOG.info("Finished prewarming catalogs, starting on databases");
-      List<Database> databases = new ArrayList<>();
-      for (String catName : catalogsToCache) {
-        try {
-          List<String> dbNames = rawStore.getAllDatabases(catName);
-          LOG.info("Number of databases to prewarm in catalog {}: {}", catName, dbNames.size());
-          for (String dbName : dbNames) {
-            try {
-              databases.add(rawStore.getDatabase(catName, dbName));
-            } catch (NoSuchObjectException e) {
-              // Continue with next database
-              LOG.warn("Failed to cache database " + DatabaseName.getQualified(catName, dbName) + ", moving on", e);
-            }
-          }
-        } catch (MetaException e) {
-          LOG.warn("Failed to cache databases in catalog " + catName + ", moving on", e);
-        }
-      }
-      sharedCache.populateDatabasesInCache(databases);
-      LOG.info("Databases cache is now prewarmed. Now adding tables, partitions and statistics to the cache");
-      int numberOfDatabasesCachedSoFar = 0;
-      for (Database db : databases) {
-        String catName = StringUtils.normalizeIdentifier(db.getCatalogName());
-        String dbName = StringUtils.normalizeIdentifier(db.getName());
-        List<String> tblNames;
-        try {
-          tblNames = rawStore.getAllTables(catName, dbName);
-        } catch (MetaException e) {
-          LOG.warn("Failed to cache tables for database " + DatabaseName.getQualified(catName, dbName) + ", moving on");
-          // Continue with next database
-          continue;
-        }
-        tblsPendingPrewarm.addTableNamesForPrewarming(tblNames);
-        int totalTablesToCache = tblNames.size();
-        int numberOfTablesCachedSoFar = 0;
-        while (tblsPendingPrewarm.hasMoreTablesToPrewarm()) {
-          try {
-            String tblName = StringUtils.normalizeIdentifier(tblsPendingPrewarm.getNextTableNameToPrewarm());
-            if (!shouldCacheTable(catName, dbName, tblName)) {
-              continue;
-            }
-            Table table;
-            try {
-              table = rawStore.getTable(catName, dbName, tblName);
-            } catch (MetaException e) {
-              LOG.debug(ExceptionUtils.getStackTrace(e));
-              // It is possible the table is deleted during fetching tables of the database,
-              // in that case, continue with the next table
-              continue;
-            }
-            List<String> colNames = MetaStoreUtils.getColumnNamesForTable(table);
-            try {
-              ColumnStatistics tableColStats = null;
-              List<Partition> partitions = null;
-              List<ColumnStatistics> partitionColStats = null;
-              AggrStats aggrStatsAllPartitions = null;
-              AggrStats aggrStatsAllButDefaultPartition = null;
-              TableCacheObjects cacheObjects = new TableCacheObjects();
-              if (!table.getPartitionKeys().isEmpty()) {
-                Deadline.startTimer("getPartitions");
-                partitions = rawStore.getPartitions(catName, dbName, tblName, -1);
-                Deadline.stopTimer();
-                cacheObjects.setPartitions(partitions);
-                List<String> partNames = new ArrayList<>(partitions.size());
-                for (Partition p : partitions) {
-                  partNames.add(Warehouse.makePartName(table.getPartitionKeys(), p.getValues()));
-                }
-                if (!partNames.isEmpty()) {
-                  // Get partition column stats for this table
-                  Deadline.startTimer("getPartitionColumnStatistics");
-                  partitionColStats =
-                      rawStore.getPartitionColumnStatistics(catName, dbName, tblName, partNames, colNames, CacheUtils.HIVE_ENGINE);
-                  Deadline.stopTimer();
-                  cacheObjects.setPartitionColStats(partitionColStats);
-                  // Get aggregate stats for all partitions of a table and for all but default
-                  // partition
-                  Deadline.startTimer("getAggrPartitionColumnStatistics");
-                  aggrStatsAllPartitions = rawStore.get_aggr_stats_for(catName, dbName, tblName, partNames, colNames, CacheUtils.HIVE_ENGINE);
-                  Deadline.stopTimer();
-                  cacheObjects.setAggrStatsAllPartitions(aggrStatsAllPartitions);
-                  // Remove default partition from partition names and get aggregate
-                  // stats again
-                  List<FieldSchema> partKeys = table.getPartitionKeys();
-                  String defaultPartitionValue =
-                      MetastoreConf.getVar(rawStore.getConf(), ConfVars.DEFAULTPARTITIONNAME);
-                  List<String> partCols = new ArrayList<>();
-                  List<String> partVals = new ArrayList<>();
-                  for (FieldSchema fs : partKeys) {
-                    partCols.add(fs.getName());
-                    partVals.add(defaultPartitionValue);
-                  }
-                  String defaultPartitionName = FileUtils.makePartName(partCols, partVals);
-                  partNames.remove(defaultPartitionName);
-                  Deadline.startTimer("getAggrPartitionColumnStatistics");
-                  aggrStatsAllButDefaultPartition =
-                      rawStore.get_aggr_stats_for(catName, dbName, tblName, partNames, colNames, CacheUtils.HIVE_ENGINE);
-                  Deadline.stopTimer();
-                  cacheObjects.setAggrStatsAllButDefaultPartition(aggrStatsAllButDefaultPartition);
-                }
-              } else {
-                Deadline.startTimer("getTableColumnStatistics");
-                tableColStats = rawStore.getTableColumnStatistics(catName, dbName, tblName, colNames, CacheUtils.HIVE_ENGINE);
-                Deadline.stopTimer();
-                cacheObjects.setTableColStats(tableColStats);
-              }
-
-              Deadline.startTimer("getAllTableConstraints");
-              SQLAllTableConstraints tableConstraints = rawStore.getAllTableConstraints(new AllTableConstraintsRequest(catName, dbName, tblName));
-              Deadline.stopTimer();
-              cacheObjects.setTableConstraints(tableConstraints);
-
-              // If the table could not cached due to memory limit, stop prewarm
-              boolean isSuccess = sharedCache
-                  .populateTableInCache(table, cacheObjects);
-              if (isSuccess) {
-                LOG.trace("Cached Database: {}'s Table: {}.", dbName, tblName);
-              } else {
-                LOG.info("Unable to cache Database: {}'s Table: {}, since the cache memory is full. "
-                    + "Will stop attempting to cache any more tables.", dbName, tblName);
-                completePrewarm(startTime, false);
-                return;
-              }
-            } catch (MetaException | NoSuchObjectException e) {
-              LOG.debug(ExceptionUtils.getStackTrace(e));
-              // Continue with next table
-              continue;
-            }
-            LOG.debug("Processed database: {}'s table: {}. Cached {} / {}  tables so far.", dbName, tblName,
-                ++numberOfTablesCachedSoFar, totalTablesToCache);
-          } catch (EmptyStackException e) {
-            // We've prewarmed this database, continue with the next one
-            continue;
-          }
-        }
-        LOG.debug("Processed database: {}. Cached {} / {} databases so far.", dbName, ++numberOfDatabasesCachedSoFar,
-            databases.size());
-      }
-      sharedCache.clearDirtyFlags();
-      completePrewarm(startTime, true);
+    boolean cachedAllMetadata;
+    // The prewarmer is closed (its workers terminated, their stores shut down) before completion
+    // is published, so nothing can still be mutating the cache once isCachePrewarmed is set
+    try (MetaCachePreWarm preWarmer = new DefaultMetaCachePreWarm(rawStore, sharedCache)) {
+      preWarmer.setConf(rawStore.getConf());
+      preWarmer.initialize();
+      activePreWarmer = preWarmer;
+      cachedAllMetadata = preWarmer.preWarm();
+    } catch (MetaException e) {
+      throw new RuntimeException("CachedStore prewarm failed", e);
+    } finally {
+      activePreWarmer = null;
     }
+    if (cachedAllMetadata) {
+      sharedCache.clearDirtyFlags();
+    }
+    completePrewarm(startTime, cachedAllMetadata);
   }
 
   /**
@@ -627,32 +509,6 @@ public class CachedStore implements RawStore, Configurable {
     sharedCache.completeTableCachePrewarm();
   }
 
-  static class TablesPendingPrewarm {
-    private Stack<String> tableNames = new Stack<>();
-
-    private synchronized void addTableNamesForPrewarming(List<String> tblNames) {
-      tableNames.clear();
-      if (tblNames != null) {
-        tableNames.addAll(tblNames);
-      }
-    }
-
-    private synchronized boolean hasMoreTablesToPrewarm() {
-      return !tableNames.empty();
-    }
-
-    private synchronized String getNextTableNameToPrewarm() {
-      return tableNames.pop();
-    }
-
-    private synchronized void prioritizeTableForPrewarm(String tblName) {
-      // If the table is in the pending prewarm list, move it to the top
-      if (tableNames.remove(tblName)) {
-        tableNames.push(tblName);
-      }
-    }
-  }
-
   @VisibleForTesting static void setCachePrewarmedState(boolean state) {
     isCachePrewarmed.set(state);
   }
@@ -664,7 +520,7 @@ public class CachedStore implements RawStore, Configurable {
         MetastoreConf.getAsString(conf, MetastoreConf.ConfVars.CACHED_RAW_STORE_CACHED_OBJECTS_BLACKLIST));
   }
 
-  private static Collection<String> catalogsToCache(RawStore rs) throws MetaException {
+  static Collection<String> catalogsToCache(RawStore rs) {
     Collection<String> confValue = MetastoreConf.getStringCollection(rs.getConf(), ConfVars.CATALOGS_TO_CACHE);
     if (confValue == null || confValue.isEmpty() || (confValue.size() == 1 && confValue.contains(""))) {
       return rs.getCatalogs();
@@ -681,47 +537,59 @@ public class CachedStore implements RawStore, Configurable {
    * @param conf
    * @param runOnlyOnce
    * @param shouldRunPrewarm
-   */ static synchronized void startCacheUpdateService(Configuration conf, boolean runOnlyOnce,
+   */ static void startCacheUpdateService(Configuration conf, boolean runOnlyOnce,
       boolean shouldRunPrewarm) {
-    if (cacheUpdateMaster == null) {
-      initBlackListWhiteList(conf);
-      if (!MetastoreConf.getBoolVar(conf, ConfVars.HIVE_IN_TEST)) {
-        cacheRefreshPeriodMS =
-            MetastoreConf.getTimeVar(conf, ConfVars.CACHED_RAW_STORE_CACHE_UPDATE_FREQUENCY, TimeUnit.MILLISECONDS);
-      }
-      LOG.info("CachedStore: starting cache update service (run every {} ms)", cacheRefreshPeriodMS);
-      cacheUpdateMaster = Executors.newScheduledThreadPool(1, new ThreadFactory() {
-        @Override public Thread newThread(Runnable r) {
-          Thread t = Executors.defaultThreadFactory().newThread(r);
-          t.setName("CachedStore-CacheUpdateService: Thread-" + t.getId());
-          t.setDaemon(true);
-          return t;
-        }
-      });
-      if (!runOnlyOnce) {
-        cacheUpdateMaster
-            .scheduleAtFixedRate(new CacheUpdateMasterWork(conf, shouldRunPrewarm), 0, cacheRefreshPeriodMS,
-                TimeUnit.MILLISECONDS);
-      }
+    // Fast path: after first initialization this is a per-worker-thread no-op (setConf
+    // calls it on every RawStore construction), so skip the lock entirely.
+    if (cacheUpdateMaster != null && !runOnlyOnce) {
+      return;
     }
-    if (runOnlyOnce) {
-      // Some tests control the execution of the background update thread
-      cacheUpdateMaster.schedule(new CacheUpdateMasterWork(conf, shouldRunPrewarm), 0, TimeUnit.MILLISECONDS);
+    synchronized (CACHE_UPDATE_SERVICE_LOCK) {
+      if (cacheUpdateMaster == null) {
+        initBlackListWhiteList(conf);
+        if (!MetastoreConf.getBoolVar(conf, ConfVars.HIVE_IN_TEST)) {
+          cacheRefreshPeriodMS =
+              MetastoreConf.getTimeVar(conf, ConfVars.CACHED_RAW_STORE_CACHE_UPDATE_FREQUENCY, TimeUnit.MILLISECONDS);
+        }
+        LOG.info("CachedStore: starting cache update service (run every {} ms)", cacheRefreshPeriodMS);
+        cacheUpdateMaster = Executors.newScheduledThreadPool(1, new ThreadFactory() {
+          @Override public Thread newThread(Runnable r) {
+            Thread t = Executors.defaultThreadFactory().newThread(r);
+            t.setName("CachedStore-CacheUpdateService: Thread-" + t.getId());
+            t.setDaemon(true);
+            return t;
+          }
+        });
+        if (!runOnlyOnce) {
+          cacheUpdateMaster
+              .scheduleAtFixedRate(new CacheUpdateMasterWork(conf, shouldRunPrewarm), 0, cacheRefreshPeriodMS,
+                  TimeUnit.MILLISECONDS);
+        }
+      }
+      if (runOnlyOnce) {
+        // Some tests control the execution of the background update thread
+        cacheUpdateMaster.schedule(new CacheUpdateMasterWork(conf, shouldRunPrewarm), 0, TimeUnit.MILLISECONDS);
+      }
     }
   }
 
-  @VisibleForTesting static synchronized boolean stopCacheUpdateService(long timeout) {
+  @VisibleForTesting static boolean stopCacheUpdateService(long timeout) {
     boolean tasksStoppedBeforeShutdown = false;
-    if (cacheUpdateMaster != null) {
+    ScheduledExecutorService master = cacheUpdateMaster;
+    if (master != null) {
+      cacheUpdateMaster = null;
       LOG.info("CachedStore: shutting down cache update service");
+      // Stop accepting new runs, then give an in-flight task a bounded grace period to finish
+      // before it is interrupted
+      master.shutdown();
       try {
-        tasksStoppedBeforeShutdown = cacheUpdateMaster.awaitTermination(timeout, TimeUnit.MILLISECONDS);
+        tasksStoppedBeforeShutdown = master.awaitTermination(timeout, TimeUnit.MILLISECONDS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         LOG.info("CachedStore: cache update service was interrupted while waiting for tasks to "
             + "complete before shutting down. Will make a hard stop now.");
       }
-      cacheUpdateMaster.shutdownNow();
-      cacheUpdateMaster = null;
+      master.shutdownNow();
     }
     return tasksStoppedBeforeShutdown;
   }
@@ -906,7 +774,8 @@ public class CachedStore implements RawStore, Configurable {
       SQLAllTableConstraints constraints = null;
       try {
         Deadline.startTimer("getAllTableConstraints");
-        constraints = rawStore.getAllTableConstraints(new AllTableConstraintsRequest(catName, dbName, tblName));
+        constraints = rawStore.getAllTableConstraints(
+            new AllTableConstraintsRequest(catName, dbName, tblName));
         Deadline.stopTimer();
       } catch (MetaException | NoSuchObjectException e) {
         LOG.info("Updating CachedStore: unable to update table constraints of catalog: " + catName + ", database: " + dbName
@@ -925,7 +794,8 @@ public class CachedStore implements RawStore, Configurable {
           dbName, tblName);
       try {
         Deadline.startTimer("getPartitions");
-        List<Partition> partitions = rawStore.getPartitions(catName, dbName, tblName, -1);
+        List<Partition> partitions =
+            rawStore.getPartitions(catName, dbName, tblName, GetPartitionsArgs.getAllPartitions());
         Deadline.stopTimer();
         sharedCache
             .refreshPartitionsInCache(StringUtils.normalizeIdentifier(catName), StringUtils.normalizeIdentifier(dbName),
@@ -1168,6 +1038,29 @@ public class CachedStore implements RawStore, Configurable {
     return sharedCache.listCachedDatabases(catName);
   }
 
+  @Override
+  public List<Database> getDatabaseObjects(String catName, String pattern) throws MetaException {
+    if (!sharedCache.isDatabaseCachePrewarmed() || (canUseEvents && rawStore.isActiveTransaction())) {
+      return rawStore.getDatabaseObjects(catName, pattern);
+    }
+
+    List<String> dbNames;
+    if (pattern == null || pattern.equals("*")) {
+      dbNames = sharedCache.listCachedDatabases(catName);
+    } else {
+      dbNames = sharedCache.listCachedDatabases(catName, pattern);
+    }
+
+    List<Database> databases = new ArrayList<>(dbNames.size());
+    for (String dbName : dbNames) {
+      Database db = sharedCache.getDatabaseFromCache(catName, dbName);
+      if (db != null) {
+        databases.add(db);
+      }
+    }
+    return databases;
+  }
+
   @Override public void createDataConnector(DataConnector connector) throws InvalidObjectException, MetaException {
     rawStore.createDataConnector(connector);
   }
@@ -1257,6 +1150,23 @@ public class CachedStore implements RawStore, Configurable {
     return succ;
   }
 
+  @Override
+  public List<String> dropAllPartitionsAndGetLocations(TableName table,
+      String baseLocationToNotShow, AtomicReference<String> message)
+      throws MetaException, InvalidInputException, NoSuchObjectException, InvalidObjectException {
+    List<String> locations = rawStore.dropAllPartitionsAndGetLocations(table, baseLocationToNotShow, message);
+    String catName = table.getCat();
+    String dbName = table.getDb();
+    String tabName = table.getTable();
+    if (!canUseEvents && shouldCacheTable(catName, dbName, tabName)) {
+      sharedCache.removeAllPartitionColStatsFromCache(catName, dbName, tabName);
+      List<Partition> cachedParts = sharedCache.listCachedPartitions(catName, dbName, tabName, -1);
+      List<List<String>> partVals = cachedParts.stream().map(Partition::getValues).toList();
+      sharedCache.removePartitionsFromCache(table.getCat(), table.getDb(), table.getTable(), partVals);
+    }
+    return locations;
+  }
+
   @Override public Table getTable(String catName, String dbName, String tblName) throws MetaException {
     return getTable(catName, dbName, tblName, null);
   }
@@ -1268,7 +1178,7 @@ public class CachedStore implements RawStore, Configurable {
 
   @Override public Table getTable(String catName, String dbName, String tblName, String validWriteIds, long tableId)
       throws MetaException {
-    catName = normalizeIdentifier(catName);
+    catName = normalizeIdentifier(Optional.ofNullable(catName).orElse(getDefaultCatalog(conf)));
     dbName = StringUtils.normalizeIdentifier(dbName);
     tblName = StringUtils.normalizeIdentifier(tblName);
     if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
@@ -1279,9 +1189,12 @@ public class CachedStore implements RawStore, Configurable {
     if (tbl == null) {
       // This table is not yet loaded in cache
       // If the prewarm thread is working on this table's database,
-      // let's move this table to the top of tblNamesBeingPrewarmed stack,
+      // let's move this table to the top of the prewarm queue,
       // so that it gets loaded to the cache faster and is available for subsequent requests
-      tblsPendingPrewarm.prioritizeTableForPrewarm(tblName);
+      MetaCachePreWarm preWarmer = activePreWarmer;
+      if (preWarmer != null) {
+        preWarmer.prioritizeTableForPrewarm(new TableName(catName, dbName, tblName));
+      }
       Table t = rawStore.getTable(catName, dbName, tblName, validWriteIds);
       if (t != null) {
         sharedCache.addTableToCache(catName, dbName, tblName, t);
@@ -1345,26 +1258,6 @@ public class CachedStore implements RawStore, Configurable {
     return succ;
   }
 
-  @Override public boolean addPartitions(String catName, String dbName, String tblName,
-      PartitionSpecProxy partitionSpec, boolean ifNotExists) throws InvalidObjectException, MetaException {
-    boolean succ = rawStore.addPartitions(catName, dbName, tblName, partitionSpec, ifNotExists);
-    // in case of event based cache update, cache will be updated during commit.
-    if (succ && !canUseEvents) {
-      catName = normalizeIdentifier(catName);
-      dbName = normalizeIdentifier(dbName);
-      tblName = normalizeIdentifier(tblName);
-      if (!shouldCacheTable(catName, dbName, tblName)) {
-        return succ;
-      }
-      PartitionSpecProxy.PartitionIterator iterator = partitionSpec.getPartitionIterator();
-      while (iterator.hasNext()) {
-        Partition part = iterator.next();
-        sharedCache.addPartitionToCache(catName, dbName, tblName, part);
-      }
-    }
-    return succ;
-  }
-
   @Override public Partition getPartition(String catName, String dbName, String tblName, List<String> partVals)
       throws MetaException, NoSuchObjectException {
     return getPartition(catName, dbName, tblName, partVals, null);
@@ -1396,34 +1289,17 @@ public class CachedStore implements RawStore, Configurable {
     return part;
   }
 
-  @Override public boolean doesPartitionExist(String catName, String dbName, String tblName, List<FieldSchema> partKeys,
-      List<String> partVals) throws MetaException, NoSuchObjectException {
-    catName = normalizeIdentifier(catName);
-    dbName = StringUtils.normalizeIdentifier(dbName);
-    tblName = StringUtils.normalizeIdentifier(tblName);
-    if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
-      return rawStore.doesPartitionExist(catName, dbName, tblName, partKeys, partVals);
-    }
-    Table tbl = sharedCache.getTableFromCache(catName, dbName, tblName);
-    if (tbl == null) {
-      // The table containing the partition is not yet loaded in cache
-      return rawStore.doesPartitionExist(catName, dbName, tblName, partKeys, partVals);
-    }
-    return sharedCache.existPartitionFromCache(catName, dbName, tblName, partVals);
-  }
-
-  @Override public boolean dropPartition(String catName, String dbName, String tblName, List<String> partVals)
+  @Override public boolean dropPartition(String catName, String dbName, String tblName, String partName)
       throws MetaException, NoSuchObjectException, InvalidObjectException, InvalidInputException {
-    boolean succ = rawStore.dropPartition(catName, dbName, tblName, partVals);
+    boolean succ = rawStore.dropPartition(catName, dbName, tblName, partName);
     // in case of event based cache update, cache will be updated during commit.
     if (succ && !canUseEvents) {
       catName = normalizeIdentifier(catName);
       dbName = normalizeIdentifier(dbName);
       tblName = normalizeIdentifier(tblName);
-      if (!shouldCacheTable(catName, dbName, tblName)) {
-        return succ;
+      if (shouldCacheTable(catName, dbName, tblName)) {
+        sharedCache.removePartitionFromCache(catName, dbName, tblName, partNameToVals(partName));
       }
-      sharedCache.removePartitionFromCache(catName, dbName, tblName, partVals);
     }
     return succ;
   }
@@ -1448,26 +1324,21 @@ public class CachedStore implements RawStore, Configurable {
     sharedCache.removePartitionsFromCache(catName, dbName, tblName, partVals);
   }
 
-  @Override public List<Partition> getPartitions(String catName, String dbName, String tblName, int max)
+  @Override public List<Partition> getPartitions(String catName, String dbName, String tblName, GetPartitionsArgs args)
       throws MetaException, NoSuchObjectException {
     catName = normalizeIdentifier(catName);
     dbName = StringUtils.normalizeIdentifier(dbName);
     tblName = StringUtils.normalizeIdentifier(tblName);
     if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
-      return rawStore.getPartitions(catName, dbName, tblName, max);
+      return rawStore.getPartitions(catName, dbName, tblName, args);
     }
     Table tbl = sharedCache.getTableFromCache(catName, dbName, tblName);
     if (tbl == null) {
       // The table containing the partitions is not yet loaded in cache
-      return rawStore.getPartitions(catName, dbName, tblName, max);
+      return rawStore.getPartitions(catName, dbName, tblName, args);
     }
-    List<Partition> parts = sharedCache.listCachedPartitions(catName, dbName, tblName, max);
+    List<Partition> parts = sharedCache.listCachedPartitions(catName, dbName, tblName, args.getMax());
     return parts;
-  }
-
-  @Override public Map<String, String> getPartitionLocations(String catName, String dbName, String tblName,
-      String baseLocationToNotShow, int max) {
-    return rawStore.getPartitionLocations(catName, dbName, tblName, baseLocationToNotShow, max);
   }
 
   @Override public Table alterTable(String catName, String dbName, String tblName, Table newTable, String validWriteIds)
@@ -1500,35 +1371,6 @@ public class CachedStore implements RawStore, Configurable {
       sharedCache.removeTableFromCache(catName, dbName, tblName);
     }
     return newTable;
-  }
-
-  @Override public void updateCreationMetadata(String catName, String dbname, String tablename, CreationMetadata cm)
-      throws MetaException {
-    rawStore.updateCreationMetadata(catName, dbname, tablename, cm);
-  }
-
-  @Override public List<String> getTables(String catName, String dbName, String pattern) throws MetaException {
-    return rawStore.getTables(catName, dbName, pattern);
-  }
-
-  @Override public List<String> getTables(String catName, String dbName, String pattern, TableType tableType, int limit)
-      throws MetaException {
-    return rawStore.getTables(catName, dbName, pattern, tableType, limit);
-  }
-
-  @Override public List<Table> getAllMaterializedViewObjectsForRewriting(String catName) throws MetaException {
-    // TODO fucntionCache
-    return rawStore.getAllMaterializedViewObjectsForRewriting(catName);
-  }
-
-  @Override public List<String> getMaterializedViewsForRewriting(String catName, String dbName)
-      throws MetaException, NoSuchObjectException {
-    return rawStore.getMaterializedViewsForRewriting(catName, dbName);
-  }
-
-  @Override public List<TableMeta> getTableMeta(String catName, String dbNames, String tableNames,
-      List<String> tableTypes) throws MetaException {
-    return rawStore.getTableMeta(catName, dbNames, tableNames, tableTypes);
   }
 
   @Override public List<Table> getTableObjectsByName(String catName, String dbName, List<String> tblNames)
@@ -1564,26 +1406,8 @@ public class CachedStore implements RawStore, Configurable {
       if (tbl != null) {
         tables.add(tbl);
       }
-      tables.add(tbl);
     }
     return tables;
-  }
-
-  @Override
-  public List<Table> getTableObjectsByName(String catName, String db, List<String> tbl_names,
-          GetProjectionsSpec projectionsSpec, String tablePattern) throws MetaException, UnknownDBException {
-    return rawStore.getTableObjectsByName(catName, db, tbl_names, projectionsSpec, tablePattern);
-  }
-
-  @Override public List<String> getAllTables(String catName, String dbName) throws MetaException {
-    return rawStore.getAllTables(catName, dbName);
-  }
-
-  @Override
-  // TODO: implement using SharedCache
-  public List<String> listTableNamesByFilter(String catName, String dbName, String filter, short maxTables)
-      throws MetaException, UnknownDBException {
-    return rawStore.listTableNamesByFilter(catName, dbName, filter, maxTables);
   }
 
   @Override public List<String> listPartitionNames(String catName, String dbName, String tblName, short maxParts)
@@ -1607,18 +1431,6 @@ public class CachedStore implements RawStore, Configurable {
       }
     }
     return partitionNames;
-  }
-
-  @Override
-  public List<String> listPartitionNames(String catName, String dbName, String tblName, String defaultPartName,
-      byte[] exprBytes, String order, short maxParts) throws MetaException, NoSuchObjectException {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override public PartitionValuesResponse listPartitionValues(String catName, String dbName, String tblName,
-      List<FieldSchema> cols, boolean applyDistinct, String filter, boolean ascending, List<FieldSchema> order,
-      long maxParts) throws MetaException {
-    throw new UnsupportedOperationException();
   }
 
   @Override public Partition alterPartition(String catName, String dbName, String tblName, List<String> partVals,
@@ -1670,68 +1482,29 @@ public class CachedStore implements RawStore, Configurable {
     return expressionProxy.filterPartitionsByExpr(table.getPartitionKeys(), expr, defaultPartName, result);
   }
 
-  @Override
-  // TODO: implement using SharedCache
-  public List<Partition> getPartitionsByFilter(String catName, String dbName, String tblName, String filter,
-      short maxParts) throws MetaException, NoSuchObjectException {
-    return rawStore.getPartitionsByFilter(catName, dbName, tblName, filter, maxParts);
-  }
-
-  @Override
-  /**
-   * getPartitionSpecsByFilterAndProjection interface is currently non-cacheable.
-   */ public List<Partition> getPartitionSpecsByFilterAndProjection(Table table,
-      GetProjectionsSpec projectionSpec, GetPartitionsFilterSpec filterSpec)
-      throws MetaException, NoSuchObjectException {
-    return rawStore.getPartitionSpecsByFilterAndProjection(table, projectionSpec, filterSpec);
-  }
-
-  @Override public boolean getPartitionsByExpr(String catName, String dbName, String tblName, byte[] expr,
-      String defaultPartitionName, short maxParts, List<Partition> result) throws TException {
+  @Override public boolean getPartitionsByExpr(String catName, String dbName, String tblName,
+      List<Partition> result, GetPartitionsArgs args) throws TException {
     catName = StringUtils.normalizeIdentifier(catName);
     dbName = StringUtils.normalizeIdentifier(dbName);
     tblName = StringUtils.normalizeIdentifier(tblName);
     if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
-      return rawStore.getPartitionsByExpr(catName, dbName, tblName, expr, defaultPartitionName, maxParts, result);
+      return rawStore.getPartitionsByExpr(catName, dbName, tblName, result, args);
     }
     List<String> partNames = new LinkedList<>();
     Table table = sharedCache.getTableFromCache(catName, dbName, tblName);
     if (table == null) {
       // The table is not yet loaded in cache
-      return rawStore.getPartitionsByExpr(catName, dbName, tblName, expr, defaultPartitionName, maxParts, result);
+      return rawStore.getPartitionsByExpr(catName, dbName, tblName, result, args);
     }
     boolean hasUnknownPartitions =
-        getPartitionNamesPrunedByExprNoTxn(table, expr, defaultPartitionName, maxParts, partNames, sharedCache);
+        getPartitionNamesPrunedByExprNoTxn(table, args.getExpr(), args.getDefaultPartName(),
+            (short) args.getMax(), partNames, sharedCache);
     for (String partName : partNames) {
       Partition part = sharedCache.getPartitionFromCache(catName, dbName, tblName, partNameToVals(partName));
       part.unsetPrivileges();
       result.add(part);
     }
     return hasUnknownPartitions;
-  }
-
-  @Override public int getNumPartitionsByFilter(String catName, String dbName, String tblName, String filter)
-      throws MetaException, NoSuchObjectException {
-    return rawStore.getNumPartitionsByFilter(catName, dbName, tblName, filter);
-  }
-
-  @Override public int getNumPartitionsByExpr(String catName, String dbName, String tblName, byte[] expr)
-      throws MetaException, NoSuchObjectException {
-    catName = normalizeIdentifier(catName);
-    dbName = StringUtils.normalizeIdentifier(dbName);
-    tblName = StringUtils.normalizeIdentifier(tblName);
-    if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
-      return rawStore.getNumPartitionsByExpr(catName, dbName, tblName, expr);
-    }
-    String defaultPartName = MetastoreConf.getVar(getConf(), ConfVars.DEFAULTPARTITIONNAME);
-    List<String> partNames = new LinkedList<>();
-    Table table = sharedCache.getTableFromCache(catName, dbName, tblName);
-    if (table == null) {
-      // The table is not yet loaded in cache
-      return rawStore.getNumPartitionsByExpr(catName, dbName, tblName, expr);
-    }
-    getPartitionNamesPrunedByExprNoTxn(table, expr, defaultPartName, Short.MAX_VALUE, partNames, sharedCache);
-    return partNames.size();
   }
 
   @VisibleForTesting public static List<String> partNameToVals(String name) {
@@ -1747,165 +1520,26 @@ public class CachedStore implements RawStore, Configurable {
   }
 
   @Override public List<Partition> getPartitionsByNames(String catName, String dbName, String tblName,
-      List<String> partNames) throws MetaException, NoSuchObjectException {
+      GetPartitionsArgs args) throws MetaException, NoSuchObjectException {
     catName = StringUtils.normalizeIdentifier(catName);
     dbName = StringUtils.normalizeIdentifier(dbName);
     tblName = StringUtils.normalizeIdentifier(tblName);
     if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
-      return rawStore.getPartitionsByNames(catName, dbName, tblName, partNames);
+      return rawStore.getPartitionsByNames(catName, dbName, tblName, args);
     }
     Table table = sharedCache.getTableFromCache(catName, dbName, tblName);
     if (table == null) {
       // The table is not yet loaded in cache
-      return rawStore.getPartitionsByNames(catName, dbName, tblName, partNames);
+      return rawStore.getPartitionsByNames(catName, dbName, tblName, args);
     }
     List<Partition> partitions = new ArrayList<>();
-    for (String partName : partNames) {
+    for (String partName : args.getPartNames()) {
       Partition part = sharedCache.getPartitionFromCache(catName, dbName, tblName, partNameToVals(partName));
       if (part != null) {
         partitions.add(part);
       }
     }
     return partitions;
-  }
-
-  @Override public Table markPartitionForEvent(String catName, String dbName, String tblName,
-      Map<String, String> partVals, PartitionEventType evtType)
-      throws MetaException, UnknownTableException, InvalidPartitionException, UnknownPartitionException {
-    return rawStore.markPartitionForEvent(catName, dbName, tblName, partVals, evtType);
-  }
-
-  @Override public boolean isPartitionMarkedForEvent(String catName, String dbName, String tblName,
-      Map<String, String> partName, PartitionEventType evtType)
-      throws MetaException, UnknownTableException, InvalidPartitionException, UnknownPartitionException {
-    return rawStore.isPartitionMarkedForEvent(catName, dbName, tblName, partName, evtType);
-  }
-
-  @Override public boolean addRole(String rowName, String ownerName)
-      throws InvalidObjectException, MetaException, NoSuchObjectException {
-    return rawStore.addRole(rowName, ownerName);
-  }
-
-  @Override public boolean removeRole(String roleName) throws MetaException, NoSuchObjectException {
-    return rawStore.removeRole(roleName);
-  }
-
-  @Override public boolean grantRole(Role role, String userName, PrincipalType principalType, String grantor,
-      PrincipalType grantorType, boolean grantOption)
-      throws MetaException, NoSuchObjectException, InvalidObjectException {
-    return rawStore.grantRole(role, userName, principalType, grantor, grantorType, grantOption);
-  }
-
-  @Override public boolean revokeRole(Role role, String userName, PrincipalType principalType, boolean grantOption)
-      throws MetaException, NoSuchObjectException {
-    return rawStore.revokeRole(role, userName, principalType, grantOption);
-  }
-
-  @Override public PrincipalPrivilegeSet getUserPrivilegeSet(String userName, List<String> groupNames)
-      throws InvalidObjectException, MetaException {
-    return rawStore.getUserPrivilegeSet(userName, groupNames);
-  }
-
-  @Override public PrincipalPrivilegeSet getDBPrivilegeSet(String catName, String dbName, String userName,
-      List<String> groupNames) throws InvalidObjectException, MetaException {
-    return rawStore.getDBPrivilegeSet(catName, dbName, userName, groupNames);
-  }
-
-  @Override public PrincipalPrivilegeSet getConnectorPrivilegeSet(String catName, String connectorName, String userName,
-      List<String> groupNames) throws InvalidObjectException, MetaException {
-    return rawStore.getConnectorPrivilegeSet(catName, connectorName, userName, groupNames);
-  }
-
-  @Override public PrincipalPrivilegeSet getTablePrivilegeSet(String catName, String dbName, String tableName,
-      String userName, List<String> groupNames) throws InvalidObjectException, MetaException {
-    return rawStore.getTablePrivilegeSet(catName, dbName, tableName, userName, groupNames);
-  }
-
-  @Override public PrincipalPrivilegeSet getPartitionPrivilegeSet(String catName, String dbName, String tableName,
-      String partition, String userName, List<String> groupNames) throws InvalidObjectException, MetaException {
-    return rawStore.getPartitionPrivilegeSet(catName, dbName, tableName, partition, userName, groupNames);
-  }
-
-  @Override public PrincipalPrivilegeSet getColumnPrivilegeSet(String catName, String dbName, String tableName,
-      String partitionName, String columnName, String userName, List<String> groupNames)
-      throws InvalidObjectException, MetaException {
-    return rawStore.getColumnPrivilegeSet(catName, dbName, tableName, partitionName, columnName, userName, groupNames);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalGlobalGrants(String principalName,
-      PrincipalType principalType) {
-    return rawStore.listPrincipalGlobalGrants(principalName, principalType);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalDBGrants(String principalName, PrincipalType principalType,
-      String catName, String dbName) {
-    return rawStore.listPrincipalDBGrants(principalName, principalType, catName, dbName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalDCGrants(String principalName, PrincipalType principalType,
-                                                                   String dcName) {
-    return rawStore.listPrincipalDCGrants(principalName, principalType, dcName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listAllTableGrants(String principalName, PrincipalType principalType,
-      String catName, String dbName, String tableName) {
-    return rawStore.listAllTableGrants(principalName, principalType, catName, dbName, tableName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalPartitionGrants(String principalName,
-      PrincipalType principalType, String catName, String dbName, String tableName, List<String> partValues,
-      String partName) {
-    return rawStore
-        .listPrincipalPartitionGrants(principalName, principalType, catName, dbName, tableName, partValues, partName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalTableColumnGrants(String principalName,
-      PrincipalType principalType, String catName, String dbName, String tableName, String columnName) {
-    return rawStore
-        .listPrincipalTableColumnGrants(principalName, principalType, catName, dbName, tableName, columnName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalPartitionColumnGrants(String principalName,
-      PrincipalType principalType, String catName, String dbName, String tableName, List<String> partValues,
-      String partName, String columnName) {
-    return rawStore
-        .listPrincipalPartitionColumnGrants(principalName, principalType, catName, dbName, tableName, partValues,
-            partName, columnName);
-  }
-
-  @Override public boolean grantPrivileges(PrivilegeBag privileges)
-      throws InvalidObjectException, MetaException, NoSuchObjectException {
-    return rawStore.grantPrivileges(privileges);
-  }
-
-  @Override public boolean revokePrivileges(PrivilegeBag privileges, boolean grantOption)
-      throws InvalidObjectException, MetaException, NoSuchObjectException {
-    return rawStore.revokePrivileges(privileges, grantOption);
-  }
-
-  @Override public boolean refreshPrivileges(HiveObjectRef objToRefresh, String authorizer,
-      PrivilegeBag grantPrivileges) throws InvalidObjectException, MetaException, NoSuchObjectException {
-    return rawStore.refreshPrivileges(objToRefresh, authorizer, grantPrivileges);
-  }
-
-  @Override public Role getRole(String roleName) throws NoSuchObjectException {
-    return rawStore.getRole(roleName);
-  }
-
-  @Override public List<String> listRoleNames() {
-    return rawStore.listRoleNames();
-  }
-
-  @Override public List<Role> listRoles(String principalName, PrincipalType principalType) {
-    return rawStore.listRoles(principalName, principalType);
-  }
-
-  @Override public List<RolePrincipalGrant> listRolesWithGrants(String principalName, PrincipalType principalType) {
-    return rawStore.listRolesWithGrants(principalName, principalType);
-  }
-
-  @Override public List<RolePrincipalGrant> listRoleMembers(String roleName) {
-    return rawStore.listRoleMembers(roleName);
   }
 
   @Override public Partition getPartitionWithAuth(String catName, String dbName, String tblName, List<String> partVals,
@@ -1930,34 +1564,6 @@ public class CachedStore implements RawStore, Configurable {
       throw new NoSuchObjectException("partition values=" + partVals.toString());
     }
     return p;
-  }
-
-  @Override public List<Partition> getPartitionsWithAuth(String catName, String dbName, String tblName, short maxParts,
-      String userName, List<String> groupNames) throws MetaException, NoSuchObjectException, InvalidObjectException {
-    catName = StringUtils.normalizeIdentifier(catName);
-    dbName = StringUtils.normalizeIdentifier(dbName);
-    tblName = StringUtils.normalizeIdentifier(tblName);
-    if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
-      return rawStore.getPartitionsWithAuth(catName, dbName, tblName, maxParts, userName, groupNames);
-    }
-    Table table = sharedCache.getTableFromCache(catName, dbName, tblName);
-    if (table == null) {
-      // The table is not yet loaded in cache
-      return rawStore.getPartitionsWithAuth(catName, dbName, tblName, maxParts, userName, groupNames);
-    }
-    List<Partition> partitions = new ArrayList<>();
-    int count = 0;
-    for (Partition part : sharedCache.listCachedPartitions(catName, dbName, tblName, maxParts)) {
-      if (maxParts == -1 || count < maxParts) {
-        String partName = Warehouse.makePartName(table.getPartitionKeys(), part.getValues());
-        PrincipalPrivilegeSet privs =
-            getPartitionPrivilegeSet(catName, dbName, tblName, partName, userName, groupNames);
-        part.setPrivileges(privs);
-        partitions.add(part);
-        count++;
-      }
-    }
-    return partitions;
   }
 
   @Override public List<String> listPartitionNamesPs(String catName, String dbName, String tblName,
@@ -1987,35 +1593,32 @@ public class CachedStore implements RawStore, Configurable {
     return partitionNames;
   }
 
-  @Override
-  public int getNumPartitionsByPs(String catName, String dbName, String tblName, List<String> partSpecs)
-      throws MetaException, NoSuchObjectException {
-    return rawStore.getNumPartitionsByPs(catName, dbName, tblName, partSpecs);
-  }
-
   @Override public List<Partition> listPartitionsPsWithAuth(String catName, String dbName, String tblName,
-      List<String> partSpecs, short maxParts, String userName, List<String> groupNames)
-      throws MetaException, InvalidObjectException, NoSuchObjectException {
+      GetPartitionsArgs args) throws MetaException, InvalidObjectException, NoSuchObjectException {
     catName = StringUtils.normalizeIdentifier(catName);
     dbName = StringUtils.normalizeIdentifier(dbName);
     tblName = StringUtils.normalizeIdentifier(tblName);
     if (!shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())) {
-      return rawStore.listPartitionsPsWithAuth(catName, dbName, tblName, partSpecs, maxParts, userName, groupNames);
+      return rawStore.listPartitionsPsWithAuth(catName, dbName, tblName, args);
     }
     Table table = sharedCache.getTableFromCache(catName, dbName, tblName);
     if (table == null) {
       // The table is not yet loaded in cache
-      return rawStore.listPartitionsPsWithAuth(catName, dbName, tblName, partSpecs, maxParts, userName, groupNames);
+      return rawStore.listPartitionsPsWithAuth(catName, dbName, tblName, args);
     }
-    String partNameMatcher = getPartNameMatcher(table, partSpecs);
+    String partNameMatcher = null;
+    if (args.getPart_vals() != null && !args.getPart_vals().isEmpty()) {
+      partNameMatcher = getPartNameMatcher(table, args.getPart_vals());
+    }
+    int maxParts = args.getMax();
     List<Partition> partitions = new ArrayList<>();
     List<Partition> allPartitions = sharedCache.listCachedPartitions(catName, dbName, tblName, maxParts);
     int count = 0;
     for (Partition part : allPartitions) {
       String partName = Warehouse.makePartName(table.getPartitionKeys(), part.getValues());
-      if (partName.matches(partNameMatcher) && (maxParts == -1 || count < maxParts)) {
+      if ((partNameMatcher == null || partName.matches(partNameMatcher)) && (maxParts == -1 || count < maxParts)) {
         PrincipalPrivilegeSet privs =
-            getPartitionPrivilegeSet(catName, dbName, tblName, partName, userName, groupNames);
+            getPartitionPrivilegeSet(catName, dbName, tblName, partName, args.getUserName(), args.getGroupNames());
         part.setPrivileges(privs);
         partitions.add(part);
         count++;
@@ -2168,21 +1771,38 @@ public class CachedStore implements RawStore, Configurable {
     return columnStatistics;
   }
 
-  @Override public boolean deleteTableColumnStatistics(String catName, String dbName, String tblName, String colName, String engine)
-      throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
+  @Override public boolean deleteTableColumnStatistics(String catName, String dbName, String tblName, List<String> colNames, String engine)
+          throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
     if (!CacheUtils.HIVE_ENGINE.equals(engine)) {
       throw new RuntimeException("CachedStore can only be enabled for Hive engine");
     }
-    boolean succ = rawStore.deleteTableColumnStatistics(catName, dbName, tblName, colName, engine);
+    boolean succ = rawStore.deleteTableColumnStatistics(catName, dbName, tblName, colNames, engine);
+    catName = normalizeIdentifier(catName);
+    dbName = normalizeIdentifier(dbName);
+    tblName = normalizeIdentifier(tblName);
+    if (!shouldCacheTable(catName, dbName, tblName)) {
+      return succ;
+    }
+    Table cachedTable = sharedCache.getTableFromCache(catName, dbName, tblName);
+    if (cachedTable != null &&
+        cachedTable.getParameters().containsKey(StatsSetupConst.COLUMN_STATS_ACCURATE) && succ) {
+      if (colNames == null || colNames.isEmpty()) {
+        StatsSetupConst.clearColumnStatsState(cachedTable.getParameters());
+      } else {
+        StatsSetupConst.removeColumnStatsState(cachedTable.getParameters(), colNames);
+      }
+      sharedCache.alterTableInCache(catName, dbName, tblName, cachedTable);
+    }
     // in case of event based cache update, cache is updated during commit txn
     if (succ && !canUseEvents) {
-      catName = normalizeIdentifier(catName);
-      dbName = normalizeIdentifier(dbName);
-      tblName = normalizeIdentifier(tblName);
-      if (!shouldCacheTable(catName, dbName, tblName)) {
-        return succ;
+      if (colNames == null || colNames.isEmpty()) {
+        colNames = getTable(catName, dbName, tblName)
+            .getSd().getCols().stream().map(FieldSchema::getName)
+            .collect(Collectors.toList());
       }
-      sharedCache.removeTableColStatsFromCache(catName, dbName, tblName, colName);
+      for (String colName : colNames) {
+        sharedCache.removeTableColStatsFromCache(catName, dbName, tblName, colName);
+      }
     }
     return succ;
   }
@@ -2203,10 +1823,26 @@ public class CachedStore implements RawStore, Configurable {
   }
 
   @Override public Map<String, String> updatePartitionColumnStatistics(ColumnStatistics colStats, List<String> partVals,
-      String validWriteIds, long writeId)
-      throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
-    Map<String, String> newParams =
-        rawStore.updatePartitionColumnStatistics(colStats, partVals, validWriteIds, writeId);
+                                                                       String validWriteIds, long writeId)
+          throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
+    return updatePartitionColumnStatisticsInternal(null, null, colStats, partVals, validWriteIds, writeId);
+  }
+
+  @Override public Map<String, String> updatePartitionColumnStatistics(Table table, MTable mTable,
+                                                                       ColumnStatistics colStats, List<String> partVals,
+                                                                       String validWriteIds, long writeId)
+          throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
+     return updatePartitionColumnStatisticsInternal(table, mTable, colStats, partVals, validWriteIds, writeId);
+  }
+
+  private Map<String, String> updatePartitionColumnStatisticsInternal(Table table, MTable mTable, 
+                                                                      ColumnStatistics colStats, List<String> partVals, 
+                                                                      String validWriteIds, long writeId)
+          throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
+    ColumnStatisticsDesc statsDesc = colStats.getStatsDesc();
+    table = Optional.ofNullable(table).orElse(getTable(statsDesc.getCatName(), statsDesc.getDbName(), statsDesc.getTableName()));
+    mTable = Optional.ofNullable(mTable).orElse(ensureGetMTable(statsDesc.getCatName(), statsDesc.getDbName(), statsDesc.getTableName()));
+    Map<String, String> newParams = rawStore.updatePartitionColumnStatistics(table, mTable, colStats, partVals, validWriteIds, writeId);
     // in case of event based cache update, cache is updated during commit txn
     if (newParams != null && !canUseEvents) {
       updatePartitionColumnStatisticsInCache(colStats, newParams, partVals);
@@ -2270,12 +1906,12 @@ public class CachedStore implements RawStore, Configurable {
   }
 
   @Override public boolean deletePartitionColumnStatistics(String catName, String dbName, String tblName,
-      String partName, List<String> partVals, String colName, String engine)
-      throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
+                                                           List<String> partNames, List<String> colNames, String engine)
+          throws NoSuchObjectException, MetaException, InvalidObjectException, InvalidInputException {
     if (!CacheUtils.HIVE_ENGINE.equals(engine)) {
       throw new RuntimeException("CachedStore can only be enabled for Hive engine");
     }
-    boolean succ = rawStore.deletePartitionColumnStatistics(catName, dbName, tblName, partName, partVals, colName, engine);
+    boolean succ = rawStore.deletePartitionColumnStatistics(catName, dbName, tblName, partNames, colNames, engine);
     // in case of event based cache update, cache is updated during commit txn.
     if (succ && !canUseEvents) {
       catName = normalizeIdentifier(catName);
@@ -2284,7 +1920,17 @@ public class CachedStore implements RawStore, Configurable {
       if (!shouldCacheTable(catName, dbName, tblName)) {
         return succ;
       }
-      sharedCache.removePartitionColStatsFromCache(catName, dbName, tblName, partVals, colName);
+      Table table = rawStore.getTable(catName, dbName, tblName);
+      if (colNames == null || colNames.isEmpty()) {
+        colNames = table.getSd().getCols().stream().map(FieldSchema::getName)
+            .collect(Collectors.toList());
+      }
+      for (String partName : partNames) {
+        List<String> partVals = getPartValsFromName(table, partName);
+        for (String colName : colNames) {
+          sharedCache.removePartitionColStatsFromCache(catName, dbName, tblName, partVals, colName);
+        }
+      }
     }
     return succ;
   }
@@ -2450,38 +2096,6 @@ public class CachedStore implements RawStore, Configurable {
     return rawStore.cleanupEvents();
   }
 
-  @Override public boolean addToken(String tokenIdentifier, String delegationToken) {
-    return rawStore.addToken(tokenIdentifier, delegationToken);
-  }
-
-  @Override public boolean removeToken(String tokenIdentifier) {
-    return rawStore.removeToken(tokenIdentifier);
-  }
-
-  @Override public String getToken(String tokenIdentifier) {
-    return rawStore.getToken(tokenIdentifier);
-  }
-
-  @Override public List<String> getAllTokenIdentifiers() {
-    return rawStore.getAllTokenIdentifiers();
-  }
-
-  @Override public int addMasterKey(String key) throws MetaException {
-    return rawStore.addMasterKey(key);
-  }
-
-  @Override public void updateMasterKey(Integer seqNo, String key) throws NoSuchObjectException, MetaException {
-    rawStore.updateMasterKey(seqNo, key);
-  }
-
-  @Override public boolean removeMasterKey(Integer keySeq) {
-    return rawStore.removeMasterKey(keySeq);
-  }
-
-  @Override public String[] getMasterKeys() {
-    return rawStore.getMasterKeys();
-  }
-
   @Override public void verifySchema() throws MetaException {
     rawStore.verifySchema();
   }
@@ -2494,163 +2108,36 @@ public class CachedStore implements RawStore, Configurable {
     rawStore.setMetaStoreSchemaVersion(version, comment);
   }
 
-  @Override public List<HiveObjectPrivilege> listPrincipalDBGrantsAll(String principalName,
-      PrincipalType principalType) {
-    return rawStore.listPrincipalDBGrantsAll(principalName, principalType);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalDCGrantsAll(String principalName,
-                                                                      PrincipalType principalType) {
-    return rawStore.listPrincipalDCGrantsAll(principalName, principalType);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalTableGrantsAll(String principalName,
-      PrincipalType principalType) {
-    return rawStore.listPrincipalTableGrantsAll(principalName, principalType);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalPartitionGrantsAll(String principalName,
-      PrincipalType principalType) {
-    return rawStore.listPrincipalPartitionGrantsAll(principalName, principalType);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalTableColumnGrantsAll(String principalName,
-      PrincipalType principalType) {
-    return rawStore.listPrincipalTableColumnGrantsAll(principalName, principalType);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPrincipalPartitionColumnGrantsAll(String principalName,
-      PrincipalType principalType) {
-    return rawStore.listPrincipalPartitionColumnGrantsAll(principalName, principalType);
-  }
-
-  @Override public List<HiveObjectPrivilege> listGlobalGrantsAll() {
-    return rawStore.listGlobalGrantsAll();
-  }
-
-  @Override public List<HiveObjectPrivilege> listDBGrantsAll(String catName, String dbName) {
-    return rawStore.listDBGrantsAll(catName, dbName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listDCGrantsAll(String dcName) {
-    return rawStore.listDCGrantsAll(dcName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPartitionColumnGrantsAll(String catName, String dbName,
-      String tableName, String partitionName, String columnName) {
-    return rawStore.listPartitionColumnGrantsAll(catName, dbName, tableName, partitionName, columnName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listTableGrantsAll(String catName, String dbName, String tableName) {
-    return rawStore.listTableGrantsAll(catName, dbName, tableName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listPartitionGrantsAll(String catName, String dbName, String tableName,
-      String partitionName) {
-    return rawStore.listPartitionGrantsAll(catName, dbName, tableName, partitionName);
-  }
-
-  @Override public List<HiveObjectPrivilege> listTableColumnGrantsAll(String catName, String dbName, String tableName,
-      String columnName) {
-    return rawStore.listTableColumnGrantsAll(catName, dbName, tableName, columnName);
-  }
-
   @Override public void createFunction(Function func) throws InvalidObjectException, MetaException {
-    // TODO fucntionCache
+    // TODO functionCache
     rawStore.createFunction(func);
   }
 
   @Override public void alterFunction(String catName, String dbName, String funcName, Function newFunction)
       throws InvalidObjectException, MetaException {
-    // TODO fucntionCache
+    // TODO functionCache
     rawStore.alterFunction(catName, dbName, funcName, newFunction);
   }
 
   @Override public void dropFunction(String catName, String dbName, String funcName)
       throws MetaException, NoSuchObjectException, InvalidObjectException, InvalidInputException {
-    // TODO fucntionCache
+    // TODO functionCache
     rawStore.dropFunction(catName, dbName, funcName);
   }
 
   @Override public Function getFunction(String catName, String dbName, String funcName) throws MetaException {
-    // TODO fucntionCache
+    // TODO functionCache
     return rawStore.getFunction(catName, dbName, funcName);
   }
 
   @Override public List<Function> getAllFunctions(String catName) throws MetaException {
-    // TODO fucntionCache
+    // TODO functionCache
     return rawStore.getAllFunctions(catName);
   }
 
-  @Override public List<String> getFunctions(String catName, String dbName, String pattern) throws MetaException {
-    // TODO fucntionCache
-    return rawStore.getFunctions(catName, dbName, pattern);
-  }
-
-  @Override public NotificationEventResponse getNextNotification(NotificationEventRequest rqst) {
-    return rawStore.getNextNotification(rqst);
-  }
-
-  @Override public void addNotificationEvent(NotificationEvent event) throws MetaException {
-    rawStore.addNotificationEvent(event);
-  }
-
-  @Override public void cleanNotificationEvents(int olderThan) {
-    rawStore.cleanNotificationEvents(olderThan);
-  }
-
-  @Override public CurrentNotificationEventId getCurrentNotificationEventId() {
-    return rawStore.getCurrentNotificationEventId();
-  }
-
-  @Override public NotificationEventsCountResponse getNotificationEventsCount(NotificationEventsCountRequest rqst) {
-    return rawStore.getNotificationEventsCount(rqst);
-  }
-
-  @Override public void flushCache() {
-    rawStore.flushCache();
-  }
-
-  @Override public ByteBuffer[] getFileMetadata(List<Long> fileIds) throws MetaException {
-    return rawStore.getFileMetadata(fileIds);
-  }
-
-  @Override public void putFileMetadata(List<Long> fileIds, List<ByteBuffer> metadata, FileMetadataExprType type)
-      throws MetaException {
-    rawStore.putFileMetadata(fileIds, metadata, type);
-  }
-
-  @Override public boolean isFileMetadataSupported() {
-    return rawStore.isFileMetadataSupported();
-  }
-
-  @Override public void getFileMetadataByExpr(List<Long> fileIds, FileMetadataExprType type, byte[] expr,
-      ByteBuffer[] metadatas, ByteBuffer[] exprResults, boolean[] eliminated) throws MetaException {
-    rawStore.getFileMetadataByExpr(fileIds, type, expr, metadatas, exprResults, eliminated);
-  }
-
-  @Override public FileMetadataHandler getFileMetadataHandler(FileMetadataExprType type) {
-    return rawStore.getFileMetadataHandler(type);
-  }
-
-  @Override public int getTableCount() throws MetaException {
-    return rawStore.getTableCount();
-  }
-
-  @Override public int getPartitionCount() throws MetaException {
-    return rawStore.getPartitionCount();
-  }
-
-  @Override public int getDatabaseCount() throws MetaException {
-    return rawStore.getDatabaseCount();
-  }
-
-  @Override
-  @Deprecated
-  public List<SQLPrimaryKey> getPrimaryKeys(String catName, String dbName, String tblName) throws MetaException {
-    PrimaryKeysRequest request = new PrimaryKeysRequest(dbName, tblName);
-    request.setCatName(catName);
-    return getPrimaryKeys(request);
+  @Override public <T> List<T> getFunctionsRequest(String catName, String dbName,
+      String pattern, boolean isReturnNames) throws MetaException {
+    return rawStore.getFunctionsRequest(catName, dbName, pattern, isReturnNames);
   }
 
   @Override
@@ -2662,15 +2149,6 @@ public class CachedStore implements RawStore, Configurable {
       return rawStore.getPrimaryKeys(request);
     }
     return sharedCache.listCachedPrimaryKeys(catName, dbName, tblName);
-  }
-
-  @Override
-  @Deprecated
-  public List<SQLForeignKey> getForeignKeys(String catName, String parentDbName, String parentTblName,
-      String foreignDbName, String foreignTblName) throws MetaException {
-    ForeignKeysRequest request = new ForeignKeysRequest(parentDbName, parentTblName, foreignDbName, foreignTblName);
-    request.setCatName(catName);
-    return getForeignKeys(request);
   }
 
   @Override
@@ -2696,14 +2174,6 @@ public class CachedStore implements RawStore, Configurable {
   }
 
   @Override
-  @Deprecated
-  public List<SQLUniqueConstraint> getUniqueConstraints(String catName, String dbName, String tblName)
-      throws MetaException {
-    UniqueConstraintsRequest request = new UniqueConstraintsRequest(catName, dbName, tblName);
-    return getUniqueConstraints(request);
-  }
-
-  @Override
   public List<SQLUniqueConstraint> getUniqueConstraints(UniqueConstraintsRequest request) throws MetaException {
     String catName = StringUtils.normalizeIdentifier(request.getCatName());
     String dbName = StringUtils.normalizeIdentifier(request.getDb_name());
@@ -2712,14 +2182,6 @@ public class CachedStore implements RawStore, Configurable {
       return rawStore.getUniqueConstraints(request);
     }
     return sharedCache.listCachedUniqueConstraint(catName, dbName, tblName);
-  }
-
-  @Override
-  @Deprecated
-  public List<SQLNotNullConstraint> getNotNullConstraints(String catName, String dbName, String tblName)
-      throws MetaException {
-    NotNullConstraintsRequest request = new NotNullConstraintsRequest(catName, dbName, tblName);
-    return getNotNullConstraints(request);
   }
 
   @Override
@@ -2733,22 +2195,6 @@ public class CachedStore implements RawStore, Configurable {
     return sharedCache.listCachedNotNullConstraints(catName, dbName, tblName);
   }
 
-  /**
-   * Get default Constraints from cache Store if not present then fetch from raw store
-   * @param catName catalog name
-   * @param dbName database name
-   * @param tblName table name
-   * @return list of default constraints for given table
-   * @throws MetaException
-   */
-  @Override
-  @Deprecated
-  public List<SQLDefaultConstraint> getDefaultConstraints(String catName, String dbName, String tblName)
-      throws MetaException {
-    DefaultConstraintsRequest request = new DefaultConstraintsRequest(catName, dbName, tblName);
-    return getDefaultConstraints(request);
-  }
-
   @Override
   public List<SQLDefaultConstraint> getDefaultConstraints(DefaultConstraintsRequest request) throws MetaException {
     String catName = StringUtils.normalizeIdentifier(request.getCatName());
@@ -2760,22 +2206,6 @@ public class CachedStore implements RawStore, Configurable {
     return sharedCache.listCachedDefaultConstraint(catName, dbName, tblName);
   }
 
-  /**
-   * Get check Constraints from cache Store if not present then fetch from raw store
-   * @param catName catalog name
-   * @param dbName database name
-   * @param tblName table name
-   * @return list of check constraints for given table
-   * @throws MetaException
-   */
-  @Override
-  @Deprecated
-  public List<SQLCheckConstraint> getCheckConstraints(String catName, String dbName, String tblName)
-      throws MetaException {
-    CheckConstraintsRequest request = new CheckConstraintsRequest(catName, dbName, tblName);
-    return getCheckConstraints(request);
-  }
-
   @Override
   public List<SQLCheckConstraint> getCheckConstraints(CheckConstraintsRequest request) throws MetaException {
     String catName = StringUtils.normalizeIdentifier(request.getCatName());
@@ -2785,22 +2215,6 @@ public class CachedStore implements RawStore, Configurable {
       return rawStore.getCheckConstraints(request);
     }
     return sharedCache.listCachedCheckConstraint(catName, dbName, tblName);
-  }
-
-  /**
-   * Method to fetch all table constraints at once
-   * @param catName catalog name
-   * @param dbName database name
-   * @param tblName table name
-   * @return list of all table constraints
-   * @throws MetaException
-   */
-  @Override
-  @Deprecated
-  public SQLAllTableConstraints getAllTableConstraints(String catName, String dbName, String tblName)
-      throws MetaException, NoSuchObjectException {
-    AllTableConstraintsRequest request = new AllTableConstraintsRequest(dbName,tblName,catName);
-    return getAllTableConstraints(request);
   }
 
   @Override
@@ -2953,11 +2367,6 @@ public class CachedStore implements RawStore, Configurable {
     rawStore.createISchema(schema);
   }
 
-  @Override public List<ColStatsObjWithSourceInfo> getPartitionColStatsForDatabase(String catName, String dbName)
-      throws MetaException, NoSuchObjectException {
-    return rawStore.getPartitionColStatsForDatabase(catName, dbName);
-  }
-
   @Override public void alterISchema(ISchemaName schemaName, ISchema newSchema)
       throws NoSuchObjectException, MetaException {
     rawStore.alterISchema(schemaName, newSchema);
@@ -3022,105 +2431,8 @@ public class CachedStore implements RawStore, Configurable {
     return rawStore.getMetastoreDbUuid();
   }
 
-  @Override public void createResourcePlan(WMResourcePlan resourcePlan, String copyFrom, int defaultPoolSize)
-      throws AlreadyExistsException, InvalidObjectException, MetaException, NoSuchObjectException {
-    rawStore.createResourcePlan(resourcePlan, copyFrom, defaultPoolSize);
-  }
-
-  @Override public WMFullResourcePlan getResourcePlan(String name, String ns)
-      throws NoSuchObjectException, MetaException {
-    return rawStore.getResourcePlan(name, ns);
-  }
-
-  @Override public List<WMResourcePlan> getAllResourcePlans(String ns) throws MetaException {
-    return rawStore.getAllResourcePlans(ns);
-  }
-
-  @Override public WMFullResourcePlan alterResourcePlan(String name, String ns, WMNullableResourcePlan resourcePlan,
-      boolean canActivateDisabled, boolean canDeactivate, boolean isReplace)
-      throws AlreadyExistsException, NoSuchObjectException, InvalidOperationException, MetaException {
-    return rawStore.alterResourcePlan(name, ns, resourcePlan, canActivateDisabled, canDeactivate, isReplace);
-  }
-
-  @Override public WMFullResourcePlan getActiveResourcePlan(String ns) throws MetaException {
-    return rawStore.getActiveResourcePlan(ns);
-  }
-
-  @Override public WMValidateResourcePlanResponse validateResourcePlan(String name, String ns)
-      throws NoSuchObjectException, InvalidObjectException, MetaException {
-    return rawStore.validateResourcePlan(name, ns);
-  }
-
-  @Override public void dropResourcePlan(String name, String ns) throws NoSuchObjectException, MetaException {
-    rawStore.dropResourcePlan(name, ns);
-  }
-
-  @Override public void createWMTrigger(WMTrigger trigger)
-      throws AlreadyExistsException, MetaException, NoSuchObjectException, InvalidOperationException {
-    rawStore.createWMTrigger(trigger);
-  }
-
-  @Override public void alterWMTrigger(WMTrigger trigger)
-      throws NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.alterWMTrigger(trigger);
-  }
-
-  @Override public void dropWMTrigger(String resourcePlanName, String triggerName, String ns)
-      throws NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.dropWMTrigger(resourcePlanName, triggerName, ns);
-  }
-
-  @Override public List<WMTrigger> getTriggersForResourcePlan(String resourcePlanName, String ns)
-      throws NoSuchObjectException, MetaException {
-    return rawStore.getTriggersForResourcePlan(resourcePlanName, ns);
-  }
-
-  @Override public void createPool(WMPool pool)
-      throws AlreadyExistsException, NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.createPool(pool);
-  }
-
-  @Override public void alterPool(WMNullablePool pool, String poolPath)
-      throws AlreadyExistsException, NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.alterPool(pool, poolPath);
-  }
-
-  @Override public void dropWMPool(String resourcePlanName, String poolPath, String ns)
-      throws NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.dropWMPool(resourcePlanName, poolPath, ns);
-  }
-
-  @Override public void createOrUpdateWMMapping(WMMapping mapping, boolean update)
-      throws AlreadyExistsException, NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.createOrUpdateWMMapping(mapping, update);
-  }
-
-  @Override public void dropWMMapping(WMMapping mapping)
-      throws NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.dropWMMapping(mapping);
-  }
-
-  @Override public void createWMTriggerToPoolMapping(String resourcePlanName, String triggerName, String poolPath,
-      String ns) throws AlreadyExistsException, NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.createWMTriggerToPoolMapping(resourcePlanName, triggerName, poolPath, ns);
-  }
-
-  @Override public void dropWMTriggerToPoolMapping(String resourcePlanName, String triggerName, String poolPath,
-      String ns) throws NoSuchObjectException, InvalidOperationException, MetaException {
-    rawStore.dropWMTriggerToPoolMapping(resourcePlanName, triggerName, poolPath, ns);
-  }
-
   public long getCacheUpdateCount() {
     return sharedCache.getUpdateCount();
-  }
-
-  @Override public void cleanWriteNotificationEvents(int olderThan) {
-    rawStore.cleanWriteNotificationEvents(olderThan);
-  }
-
-  @Override public List<WriteEventInfo> getAllWriteEventInfo(long txnId, String dbName, String tableName)
-      throws MetaException {
-    return rawStore.getAllWriteEventInfo(txnId, dbName, tableName);
   }
 
   static boolean isNotInBlackList(String catName, String dbName, String tblName) {
@@ -3196,35 +2508,6 @@ public class CachedStore implements RawStore, Configurable {
     setCachePrewarmedState(false);
   }
 
-  @Override public void addRuntimeStat(RuntimeStat stat) throws MetaException {
-    rawStore.addRuntimeStat(stat);
-  }
-
-  @Override public List<RuntimeStat> getRuntimeStats(int maxEntries, int maxCreateTime) throws MetaException {
-    return rawStore.getRuntimeStats(maxEntries, maxCreateTime);
-  }
-
-  @Override public int deleteRuntimeStats(int maxRetainSecs) throws MetaException {
-    return rawStore.deleteRuntimeStats(maxRetainSecs);
-  }
-
-  @Override public List<TableName> getTableNamesWithStats() throws MetaException, NoSuchObjectException {
-    return rawStore.getTableNamesWithStats();
-  }
-
-  @Override public List<TableName> getAllTableNamesForStats() throws MetaException, NoSuchObjectException {
-    return rawStore.getAllTableNamesForStats();
-  }
-
-  @Override public Map<String, List<String>> getPartitionColsWithStats(String catName, String dbName, String tableName)
-      throws MetaException, NoSuchObjectException {
-    return rawStore.getPartitionColsWithStats(catName, dbName, tableName);
-  }
-
-  @Override public List<String> isPartOfMaterializedView(String catName, String dbName, String tblName) {
-     return rawStore.isPartOfMaterializedView(catName, dbName, tblName);
-   }
-
   @Override
   public ScheduledQueryPollResponse scheduledQueryPoll(ScheduledQueryPollRequest request) throws MetaException {
     return rawStore.scheduledQueryPoll(request);
@@ -3273,11 +2556,6 @@ public class CachedStore implements RawStore, Configurable {
   }
 
   @Override
-  public void deleteAllPartitionColumnStatistics(TableName tn, String w) {
-    rawStore.deleteAllPartitionColumnStatistics(tn, w);
-  }
-
-  @Override
   public void createOrUpdateStoredProcedure(StoredProcedure proc) throws NoSuchObjectException, MetaException {
     rawStore.createOrUpdateStoredProcedure(proc);
   }
@@ -3320,5 +2598,15 @@ public class CachedStore implements RawStore, Configurable {
   private boolean shouldGetConstraintFromRawStore(String catName, String dbName, String tblName) {
     return !shouldCacheTable(catName, dbName, tblName) || (canUseEvents && rawStore.isActiveTransaction())
         || !sharedCache.isTableConstraintValid(catName, dbName, tblName);
+  }
+
+  @Override
+  public MDatabase ensureGetMDatabase(String catName, String dbName) throws NoSuchObjectException {
+    return rawStore.ensureGetMDatabase(catName, dbName);
+  }
+
+  @Override
+  public <T> T unwrap(Class<T> iface) {
+    return rawStore.unwrap(iface);
   }
 }

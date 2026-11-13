@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -22,6 +23,40 @@ import java.util.HashMap;
 import java.util.Map;
 
 public interface IExtrapolatePartStatus {
+
+  enum DBStatsAggrIndices {
+    COLNAME(0),
+    COLTYPE(1),
+    LONG_LOW_VALUE(2),
+    LONG_HIGH_VALUE(3),
+    DOUBLE_LOW_VALUE(4),
+    DOUBLE_HIGH_VALUE(5),
+    BIG_DECIMAL_LOW_VALUE(6),
+    BIG_DECIMAL_HIGH_VALUE(7),
+    NUM_NULLS(8),
+    NUM_DISTINCTS(9),
+    AVG_COL_LEN(10),
+    MAX_COL_LEN(11),
+    NUM_TRUES(12),
+    NUM_FALSES(13),
+    SUM_NDV_LONG(14),
+    SUM_NDV_DOUBLE(15),
+    SUM_NDV_DECIMAL(16),
+    COUNT_ROWS(17),
+    SUM_NUM_DISTINCTS(18);
+
+    private final int idx;
+
+    DBStatsAggrIndices(int idx) {
+        this.idx = idx;
+    }
+
+    public int idx() {
+        return idx;
+    }
+
+  }
+
   /**
    * The sequence of colStatNames.
    */

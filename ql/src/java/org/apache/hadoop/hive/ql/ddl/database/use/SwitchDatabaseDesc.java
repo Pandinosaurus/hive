@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.database.use;
@@ -31,14 +32,21 @@ import org.apache.hadoop.hive.ql.plan.Explain.Level;
 public class SwitchDatabaseDesc implements DDLDesc, Serializable {
   private static final long serialVersionUID = 1L;
 
+  private final String catalogName;
   private final String databaseName;
 
-  public SwitchDatabaseDesc(String databaseName) {
+  public SwitchDatabaseDesc(String catalogName, String databaseName) {
+    this.catalogName = catalogName;
     this.databaseName = databaseName;
   }
 
   @Explain(displayName = "name", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  @Explain(displayName = "catalogName", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
+  public String getCatalogName() {
+    return catalogName;
   }
 }

@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.utils;
 
@@ -44,7 +45,6 @@ import org.apache.hadoop.tools.DistCpOptions.FileAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.security.auth.login.LoginException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
@@ -65,57 +65,35 @@ public class HdfsUtils {
   /**
    * Check the permissions on a file.
    * @param fs Filesystem the file is contained in
-   * @param stat Stat info for the file
+   * @param path the file path
    * @param action action to be performed
    * @throws IOException If thrown by Hadoop
-   * @throws AccessControlException if the file cannot be accessed
    */
-  public static void checkFileAccess(FileSystem fs, FileStatus stat, FsAction action)
-      throws IOException, LoginException {
-    checkFileAccess(fs, stat, action, SecurityUtils.getUGI());
+  public static void checkFileAccess(FileSystem fs, Path path, FsAction action)
+      throws IOException {
+    checkFileAccess(fs, path, action, SecurityUtils.getUGI());
   }
 
   /**
    * Check the permissions on a file
    * @param fs Filesystem the file is contained in
-   * @param stat Stat info for the file
+   * @param path the file path
    * @param action action to be performed
    * @param ugi user group info for the current user.  This is passed in so that tests can pass
    *            in mock ones.
    * @throws IOException If thrown by Hadoop
-   * @throws AccessControlException if the file cannot be accessed
    */
   @VisibleForTesting
-  static void checkFileAccess(FileSystem fs, FileStatus stat, FsAction action,
+  static void checkFileAccess(FileSystem fs, Path path, FsAction action,
                               UserGroupInformation ugi) throws IOException {
-
-    String user = ugi.getShortUserName();
-    String[] groups = ugi.getGroupNames();
-
-    if (groups != null) {
-      String superGroupName = fs.getConf().get("dfs.permissions.supergroup", "");
-      if (arrayContains(groups, superGroupName)) {
-        LOG.debug("User \"" + user + "\" belongs to super-group \"" + superGroupName + "\". " +
-            "Permission granted for action: " + action + ".");
-        return;
-      }
+    try {
+      ugi.doAs((PrivilegedExceptionAction<Void>) () -> {
+        fs.access(path, action);
+        return null;
+      });
+    } catch (InterruptedException e) {
+      throw new IOException(e);
     }
-
-    FsPermission dirPerms = stat.getPermission();
-
-    if (user.equals(stat.getOwner())) {
-      if (dirPerms.getUserAction().implies(action)) {
-        return;
-      }
-    } else if (arrayContains(groups, stat.getGroup())) {
-      if (dirPerms.getGroupAction().implies(action)) {
-        return;
-      }
-    } else if (dirPerms.getOtherAction().implies(action)) {
-      return;
-    }
-    throw new AccessControlException("action " + action + " not permitted on path "
-        + stat.getPath() + " for user " + user);
   }
 
   public static boolean isPathEncrypted(Configuration conf, URI fsUri, Path path)

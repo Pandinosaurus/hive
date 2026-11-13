@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.repl.incremental;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.common.repl.ReplConst;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.ql.Context;
@@ -38,6 +40,7 @@ import org.apache.hadoop.hive.ql.hooks.ReadEntity;
 import org.apache.hadoop.hive.ql.hooks.WriteEntity;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.ql.parse.ReplicationSpec;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.parse.repl.DumpType;
@@ -82,7 +85,7 @@ public class IncrementalLoadTasksBuilder {
 
   public IncrementalLoadTasksBuilder(String dbName, String loadPath, IncrementalLoadEventsIterator iterator,
       HiveConf conf, Long eventTo, ReplicationMetricCollector metricCollector, ReplStatsTracker replStatsTracker,
-                                     boolean shouldFailover) throws SemanticException {
+                                     boolean shouldFailover, int bootstrapTableSize) throws SemanticException {
     this.dbName = dbName;
     dumpDirectory = (new Path(loadPath).getParent()).toString();
     this.iterator = iterator;
@@ -90,18 +93,39 @@ public class IncrementalLoadTasksBuilder {
     outputs = new HashSet<>();
     log = null;
     this.conf = conf;
-    replLogger = new IncrementalLoadLogger(dbName, loadPath, iterator.getNumEvents(), replStatsTracker);
+    replLogger = new IncrementalLoadLogger(dbName, loadPath, iterator.getTotalEventsCount(), replStatsTracker);
     replLogger.startLog();
     this.eventTo = eventTo;
     setNumIteration(0);
     this.metricCollector = metricCollector;
     Map<String, Long> metricMap = new HashMap<>();
-    metricMap.put(ReplUtils.MetricName.EVENTS.name(), (long) iterator.getNumEvents());
+    metricMap.put(ReplUtils.MetricName.EVENTS.name(), (long) iterator.getTotalEventsCount());
+    metricMap.put(ReplUtils.MetricName.TABLES.name(), 0L);
+    metricMap.put(ReplUtils.MetricName.FUNCTIONS.name(), 0L);
     this.shouldFailover = shouldFailover;
     if (shouldFailover) {
+      Database db = null;
+      try {
+        db = Hive.get().getDatabase(dbName);
+      } catch (HiveException e) {
+        throw new RuntimeException(e);
+      }
+      String dbFailoverEndPoint = "";
+      if (db != null) {
+        Map<String, String> params = db.getParameters();
+        if (params != null) {
+          dbFailoverEndPoint = params.get(ReplConst.REPL_FAILOVER_ENDPOINT);
+        }
+      }
       this.metricCollector.reportFailoverStart("REPL_LOAD", metricMap,
-              new FailoverMetaData(new Path(dumpDirectory, ReplUtils.REPL_HIVE_BASE_DIR), conf));
+          new FailoverMetaData(new Path(dumpDirectory, ReplUtils.REPL_HIVE_BASE_DIR), conf),
+          dbFailoverEndPoint, ReplConst.FailoverType.PLANNED.toString());
     } else {
+      //Registering table metric as we do boostrap of selective tables
+      // in second load cycle of optimized bootstrap
+      if(bootstrapTableSize > 0) {
+        metricMap.put(ReplUtils.MetricName.TABLES.name(), (long) bootstrapTableSize);
+      }
       this.metricCollector.reportStageStart("REPL_LOAD", metricMap);
     }
   }
@@ -176,7 +200,8 @@ public class IncrementalLoadTasksBuilder {
       taskChainTail = updateIncPendTask;
 
       Map<String, String> dbProps = new HashMap<>();
-      dbProps.put(ReplicationSpec.KEY.CURR_STATE_ID_SOURCE.toString(), String.valueOf(lastReplayedEvent));
+      dbProps.put(ReplicationSpec.KEY.CURR_STATE_ID_SOURCE.toString(),
+              String.valueOf((lastReplayedEvent == null) ? eventTo : lastReplayedEvent));
       ReplStateLogWork replStateLogWork = new ReplStateLogWork(replLogger, dbProps, dumpDirectory,
               metricCollector, shouldFailover);
       Task<?> barrierTask = TaskFactory.get(replStateLogWork, conf);
@@ -243,8 +268,9 @@ public class IncrementalLoadTasksBuilder {
     HashMap<String, String> mapProp = new HashMap<>();
     mapProp.put(ReplicationSpec.KEY.CURR_STATE_ID_SOURCE.toString(), replState);
 
-    AlterDatabaseSetPropertiesDesc alterDbDesc = new AlterDatabaseSetPropertiesDesc(dbName, mapProp,
-        new ReplicationSpec(replState, replState));
+    // TODO catalog. Need to double check the actual catalog here. Depend on HIVE-29278
+    AlterDatabaseSetPropertiesDesc alterDbDesc = new AlterDatabaseSetPropertiesDesc(HiveUtils.getCurrentCatalogOrDefault(conf),
+            dbName, mapProp, new ReplicationSpec(replState, replState));
     Task<?> updateReplIdTask = TaskFactory.get(new DDLWork(inputs, outputs, alterDbDesc,
                                                true, dumpDirectory,
                                                metricCollector), conf);

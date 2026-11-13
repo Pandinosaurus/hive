@@ -9,24 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc.saml;
 
 import com.google.common.base.Preconditions;
-import com.google.errorprone.annotations.Immutable;
 import java.io.Closeable;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.hive.service.auth.saml.HiveSamlUtils;
 
 /**
@@ -111,7 +106,6 @@ public interface IJdbcBrowserClient extends Closeable {
   /**
    * Util class which can be used to parse the response received from the server.
    */
-  @Immutable
   class HiveJdbcBrowserServerResponse {
     private final String msg;
     private final boolean status;

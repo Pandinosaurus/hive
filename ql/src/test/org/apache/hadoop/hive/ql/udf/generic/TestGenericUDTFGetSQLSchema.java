@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.udf.generic;
 
@@ -22,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
@@ -39,9 +41,11 @@ public class TestGenericUDTFGetSQLSchema {
 
   private static SessionState sessionState;
 
+  public static HiveConf conf;
+
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    HiveConf conf = new HiveConf();
+    conf = new HiveConfForTest(TestGenericUDTFGetSQLSchema.class);
     conf.set("hive.security.authorization.manager",
         "org.apache.hadoop.hive.ql.security.authorization.DefaultHiveAuthorizationProvider");
     sessionState = SessionState.start(conf);
@@ -84,6 +88,9 @@ public class TestGenericUDTFGetSQLSchema {
 
   @Test
   public void testWithDDL() throws Exception {
+    // Set the execution engine to mr to avoid the NPE exception in stats flow
+    // TODO: HIVE-28618: TestGenericUDTFGetSQLSchema to run on Tez
+    conf.set("hive.execution.engine", "mr");
     invokeUDTFAndTest("show tables", new String[]{});
   }
 

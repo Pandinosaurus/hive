@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.io.api.impl;
 
@@ -33,6 +34,7 @@ import org.apache.hadoop.hive.llap.daemon.rpc.LlapDaemonProtocolProtos;
 import org.apache.hadoop.hive.llap.io.encoded.LlapOrcCacheLoader;
 import org.apache.hadoop.hive.ql.io.SyntheticFileId;
 import org.apache.hadoop.hive.ql.io.orc.encoded.IoTrace;
+import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hive.common.util.FixedSizedObjectPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,7 +151,7 @@ final class LlapCacheMetadataSerializer {
   }
 
   private void loadData(LlapDaemonProtocolProtos.CacheEntry ce) throws IOException {
-    CacheTag cacheTag = decodeCacheTag(ce.getCacheTag());
+    CacheTag cacheTag = decodeCacheTag(ce.getCacheTag(), conf);
     DiskRangeList ranges = decodeRanges(ce.getRangesList());
     Object fileKey = decodeFileKey(ce.getFileKey());
     try (LlapOrcCacheLoader llr = new LlapOrcCacheLoader(new Path(ce.getFilePath()), fileKey, conf, cache,
@@ -167,9 +169,16 @@ final class LlapCacheMetadataSerializer {
     return helper.get();
   }
 
-  private static CacheTag decodeCacheTag(LlapDaemonProtocolProtos.CacheTag ct) {
-    return ct.getPartitionDescCount() == 0 ? CacheTag.build(ct.getTableName()) : CacheTag
-        .build(ct.getTableName(), ct.getPartitionDescList());
+  private static CacheTag decodeCacheTag(LlapDaemonProtocolProtos.CacheTag ct, Configuration conf) {
+    String tableName = ct.getTableName();
+    String[] parts = tableName.split("\\.");
+    if (parts.length == 2) {
+      // db.table without catalog, prepend current or default catalog
+      tableName = HiveUtils.getCurrentCatalogOrDefault(conf) + '.' + tableName;
+    }
+    return ct.getPartitionDescCount() == 0
+        ? CacheTag.build(tableName)
+        : CacheTag.build(tableName, ct.getPartitionDescList());
   }
 
   @VisibleForTesting

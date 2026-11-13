@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.minihms;
@@ -99,7 +100,7 @@ public abstract class AbstractMetaStoreService {
    * @return The client connected to this service
    * @throws MetaException if any Exception occurs during client configuration
    */
-  public IMetaStoreClient getClient() throws MetaException {
+  public HiveMetaStoreClient getClient() throws MetaException {
     return new HiveMetaStoreClient(configuration);
   }
 
@@ -166,9 +167,9 @@ public abstract class AbstractMetaStoreService {
    * @throws MetaException IO failure
    */
   public void cleanWarehouseDirs() throws MetaException {
-    warehouse.deleteDir(getWarehouseRoot(), true, true, false);
-    warehouse.deleteDir(getExternalWarehouseRoot(), true, true, false);
-    warehouse.deleteDir(trashDir, true, true, false);
+    warehouse.deleteDir(getWarehouseRoot(), true, false);
+    warehouse.deleteDir(getExternalWarehouseRoot(), true, false);
+    warehouse.deleteDir(trashDir, true, false);
   }
 
   /**

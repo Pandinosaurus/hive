@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec;
 
@@ -23,8 +24,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.shims.ShimLoader;
@@ -68,7 +71,13 @@ public class SecureCmdDoAs {
     tokenPath = new Path(tokenFile.toURI());
 
     //write credential with token to file
-    cred.writeTokenStorageFile(tokenPath, conf);
+    FsPermission umask = FsPermission.getUMask(conf);
+    FsPermission targetPerm = FsPermission.createImmutable((short) 0700);
+
+    try (FSDataOutputStream os = tokenPath.getFileSystem(conf).createFile(tokenPath)
+        .permission(targetPerm.applyUMask(umask)).build()) {
+      cred.writeTokenStorageToStream(os, Credentials.SerializedFormat.WRITABLE);
+    }
   }
 
   public void addEnv(Map<String, String> env){

@@ -69,6 +69,9 @@ enum TProtocolVersion {
 
   // V11 adds timestamp with local time zone type
   HIVE_CLI_SERVICE_PROTOCOL_V11
+
+  // V12 adds variant type
+  HIVE_CLI_SERVICE_PROTOCOL_V12
 }
 
 enum TTypeId {
@@ -94,7 +97,9 @@ enum TTypeId {
   CHAR_TYPE,
   INTERVAL_YEAR_MONTH_TYPE,
   INTERVAL_DAY_TIME_TYPE,
-  TIMESTAMPLOCALTZ_TYPE
+  TIMESTAMPLOCALTZ_TYPE,
+  UNKNOWN_TYPE,
+  VARIANT_TYPE
 }
 
 const set<TTypeId> PRIMITIVE_TYPES = [
@@ -115,7 +120,8 @@ const set<TTypeId> PRIMITIVE_TYPES = [
   TTypeId.CHAR_TYPE,
   TTypeId.INTERVAL_YEAR_MONTH_TYPE,
   TTypeId.INTERVAL_DAY_TIME_TYPE,
-  TTypeId.TIMESTAMPLOCALTZ_TYPE
+  TTypeId.TIMESTAMPLOCALTZ_TYPE,
+  TTypeId.UNKNOWN_TYPE
 ]
 
 const set<TTypeId> COMPLEX_TYPES = [
@@ -124,6 +130,7 @@ const set<TTypeId> COMPLEX_TYPES = [
   TTypeId.STRUCT_TYPE
   TTypeId.UNION_TYPE
   TTypeId.USER_DEFINED_TYPE
+  TTypeId.VARIANT_TYPE
 ]
 
 const set<TTypeId> COLLECTION_TYPES = [
@@ -154,6 +161,8 @@ const map<TTypeId,string> TYPE_NAMES = {
   TTypeId.INTERVAL_YEAR_MONTH_TYPE: "INTERVAL_YEAR_MONTH"
   TTypeId.INTERVAL_DAY_TIME_TYPE: "INTERVAL_DAY_TIME"
   TTypeId.TIMESTAMPLOCALTZ_TYPE: "TIMESTAMP WITH LOCAL TIME ZONE"
+  TTypeId.UNKNOWN_TYPE: "UNKNOWN"
+  TTypeId.VARIANT_TYPE: "VARIANT"
 }
 
 // Thrift does not support recursively defined types or forward declarations,
@@ -1286,6 +1295,7 @@ struct TProgressUpdateResp {
   4: required TJobExecutionStatus status
   5: required string footerSummary
   6: required i64 startTime
+  7: optional string queueMetrics
 }
 
 struct TGetQueryIdReq {

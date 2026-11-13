@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service;
@@ -92,6 +93,23 @@ public class CompositeService extends AbstractService {
       stop(serviceList.size() - 1);
     }
     super.stop();
+  }
+
+  @Override
+  public synchronized void decommission() {
+    if (this.getServiceState() == STATE.DECOMMISSIONING) {
+      return;
+    }
+    // decommission in reserve order of start
+    for (int i = serviceList.size() - 1; i >= 0; i--) {
+      Service service = serviceList.get(i);
+      try {
+        service.decommission();
+      } catch (Throwable t) {
+        LOG.info("Error decommissioning " + service.getName(), t);
+      }
+    }
+    super.decommission();
   }
 
   private synchronized void stop(int numOfServicesStarted) {

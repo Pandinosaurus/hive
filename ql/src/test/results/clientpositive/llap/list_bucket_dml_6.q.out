@@ -29,7 +29,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: default@srcpart
 POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=11
 POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=12
-OPTIMIZED SQL: SELECT `key`, `value`, CAST(CASE WHEN CAST(`key` AS DOUBLE) % 100 = 0 THEN 'a1' ELSE 'b1' END AS STRING) AS `_o__c2`
+OPTIMIZED SQL: SELECT `key`, `value`, CAST(CASE WHEN CAST(`key` AS DOUBLE) % 1.000E2 = 0E0 THEN 'a1' ELSE 'b1' END AS STRING) AS `_c2`
 FROM `default`.`srcpart`
 WHERE `ds` = '2008-04-08'
 STAGE DEPENDENCIES:
@@ -320,7 +320,7 @@ Partition Parameters:
 	numFiles            	1                   
 	numRows             	16                  
 	rawDataSize         	136                 
-	totalSize           	235                 
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -361,7 +361,7 @@ Partition Parameters:
 	numFiles            	3                   
 	numRows             	984                 
 	rawDataSize         	9488                
-	totalSize           	10495               
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -394,7 +394,7 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: default@srcpart
 POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=11
 POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=12
-OPTIMIZED SQL: SELECT `key`, `value`, CAST(CASE WHEN CAST(`key` AS DOUBLE) % 100 = 0 THEN 'a1' ELSE 'b1' END AS STRING) AS `_o__c2`
+OPTIMIZED SQL: SELECT `key`, `value`, CAST(CASE WHEN CAST(`key` AS DOUBLE) % 1.000E2 = 0E0 THEN 'a1' ELSE 'b1' END AS STRING) AS `_c2`
 FROM `default`.`srcpart`
 WHERE `ds` = '2008-04-08'
 STAGE DEPENDENCIES:
@@ -685,7 +685,7 @@ Partition Parameters:
 	numFiles            	1                   
 	numRows             	16                  
 	rawDataSize         	136                 
-	totalSize           	235                 
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -726,7 +726,7 @@ Partition Parameters:
 	numFiles            	3                   
 	numRows             	984                 
 	rawDataSize         	9488                
-	totalSize           	10495               
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -776,7 +776,7 @@ POSTHOOK: Input: default@list_bucketing_dynamic_part_n3
 POSTHOOK: Input: default@list_bucketing_dynamic_part_n3@ds=2008-04-08/hr=a1
 POSTHOOK: Input: default@list_bucketing_dynamic_part_n3@ds=2008-04-08/hr=b1
 #### A masked pattern was here ####
-OPTIMIZED SQL: SELECT CAST('484' AS STRING) AS `key`, CAST('val_484' AS STRING) AS `value`, `ds`, `hr`
+OPTIMIZED SQL: SELECT CAST('484' AS STRING) AS `list_bucketing_dynamic_part_n3.key`, CAST('val_484' AS STRING) AS `list_bucketing_dynamic_part_n3.value`, `ds` AS `list_bucketing_dynamic_part_n3.ds`, `hr` AS `list_bucketing_dynamic_part_n3.hr`
 FROM `default`.`list_bucketing_dynamic_part_n3`
 WHERE `key` = '484' AND `value` = 'val_484'
 STAGE DEPENDENCIES:
@@ -901,8 +901,10 @@ POSTHOOK: Input: default@srcpart@ds=2008-04-08/hr=12
 PREHOOK: query: drop table list_bucketing_dynamic_part_n3
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@list_bucketing_dynamic_part_n3
+PREHOOK: Output: database:default
 PREHOOK: Output: default@list_bucketing_dynamic_part_n3
 POSTHOOK: query: drop table list_bucketing_dynamic_part_n3
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@list_bucketing_dynamic_part_n3
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@list_bucketing_dynamic_part_n3

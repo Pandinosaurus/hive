@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -126,7 +127,7 @@ class TransactionalKafkaWriter implements FileSinkOperator.RecordWriter, RecordW
         producer.abortTransaction();
       }
       LOG.error("Closing writer [{}] caused by ERROR [{}]", producer.getTransactionalId(), exception.getMessage());
-      producer.close(0, TimeUnit.MILLISECONDS);
+      producer.close(DURATION_0);
       throw exception;
     }
     writerIdTopicId = String.format("WriterId [%s], Kafka Topic [%s]", producer.getTransactionalId(), topic);
@@ -151,7 +152,7 @@ class TransactionalKafkaWriter implements FileSinkOperator.RecordWriter, RecordW
         // producer.send() may throw a KafkaException which wraps a FencedException re throw its wrapped inner cause.
         producer.abortTransaction();
       }
-      producer.close(0, TimeUnit.MILLISECONDS);
+      producer.close(DURATION_0);
       sendExceptionRef.compareAndSet(null, e);
       checkExceptions();
     }
@@ -278,7 +279,7 @@ class TransactionalKafkaWriter implements FileSinkOperator.RecordWriter, RecordW
         producer.abortTransaction();
       }
       LOG.error("Closing writer [{}] caused by ERROR [{}]", writerIdTopicId, exception.getMessage());
-      producer.close(0, TimeUnit.MILLISECONDS);
+      producer.close(DURATION_0);
       throw new IOException(exception);
     }
   }

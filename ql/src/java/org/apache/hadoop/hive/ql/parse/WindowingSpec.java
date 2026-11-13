@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse;
@@ -110,7 +111,7 @@ public class WindowingSpec {
    * Apply the rules in the Spec. to fill in any missing pieces of every Window Specification,
    * also validate that the effective Specification is valid. The rules applied are:
    * - For Wdw Specs that refer to Window Defns, inherit missing components.
-   * - A Window Spec with no Parition Spec, is Partitioned on a Constant(number 0)
+   * - A Window Spec with no Partition Spec, is Partitioned on a Constant(number 0)
    * - For missing Wdw Frames or for Frames with only a Start Boundary, completely specify them
    *   by the rules in {@link effectiveWindowFrame}
    * - Validate the effective Window Frames with the rules in {@link validateWindowFrame}

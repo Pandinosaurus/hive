@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.tools.metatool;
@@ -27,15 +28,23 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.hadoop.util.ExitUtil;
+import org.jline.terminal.TerminalBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import jline.TerminalFactory;
 
 class HiveMetaToolCommandLine {
   private static final Logger LOGGER = LoggerFactory.getLogger(HiveMetaToolCommandLine.class.getName());
 
   @SuppressWarnings("static-access")
+  private static final Option METADATA_SUMMARY = OptionBuilder
+      .withArgName("output-format>" + " <optional-file-path>" + " <last-updated-days>" + " <nonnative-tables-limit")
+      .hasArgs(4)
+      .hasOptionalArgs(4)
+      .withDescription("print the summary of metadata in the selected format")
+      .create("metadataSummary");
+
   private static final Option LIST_FS_ROOT = OptionBuilder
       .withDescription("print the current FS root locations")
       .create("listFSRoot");
@@ -77,9 +86,40 @@ class HiveMetaToolCommandLine {
           )
           .create("diffExtTblLocs");
 
+  @SuppressWarnings("static-access")
+  private static final Option DEDUP_COLUMNS = OptionBuilder
+      .withArgName("catalog> " + "<db> " + "<table")
+      .hasArgs(3)
+      .hasOptionalArgs(3)
+      .withDescription("De-duplicate column descriptors for partitioned tables to reduce metadata bloat. "
+          + "Optional catalog, database, and table filters support * wildcards. Use -dryRun to preview changes, "
+          + "-verbose to print per-partition details, -clearMarker to drop the marker that has been added in previous "
+          + "runs (cannot be combined with -dryRun), and -timeout to set a timeout in seconds. "
+          + "Live runs mark each successfully processed table with the table property "
+          + "__metatool_column_deduplication__, and marked tables are skipped on re-run until -clearMarker is used. "
+          + "Live runs validate committed state (partition column schemas unchanged, canonical CD IDs applied) "
+          + "and print a post-commit validation summary.")
+      .create("dedupColumns");
+
+  private static final Option VERBOSE = OptionBuilder
+      .withDescription("Print per-partition de-duplication details. Valid only with -dedupColumns.")
+      .create("verbose");
+
+  private static final Option CLEAR_MARKER = OptionBuilder
+      .withDescription("Clear the column de-duplication table marker made by previous runs, no de-duplication "
+          + "is performed. Valid only with -dedupColumns, and not with -dryRun.")
+      .create("clearMarker");
+
+  @SuppressWarnings("static-access")
+  private static final Option TIMEOUT = OptionBuilder
+      .withArgName("timeout-seconds")
+      .hasArg()
+      .withDescription("Timeout in seconds for -dedupColumns. Defaults to hive.metatool.dedupColumns.timeout.")
+      .create("timeout");
+
   private static final Option DRY_RUN = OptionBuilder
-      .withDescription("Perform a dry run of updateLocation changes.When run with the dryRun option updateLocation " +
-          "changes are displayed but not persisted. dryRun is valid only with the updateLocation option.")
+      .withDescription("Perform a dry run without persisting changes. Valid with -updateLocation and "
+          + "-dedupColumns.")
       .create("dryRun");
 
   @SuppressWarnings("static-access")
@@ -118,6 +158,11 @@ class HiveMetaToolCommandLine {
     OPTIONS.addOption(SERDE_PROP_KEY);
     OPTIONS.addOption(TABLE_PROP_KEY);
     OPTIONS.addOption(HELP);
+    OPTIONS.addOption(METADATA_SUMMARY);
+    OPTIONS.addOption(DEDUP_COLUMNS);
+    OPTIONS.addOption(VERBOSE);
+    OPTIONS.addOption(CLEAR_MARKER);
+    OPTIONS.addOption(TIMEOUT);
   }
 
   private boolean listFSRoot;
@@ -126,9 +171,14 @@ class HiveMetaToolCommandLine {
   private String[] listExtTblLocsParams;
   private String[] diffExtTblLocsParams;
   private boolean dryRun;
+  private boolean verbose;
+  private boolean clearMarker;
+  private Long dedupColumnsTimeoutSeconds;
   private String serdePropKey;
   private String tablePropKey;
   private boolean help;
+  private String[] metadataSummaryParams;
+  private String[] dedupColumnsParams;
 
   public static HiveMetaToolCommandLine parseArguments(String[] args) {
     HiveMetaToolCommandLine cl = null;
@@ -137,12 +187,12 @@ class HiveMetaToolCommandLine {
     } catch (Exception e) {
       LOGGER.error("Parsing the command line arguments failed", e);
       printUsage();
-      System.exit(1);
+      ExitUtil.terminate(1);
     }
 
     if (cl.isHelp()) {
       printUsage();
-      System.exit(0);
+      ExitUtil.terminate(0);
     }
 
     return cl;
@@ -163,15 +213,29 @@ class HiveMetaToolCommandLine {
     listExtTblLocsParams = cl.getOptionValues(LIST_EXT_TBL_LOCS.getOpt());
     diffExtTblLocsParams = cl.getOptionValues(DIFF_EXT_TBL_LOCS.getOpt());
     dryRun = cl.hasOption(DRY_RUN.getOpt());
+    verbose = cl.hasOption(VERBOSE.getOpt());
+    clearMarker = cl.hasOption(CLEAR_MARKER.getOpt());
+    if (cl.hasOption(TIMEOUT.getOpt())) {
+      dedupColumnsTimeoutSeconds = Long.parseLong(cl.getOptionValue(TIMEOUT.getOpt()));
+      if (dedupColumnsTimeoutSeconds <= 0) {
+        throw new IllegalArgumentException("HiveMetaTool:-timeout must be a positive number of seconds");
+      }
+    }
     serdePropKey = cl.getOptionValue(SERDE_PROP_KEY.getOpt());
     tablePropKey = cl.getOptionValue(TABLE_PROP_KEY.getOpt());
     help = cl.hasOption(HELP.getOpt());
+    metadataSummaryParams = cl.getOptionValues(METADATA_SUMMARY.getOpt());
+    dedupColumnsParams = cl.getOptionValues(DEDUP_COLUMNS.getOpt());
+    if (cl.hasOption(DEDUP_COLUMNS.getOpt()) && dedupColumnsParams == null) {
+      dedupColumnsParams = new String[0];
+    }
 
     int commandCount = (isListFSRoot() ? 1 : 0) + (isExecuteJDOQL() ? 1 : 0) + (isUpdateLocation() ? 1 : 0) +
-          (isListExtTblLocs() ? 1 : 0) + (isDiffExtTblLocs() ? 1 : 0);
+          (isListExtTblLocs() ? 1 : 0) + (isDiffExtTblLocs() ? 1 : 0) + (isMetadataSummary() ? 1 : 0) +
+          (isDedupColumns() ? 1 : 0);
     if (commandCount != 1) {
       throw new IllegalArgumentException("exactly one of -listFSRoot, -executeJDOQL, -updateLocation, " +
-              "-listExtTblLocs, -diffExtTblLocs must be set");
+              "-listExtTblLocs, -diffExtTblLocs, -metadataSummary, -dedupColumns must be set");
     }
 
     if (updateLocationParams != null && updateLocationParams.length != 2) {
@@ -189,9 +253,35 @@ class HiveMetaToolCommandLine {
               diffExtTblLocsParams.length + " arguments");
     }
 
-    if ((dryRun || serdePropKey != null || tablePropKey != null) && !isUpdateLocation()) {
-      throw new IllegalArgumentException("-dryRun, -serdePropKey, -tablePropKey may be used only for the " +
-          "-updateLocation command");
+    if (dryRun && !isUpdateLocation() && !isDedupColumns()) {
+      throw new IllegalArgumentException(
+          "-dryRun may be used only for the -updateLocation or -dedupColumns commands");
+    }
+
+    if ((serdePropKey != null || tablePropKey != null) && !isUpdateLocation()) {
+      throw new IllegalArgumentException(
+          "-serdePropKey, -tablePropKey may be used only for the -updateLocation command");
+    }
+
+    if (verbose && !isDedupColumns()) {
+      throw new IllegalArgumentException("-verbose may be used only for the -dedupColumns command");
+    }
+
+    if (dedupColumnsTimeoutSeconds != null && !isDedupColumns()) {
+      throw new IllegalArgumentException("-timeout may be used only for the -dedupColumns command");
+    }
+
+    if (clearMarker && !isDedupColumns()) {
+      throw new IllegalArgumentException("-clearMarker may be used only for the -dedupColumns command");
+    }
+
+    if (clearMarker && dryRun) {
+      throw new IllegalArgumentException("-clearMarker cannot be used together with -dryRun");
+    }
+
+    if (metadataSummaryParams != null && metadataSummaryParams.length < 1) {
+      throw new IllegalArgumentException("HiveMetaTool:metadataSummary takes in 1 required arguments but was passed " +
+              metadataSummaryParams.length + " arguments");
     }
   }
 
@@ -199,7 +289,7 @@ class HiveMetaToolCommandLine {
     HelpFormatter hf = new HelpFormatter();
     try {
       int width = hf.getWidth();
-      int jlineWidth = TerminalFactory.get().getWidth();
+      int jlineWidth = TerminalBuilder.terminal().getWidth();
       width = Math.min(160, Math.max(jlineWidth, width));
       hf.setWidth(width);
     } catch (Throwable t) { // Ignore
@@ -216,8 +306,13 @@ class HiveMetaToolCommandLine {
         "\tlistExtTblLocs: " + Arrays.toString(listExtTblLocsParams) + "\n" +
         "\tdiffExtTblLocs: " + Arrays.toString(diffExtTblLocsParams) + "\n" +
         "\tdryRun        : " + dryRun + "\n" +
+        "\tverbose       : " + verbose + "\n" +
+        "\tclearMarker   : " + clearMarker + "\n" +
+        "\ttimeout       : " + dedupColumnsTimeoutSeconds + "\n" +
         "\tserdePropKey  : " + serdePropKey + "\n" +
-        "\ttablePropKey  : " + tablePropKey);
+        "\ttablePropKey  : " + tablePropKey + "\n" +
+        "\tmetadataSummary : " + Arrays.toString(metadataSummaryParams) + "\n" +
+        "\tdedupColumns : " + Arrays.toString(dedupColumnsParams));
   }
 
   boolean isListFSRoot() {
@@ -260,12 +355,40 @@ class HiveMetaToolCommandLine {
     return dryRun;
   }
 
+  boolean isVerbose() {
+    return verbose;
+  }
+
+  boolean isClearMarker() {
+    return clearMarker;
+  }
+
+  Long getDedupColumnsTimeoutSeconds() {
+    return dedupColumnsTimeoutSeconds;
+  }
+
   String getSerdePropKey() {
     return serdePropKey;
   }
 
   String getTablePropKey() {
     return tablePropKey;
+  }
+
+  boolean isMetadataSummary() {
+    return metadataSummaryParams != null;
+  }
+
+  String[] getMetadataSummaryParams() {
+    return metadataSummaryParams;
+  }
+
+  boolean isDedupColumns() {
+    return dedupColumnsParams != null;
+  }
+
+  String[] getDedupColumnsParams() {
+    return dedupColumnsParams == null ? new String[0] : dedupColumnsParams;
   }
 
   private boolean isHelp() {

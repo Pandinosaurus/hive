@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -49,10 +50,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+import static org.apache.hadoop.hive.ql.exec.FunctionRegistry.BLOOM_FILTER_FUNCTION;
+
 /**
  * Generic UDF to generate Bloom Filter
  */
-@Description(name = "bloom_filter")
+@Description(name = BLOOM_FILTER_FUNCTION)
 public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
 
   @Override
@@ -122,9 +125,9 @@ public class GenericUDAFBloomFilter implements GenericUDAFResolver2 {
 
       public BloomFilterBuf(long expectedEntries, long maxEntries) {
         if (expectedEntries > maxEntries) {
-          bloomFilter = new BloomKFilter(maxEntries);
+          bloomFilter = BloomKFilter.build(maxEntries);
         } else {
-          bloomFilter = new BloomKFilter(expectedEntries);
+          bloomFilter = BloomKFilter.build(expectedEntries);
         }
       }
 

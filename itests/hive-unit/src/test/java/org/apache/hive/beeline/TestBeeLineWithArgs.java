@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.beeline;
@@ -24,11 +25,12 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.io.StringBufferInputStream;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -53,6 +55,8 @@ import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hive.jdbc.Utils;
 import org.apache.hive.jdbc.miniHS2.MiniHS2;
 import org.apache.hive.jdbc.miniHS2.MiniHS2.MiniClusterType;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.impl.DumbTerminal;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -63,7 +67,7 @@ import org.junit.Test;
  *
  */
   public class TestBeeLineWithArgs {
-  private enum OutStream {
+  enum OutStream {
     ERR, OUT
   }
 
@@ -92,7 +96,7 @@ import org.junit.Test;
     HiveConf hiveConf = UtilsForTest.getHiveOnTezConfFromDir("../../data/conf/tez/");
     hiveConf.setVar(HiveConf.ConfVars.HIVE_LOCK_MANAGER,
         "org.apache.hadoop.hive.ql.lockmgr.EmbeddedLockManager");
-    hiveConf.setBoolVar(HiveConf.ConfVars.HIVEOPTIMIZEMETADATAQUERIES, false);
+    hiveConf.setBoolVar(HiveConf.ConfVars.HIVE_OPTIMIZE_METADATA_QUERIES, false);
     hiveConf.set(ConfVars.HIVE_SERVER2_LOGGING_OPERATION_LEVEL.varname, "verbose");
     miniHS2 = new MiniHS2(hiveConf, MiniClusterType.TEZ);
 
@@ -104,11 +108,9 @@ import org.junit.Test;
 
   /**
    * Create table for use by tests
-   * @throws ClassNotFoundException
    * @throws SQLException
    */
-  private static void createTable() throws ClassNotFoundException, SQLException {
-    Class.forName(BeeLine.BEELINE_DEFAULT_JDBC_DRIVER);
+  private static void createTable() throws SQLException {
     Connection con = DriverManager.getConnection(miniHS2.getBaseJdbcURL(),
         userName , "");
 
@@ -158,10 +160,9 @@ import org.junit.Test;
    * @return The stderr and stdout from running the script
    * @throws Throwable
    */
-  private static String testCommandLineScript(List<String> argList, InputStream inputStream,
-      OutStream streamType)
+  static String testCommandLineScript(List<String> argList, OutStream streamType)
       throws Throwable {
-    BeeLine beeLine = new BeeLine();
+    BeeLine beeLine = getBeeLineDummyTerminal();
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     PrintStream beelineOutputStream = new PrintStream(os);
     switch (streamType) {
@@ -175,11 +176,28 @@ import org.junit.Test;
       throw new RuntimeException("Unexpected outstream type " + streamType);
     }
     String[] args = argList.toArray(new String[argList.size()]);
-    beeLine.begin(args, inputStream);
+    beeLine.begin(args, null);
     beeLine.close();
     beelineOutputStream.close();
     String output = os.toString("UTF8");
     return output;
+  }
+
+  private static BeeLineDummyTerminal getBeeLineDummyTerminal() {
+    return new BeeLineDummyTerminal() {
+      /*
+       * Unit tests in this class call the begin function with a null input stream. Once the initial (-i) and file (-f)
+       * scripts are completed, the flow enters the interactive code path—which we want to skip in tests to allow them
+       * to exit cleanly. In the real world, this would lead to the interactive Beeline shell, but for testing purposes,
+       * we bypass that by providing a dummy empty stream. This avoids infinite loops or null pointer errors in the
+       * JLine read logic.
+       */
+      @Override
+      protected Terminal buildTerminal(InputStream inputStream) throws IOException {
+        return new DumbTerminal(inputStream == null ? new ByteArrayInputStream("".getBytes()) : inputStream,
+            getErrorStream());
+      }
+    };
   }
 
   /**
@@ -266,8 +284,8 @@ import org.junit.Test;
         boolean matches = m.matches();
         if (patternToMatch.shouldMatch != matches) {
           //failed
-          fail("Output" + output + " should" + (patternToMatch.shouldMatch ? "" : " not") +
-              " contain " + patternToMatch.pattern.pattern());
+          fail(String.format("Output (mode: %s) '%s' should %s contain '%s'", mode, output,
+              (patternToMatch.shouldMatch ? "" : " not"), patternToMatch.pattern.pattern()));
         }
       }
     }
@@ -281,18 +299,16 @@ import org.junit.Test;
     INIT {
       @Override
       String output(File scriptFile, List<String> argList, OutStream streamType) throws Throwable {
-        List<String> copy = new ArrayList<>(argList);
-        copy.add("-i");
-        copy.add(scriptFile.getAbsolutePath());
-        return testCommandLineScript(copy, new StringBufferInputStream("!quit\n"), streamType);
+        List<String> finalArgs = new ArrayList<>(argList);
+        finalArgs.addAll(Arrays.asList("-i", scriptFile.getAbsolutePath()));
+        return testCommandLineScript(finalArgs, streamType);
       }
     }, SCRIPT {
       @Override
       String output(File scriptFile, List<String> argList, OutStream streamType) throws Throwable {
-        List<String> copy = new ArrayList<>(argList);
-        copy.add("-f");
-        copy.add(scriptFile.getAbsolutePath());
-        return testCommandLineScript(copy, null, streamType);
+        List<String> finalArgs = new ArrayList<>(argList);
+        finalArgs.addAll(Arrays.asList("-f", scriptFile.getAbsolutePath()));
+        return testCommandLineScript(finalArgs, streamType);
       }
     };
 
@@ -314,11 +330,10 @@ import org.junit.Test;
   private void testCommandEnclosedQuery(String enclosedQuery, String expectedPattern,
       boolean shouldMatch, List<String> argList, OutStream out) throws Throwable {
 
-    List<String> copy = new ArrayList<String>(argList);
-    copy.add("-e");
-    copy.add(enclosedQuery);
+    List<String> finalArgs = new ArrayList<String>(argList);
+    finalArgs.addAll(Arrays.asList("-e", enclosedQuery));
 
-    String output = testCommandLineScript(copy, null, out);
+    String output = testCommandLineScript(finalArgs, out);
     boolean matches = output.contains(expectedPattern);
     if (shouldMatch != matches) {
       //failed
@@ -484,7 +499,7 @@ import org.junit.Test;
   public void testGetVariableValue() throws Throwable {
     final String SCRIPT_TEXT = "set env:TERM;";
     final String EXPECTED_PATTERN = "env:TERM";
-    testScriptFile(SCRIPT_TEXT, getBaseArgs(miniHS2.getBaseJdbcURL()), OutStream.ERR, EXPECTED_PATTERN, true);
+    testScriptFile(SCRIPT_TEXT, getBaseArgs(miniHS2.getBaseJdbcURL()), OutStream.OUT, EXPECTED_PATTERN, true);
   }
 
   /**
@@ -707,7 +722,7 @@ import org.junit.Test;
     argList.add(scriptFile.getAbsolutePath());
 
     try {
-      String output = testCommandLineScript(argList, null, OutStream.OUT);
+      String output = testCommandLineScript(argList, OutStream.OUT);
       if (output.contains(EXPECTED_PATTERN)) {
         fail("Output: " + output +  " Negative pattern: " + EXPECTED_PATTERN);
       }
@@ -971,6 +986,10 @@ import org.junit.Test;
     List<String> argList = getBaseArgs(miniHS2.getBaseJdbcURL());
     final String SCRIPT_TEXT =
         "!close\n" +
+            // 3 line breaks mimic user input in the following sequence:
+            // 1. reconnect command
+            // 2. response to username prompt
+            // 3. response to password prompt
             "!reconnect\n\n\n" +
             "create table reconnecttest (d int);\nshow tables;\ndrop table reconnecttest;\n";
     final String EXPECTED_PATTERN = "reconnecttest";
@@ -1027,10 +1046,7 @@ import org.junit.Test;
   }
 
   /**
-   * Attempt to execute a simple script file with the usage of user & password variables in URL.
-   * Test for presence of an expected pattern
-   * in the output (stdout or stderr), fail if not found
-   * Print PASSED or FAILED
+   * Attempts to execute a simple script file and verifies that the database name appears in the prompt as expected.
    */
   @Test
   public void testShowDbInPrompt() throws Throwable {

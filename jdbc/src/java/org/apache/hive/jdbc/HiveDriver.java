@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc;
@@ -238,7 +239,7 @@ public class HiveDriver implements Driver {
       port = "";
     }
     else if(port.equals("0") || port.equals("-1")){
-      port = Utils.DEFAULT_PORT;
+      port = Utils.getDefaultPort(params);
     }
     String db = params.getDbName();
     urlProps.put(HOST_PROPERTY_KEY, host);

@@ -9,22 +9,31 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.repl;
 
+import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.common.repl.ReplConst;
 import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.hive.metastore.ReplChangeManager;
+import org.apache.hadoop.hive.metastore.api.NotificationEvent;
+import org.apache.hadoop.hive.metastore.api.TxnType;
+import org.apache.hadoop.hive.metastore.txn.TxnErrorMsg;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.apache.hadoop.hive.ql.ddl.database.alter.owner.AlterDatabaseSetOwnerDesc;
 import org.apache.hadoop.hive.ql.ddl.privilege.PrincipalDesc;
 import org.apache.hadoop.hive.ql.exec.repl.util.SnapshotUtils;
+import org.apache.hadoop.hive.ql.lockmgr.HiveTxnManager;
+import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.ql.parse.repl.load.log.IncrementalLoadLogger;
+import org.apache.hadoop.hive.ql.parse.repl.metric.event.Status;
 import org.apache.thrift.TException;
 import com.google.common.collect.Collections2;
 import org.apache.commons.lang3.StringUtils;
@@ -85,11 +94,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedList;
+import java.util.Arrays;
+import java.util.Set;
 
+import static org.apache.hadoop.hive.ql.hooks.EnforceReadOnlyDatabaseHook.READONLY;
+import static org.apache.hadoop.hive.common.repl.ReplConst.READ_ONLY_HOOK;
+import static org.apache.hadoop.hive.common.repl.ReplConst.REPL_RESUME_STARTED_AFTER_FAILOVER;
+import static org.apache.hadoop.hive.common.repl.ReplConst.REPL_FAILOVER_ENDPOINT;
 import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.REPL_DUMP_SKIP_IMMUTABLE_DATA_COPY;
 import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.REPL_SNAPSHOT_DIFF_FOR_EXTERNAL_TABLE_COPY;
 import static org.apache.hadoop.hive.metastore.ReplChangeManager.SOURCE_OF_REPLICATION;
@@ -107,6 +121,7 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
   private static final long serialVersionUID = 1L;
   private final static int ZERO_TASKS = 0;
   private final String STAGE_NAME = "REPL_LOAD";
+  private List<TxnType> excludedTxns = Arrays.asList(TxnType.READ_ONLY, TxnType.REPL_CREATED);
 
   @Override
   public String getName() {
@@ -149,7 +164,7 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
         addAtlasLoadTask();
       }
       if (conf.getBoolVar(HiveConf.ConfVars.REPL_RANGER_HANDLE_DENY_POLICY_TARGET)) {
-        initiateRangerDenytask();
+        initiateRangerDenyTask();
       }
       if (shouldLoadAuthorizationMetadata()) {
         initiateAuthorizationLoadTask();
@@ -188,7 +203,7 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
     return conf.getBoolVar(HiveConf.ConfVars.REPL_INCLUDE_AUTHORIZATION_METADATA);
   }
 
-  private void initiateRangerDenytask() throws SemanticException {
+  private void initiateRangerDenyTask() throws SemanticException {
     if (RANGER_AUTHORIZER.equalsIgnoreCase(conf.getVar(HiveConf.ConfVars.REPL_AUTHORIZATION_PROVIDER_SERVICE))) {
       LOG.info("Adding Ranger Deny Policy Task for {} ", work.dbNameToLoadIn);
       RangerDenyWork rangerDenyWork = new RangerDenyWork(new Path(work.getDumpDirectory()), work.getSourceDbName(),
@@ -413,7 +428,39 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
         // Ignore if no file.
       }
     }
+
+    if (isReadOnlyHookRegistered()) {
+      LOG.info("Setting database {} read-only", work.dbNameToLoadIn);
+      setDbReadOnly();
+    }
     return 0;
+  }
+
+  private boolean isReadOnlyHookRegistered() {
+    return conf.get(HiveConf.ConfVars.PRE_EXEC_HOOKS.varname) != null &&
+      conf.get(HiveConf.ConfVars.PRE_EXEC_HOOKS.varname).contains(READ_ONLY_HOOK);
+  }
+
+  /**
+   * Following hook should be registered before using readonly feature.
+   * 1. SET hive.exec.pre.hooks = "org.apache.hadoop.hive.ql.hooks.EnforceReadOnlyDatabaseHook";
+   * If not set 'readonly' has no effect on the database.
+   */
+  private void setDbReadOnly() {
+    Map<String, String> props = new HashMap<>();
+    props.put(READONLY, Boolean.TRUE.toString());
+
+    // TODO catalog. Need to double check the actual catalog here. Depend on HIVE-29278
+    AlterDatabaseSetPropertiesDesc setTargetReadOnly =
+      new AlterDatabaseSetPropertiesDesc(HiveUtils.getCurrentCatalogOrDefault(conf), work.dbNameToLoadIn, props, null);
+    DDLWork alterDbPropWork = new DDLWork(new HashSet<>(), new HashSet<>(), setTargetReadOnly, true,
+      work.dumpDirectory, work.getMetricCollector());
+
+    Task<?> addReadOnlyTargetPropTask = TaskFactory.get(alterDbPropWork, conf);
+    if (this.childTasks == null) {
+      this.childTasks = new ArrayList<>();
+    }
+    this.childTasks.add(addReadOnlyTargetPropTask);
   }
 
   private void addLazyDataCopyTask(TaskTracker loadTaskTracker, ReplLogger replLogger) throws IOException {
@@ -502,7 +549,8 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
     }
 
     CreateViewDesc desc = new CreateViewDesc(dbDotView, table.getCols(), null, table.getParameters(),
-            table.getPartColNames(), false, false, viewOriginalText, viewExpandedText, table.getPartCols());
+        table.getPartColNames(), false, false, viewOriginalText, viewExpandedText,
+        table.getPartCols(), null);
 
     desc.setReplicationSpec(metaData.getReplicationSpec());
     desc.setOwnerName(table.getOwner());
@@ -567,16 +615,25 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
           public void run() throws SemanticException {
             try {
               Database db = getHive().getDatabase(work.getTargetDatabase());
-              if (MetaStoreUtils.isDbBeingFailedOverAtEndpoint(db, MetaStoreUtils.FailoverEndpoint.TARGET)) {
+              if (MetaStoreUtils.isDbBeingPlannedFailedOverAtEndpoint(db, MetaStoreUtils.FailoverEndpoint.TARGET)) {
                 return;
               }
-              Map<String, String> params = db.getParameters();
-              if (params == null) {
-                params = new HashMap<>();
-                db.setParameters(params);
-              }
+              HashMap<String, String> params = new HashMap<>(db.getParameters());
+
               LOG.info("Setting failover endpoint:{} to TARGET for database: {}", ReplConst.REPL_FAILOVER_ENDPOINT, db.getName());
               params.put(ReplConst.REPL_FAILOVER_ENDPOINT, MetaStoreUtils.FailoverEndpoint.TARGET.toString());
+              LOG.info("Setting {} for database: {}", ReplConst.REPL_ENABLE_BACKGROUND_THREAD, db.getName());
+              params.put(ReplConst.REPL_ENABLE_BACKGROUND_THREAD,"true");
+
+              // we are here due to planned failover
+              params.put(ReplConst.REPL_METRICS_LAST_FAILOVER_TYPE, ReplConst.FailoverType.PLANNED.toString());
+              LOG.info("Replication Metrics: Setting last failover type for database: {} to: {} ", db.getName(), ReplConst.FailoverType.PLANNED.toString());
+
+              int failoverCount = 1 + NumberUtils.toInt(params.getOrDefault(ReplConst.REPL_METRICS_FAILOVER_COUNT, "0"), 0);
+              LOG.info("Replication Metrics: Setting replication metrics failover count for database: {} to: {} ", db.getName(), failoverCount);
+              params.put(ReplConst.REPL_METRICS_FAILOVER_COUNT, Integer.toString(failoverCount));
+
+              db.setParameters(params);
               getHive().alterDatabase(work.getTargetDatabase(), db);
             } catch (HiveException e) {
               throw new SemanticException(e);
@@ -593,14 +650,28 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
             try {
               Hive hiveDb = getHive();
               Database db = hiveDb.getDatabase(work.getTargetDatabase());
-              LinkedHashMap<String, String> params = new LinkedHashMap<>(db.getParameters());
+              HashMap<String, String> params = new HashMap<>(db.getParameters());
               LOG.debug("Database {} properties before removal {}", work.getTargetDatabase(), params);
+              params.remove(REPL_RESUME_STARTED_AFTER_FAILOVER);
               params.remove(SOURCE_OF_REPLICATION);
-              db.setParameters(params);
+              if (!work.shouldFailover()) {
+                params.remove(REPL_FAILOVER_ENDPOINT);
+              }
+
               LOG.info("Removed {} property from database {} after successful optimised bootstrap load.",
                   SOURCE_OF_REPLICATION, work.getTargetDatabase());
+
+              int failbackCount = 1 + NumberUtils.toInt(params.getOrDefault(ReplConst.REPL_METRICS_FAILBACK_COUNT, "0"), 0);
+              LOG.info("Replication Metrics: Setting replication metrics failback count for database: {} to: {} ", db.getName(), failbackCount);
+              params.put(ReplConst.REPL_METRICS_FAILBACK_COUNT, Integer.toString(failbackCount));
+
+              long failbackEndTime = System.currentTimeMillis();
+              params.put(ReplConst.REPL_METRICS_LAST_FAILBACK_ENDTIME, Long.toString(failbackEndTime));
+              LOG.info("Replication Metrics: Setting replication metrics failback end time for database: {} to: {} ", db.getName(), failbackEndTime);
+
+              db.setParameters(params);
               hiveDb.alterDatabase(work.getTargetDatabase(), db);
-              LOG.debug("Database {} poperties after removal {}", work.getTargetDatabase(), params);
+              LOG.debug("Database {} properties after removal {}", work.getTargetDatabase(), params);
             } catch (HiveException e) {
               throw new SemanticException(e);
             }
@@ -710,7 +781,11 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
     }
     Database targetDb = getHive().getDatabase(work.dbNameToLoadIn);
     Map<String, String> props = new HashMap<>();
-
+    // check if db is set READ_ONLY, if not then set it. Basically this ensures backward
+    // compatibility.
+    if (!isDbReadOnly(targetDb) && isReadOnlyHookRegistered()) {
+      setDbReadOnly();
+    }
     // Check if it is a optimised bootstrap failover.
     if (work.isFirstFailover) {
       // Check it should be marked as target of replication & not source of replication.
@@ -722,23 +797,63 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
         LOG.error("The database {} is already source of replication.", targetDb.getName());
         throw new Exception("Failover target was not source of replication");
       }
+      Map<String, String> params = targetDb.getParameters();
+      if (params == null) {
+        params = new HashMap<>();
+      }
+
+      long failbackStartTime = System.currentTimeMillis();
+      params.put(ReplConst.REPL_METRICS_LAST_FAILBACK_STARTTIME, Long.toString(failbackStartTime));
+      LOG.info("Replication Metrics: Setting replication metrics failback starttime for database: {} to: {} ", targetDb.getName(), failbackStartTime);
+      if (!MetaStoreUtils.isDbBeingPlannedFailedOver(targetDb)) { // if this is failback due to unplanned failover
+        LOG.info("Replication Metrics: Setting last failover type for database: {} to: {} ", targetDb.getName(), ReplConst.FailoverType.UNPLANNED.toString());
+        params.put(ReplConst.REPL_METRICS_LAST_FAILOVER_TYPE, ReplConst.FailoverType.UNPLANNED.toString());
+
+        int failoverCount = 1 + NumberUtils.toInt(params.getOrDefault(ReplConst.REPL_METRICS_FAILOVER_COUNT, "0"), 0);
+        LOG.info("Replication Metrics: Setting replication metrics failover count for database: {} to: {} ", targetDb.getName(), failoverCount);
+        params.put(ReplConst.REPL_METRICS_FAILOVER_COUNT, Integer.toString(failoverCount));
+      }
+
+      work.getMetricCollector().reportStageStart(STAGE_NAME, new HashMap<>());
       boolean isTableDiffPresent =
           checkFileExists(new Path(work.dumpDirectory).getParent(), conf, TABLE_DIFF_COMPLETE_DIRECTORY);
+      boolean isAbortTxnsListPresent =
+              checkFileExists(new Path(work.dumpDirectory).getParent(), conf, OptimisedBootstrapUtils.ABORT_TXNS_FILE);
+      Long eventId = Long.parseLong(getEventIdFromFile(new Path(work.dumpDirectory).getParent(), conf)[0]);
+      List<NotificationEvent> notificationEvents = OptimisedBootstrapUtils.getListOfNotificationEvents(eventId, getHive(), work);
+      if (!isAbortTxnsListPresent) {
+        //Abort the ongoing transactions(opened prior to failover) for the target database.
+        HiveTxnManager hiveTxnManager = getTxnMgr();
+        ValidTxnList validTxnList = hiveTxnManager.getValidTxns(excludedTxns);
+        Set<Long> allOpenTxns = new HashSet<>(ReplUtils.getOpenTxns(validTxnList));
+        abortOpenTxnsForDatabase(hiveTxnManager, validTxnList, work.dbNameToLoadIn, getHive());
+        //Re-fetch the list of notification events post failover eventId.
+        notificationEvents = OptimisedBootstrapUtils.getListOfNotificationEvents(eventId, getHive(), work);
+        OptimisedBootstrapUtils.prepareAbortTxnsFile(notificationEvents, allOpenTxns,
+                new Path(work.dumpDirectory).getParent(), conf);
+      }
       if (!isTableDiffPresent) {
-        Long eventId = Long.parseLong(getEventIdFromFile(new Path(work.dumpDirectory).getParent(), conf)[0]);
-        prepareTableDiffFile(eventId, getHive(), work, conf);
+        prepareTableDiffFile(notificationEvents, getHive(), work, conf);
       }
       if (this.childTasks == null) {
         this.childTasks = new ArrayList<>();
       }
       createReplLoadCompleteAckTask();
+      work.getMetricCollector().reportStageEnd(STAGE_NAME, Status.SUCCESS);
+      if (Boolean.parseBoolean(targetDb.getParameters().get(REPL_RESUME_STARTED_AFTER_FAILOVER))) {
+        work.getMetricCollector().reportEnd(Status.RESUME_READY);
+      } else {
+        work.getMetricCollector().reportEnd(Status.SUCCESS);
+      }
+      targetDb.setParameters(params);
+      getHive().alterDatabase(work.dbNameToLoadIn, targetDb);
       return 0;
     } else if (work.isSecondFailover) {
       // DROP the tables extra on target, which are not on source cluster.
 
       Hive db = getHive();
       for (String table : work.tablesToDrop) {
-        LOG.info("Dropping table {} for optimised bootstarap", work.dbNameToLoadIn + "." + table);
+        LOG.info("Dropping table {} for optimised bootstrap", work.dbNameToLoadIn + "." + table);
         db.dropTable(work.dbNameToLoadIn + "." + table, true);
       }
       Database sourceDb = getSourceDbMetadata();  //This sourceDb was the actual target prior to failover.
@@ -754,7 +869,7 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
           props.put(currProp.getKey(), (actualVal == null) ? "" : actualVal);
         }
       }
-      AlterDatabaseSetOwnerDesc alterDbDesc = new AlterDatabaseSetOwnerDesc(sourceDb.getName(),
+      AlterDatabaseSetOwnerDesc alterDbDesc = new AlterDatabaseSetOwnerDesc(sourceDb.getCatalogName(), sourceDb.getName(),
               new PrincipalDesc(sourceDb.getOwnerName(), sourceDb.getOwnerType()), null);
       DDLWork ddlWork = new DDLWork(new HashSet<>(), new HashSet<>(), alterDbDesc, true,
               (new Path(work.dumpDirectory)).getParent().toString(), work.getMetricCollector());
@@ -766,11 +881,13 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
     if (!MetaStoreUtils.isTargetOfReplication(targetDb)) {
       props.put(ReplConst.TARGET_OF_REPLICATION, ReplConst.TRUE);
     }
-    if (!work.shouldFailover() && MetaStoreUtils.isDbBeingFailedOver(targetDb)) {
+    if (!work.shouldFailover() && MetaStoreUtils.isDbBeingPlannedFailedOver(targetDb)) {
       props.put(ReplConst.REPL_FAILOVER_ENDPOINT, "");
     }
     if (!props.isEmpty()) {
-      AlterDatabaseSetPropertiesDesc setTargetDesc = new AlterDatabaseSetPropertiesDesc(work.dbNameToLoadIn, props, null);
+      // TODO catalog. Need to double check the actual catalog here. Depend on HIVE-29278
+      AlterDatabaseSetPropertiesDesc setTargetDesc = new AlterDatabaseSetPropertiesDesc(targetDb.getCatalogName(),
+              work.dbNameToLoadIn, props, null);
       Task<?> addReplTargetPropTask =
               TaskFactory.get(new DDLWork(new HashSet<>(), new HashSet<>(), setTargetDesc, true,
                       work.dumpDirectory, work.getMetricCollector()), conf);
@@ -816,8 +933,9 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
         String lastEventid = builder.eventTo().toString();
         Map<String, String> mapProp = new HashMap<>();
         mapProp.put(ReplicationSpec.KEY.CURR_STATE_ID_SOURCE.toString(), lastEventid);
+        // TODO catalog. Need to double check the actual catalog here. Depend on HIVE-29278
         AlterDatabaseSetPropertiesDesc alterDbDesc =
-            new AlterDatabaseSetPropertiesDesc(dbName, mapProp,
+            new AlterDatabaseSetPropertiesDesc(targetDb.getCatalogName(), dbName, mapProp,
                 new ReplicationSpec(lastEventid, lastEventid));
         Task<?> updateReplIdTask =
             TaskFactory.get(new DDLWork(new HashSet<>(), new HashSet<>(), alterDbDesc, true,
@@ -846,7 +964,45 @@ public class ReplLoadTask extends Task<ReplLoadWork> implements Serializable {
     long currentTimestamp = System.currentTimeMillis();
     ((IncrementalLoadLogger)work.incrementalLoadTasksBuilder().getReplLogger()).initiateEventTimestamp(currentTimestamp);
     LOG.info("REPL_INCREMENTAL_LOAD stage duration : {} ms", currentTimestamp - loadStartTime);
+
+    // Clear dangling transactions only once all incremental work for this dump is exhausted.
+    // Running this in intermediate rounds can remove source->target txn mappings that later
+    // rounds still depend on for write-id replay.
+    boolean hasPendingIncrementalWork = builder.hasMoreWork() || work.hasBootstrapLoadTasks();
+    if (conf.getBoolVar(HiveConf.ConfVars.HIVE_REPL_CLEAR_DANGLING_TXNS_ON_TARGET) && !hasPendingIncrementalWork) {
+      ClearDanglingTxnWork clearDanglingTxnWork = new ClearDanglingTxnWork(work.getDumpDirectory(), targetDb.getName());
+      Task<ClearDanglingTxnWork> clearDanglingTxnTaskTask = TaskFactory.get(clearDanglingTxnWork, conf);
+      if (childTasks.isEmpty()) {
+        childTasks.add(clearDanglingTxnTaskTask);
+      } else {
+        DAGTraversal.traverse(childTasks, new AddDependencyToLeaves(Collections.singletonList(clearDanglingTxnTaskTask)));
+      }
+    } else if (conf.getBoolVar(HiveConf.ConfVars.HIVE_REPL_CLEAR_DANGLING_TXNS_ON_TARGET)) {
+      LOG.info("Skipping dangling transaction cleanup in this iteration as incremental load has pending work.");
+    }
+
     return 0;
+  }
+
+  private boolean isDbReadOnly(Database db) {
+    Map<String, String> dbParameters = db.getParameters();
+    return dbParameters != null && Boolean.parseBoolean(dbParameters.get(READONLY)) ;
+  }
+
+  private void abortOpenTxnsForDatabase(HiveTxnManager hiveTxnManager, ValidTxnList validTxnList, String dbName,
+                                        Hive hiveDb) throws HiveException {
+    List<Long> openTxns = ReplUtils.getOpenTxns(hiveTxnManager, validTxnList, dbName);
+    if (!openTxns.isEmpty()) {
+      LOG.info("Rolling back write txns:" + openTxns.toString() + " for the database: " + dbName);
+      //abort only write transactions for the current database if abort transactions is enabled.
+      hiveDb.abortTransactions(openTxns, TxnErrorMsg.ABORT_ONGOING_TXN_FOR_TARGET_DB.getErrorCode());
+      validTxnList = hiveTxnManager.getValidTxns(excludedTxns);
+      openTxns = ReplUtils.getOpenTxns(hiveTxnManager, validTxnList, dbName);
+      if (!openTxns.isEmpty()) {
+        LOG.warn("Unable to force abort all the open txns: {}.", openTxns);
+        throw new IllegalStateException("Failover triggered abort txns request failed for unknown reasons.");
+      }
+    }
   }
 
   private Database getSourceDbMetadata() throws IOException, SemanticException {

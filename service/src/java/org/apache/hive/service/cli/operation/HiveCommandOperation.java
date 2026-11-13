@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service.cli.operation;
@@ -44,12 +45,14 @@ import org.apache.hive.service.cli.RowSet;
 import org.apache.hive.service.cli.RowSetFactory;
 import org.apache.hive.service.cli.TableSchema;
 import org.apache.hive.service.cli.session.HiveSession;
+import org.apache.hive.service.cli.session.HiveSessionImpl;
+import org.apache.hive.service.cli.session.PersistableSessionUtils;
 
 /**
  * Executes a HiveCommand
  */
 public class HiveCommandOperation extends ExecuteStatementOperation {
-  private final CommandProcessor commandProcessor;
+  protected final CommandProcessor commandProcessor;
   private TableSchema resultSchema = null;
 
   /**
@@ -59,8 +62,8 @@ public class HiveCommandOperation extends ExecuteStatementOperation {
   private BufferedReader resultReader;
 
   protected HiveCommandOperation(HiveSession parentSession, String statement,
-      CommandProcessor commandProcessor, Map<String, String> confOverlay) {
-    super(parentSession, statement, confOverlay);
+      CommandProcessor commandProcessor, Map<String, String> confOverlay, boolean embedded) {
+    super(parentSession, statement, confOverlay, embedded);
     this.commandProcessor = commandProcessor;
     setupSessionIO(parentSession.getSessionState());
   }
@@ -124,12 +127,23 @@ public class HiveCommandOperation extends ExecuteStatementOperation {
       }
     } catch (CommandProcessorException e) {
       setState(OperationState.ERROR);
-      throw toSQLException("Error while processing statement", e);
+      throw toSQLException("Error while processing statement", e, queryState.getQueryId());
     } catch (Exception e) {
       setState(OperationState.ERROR);
       throw new HiveSQLException("Error running query: " + e.toString(), e);
     }
     setState(OperationState.FINISHED);
+  }
+
+  @Override
+  protected void onNewState(OperationState state, OperationState prevState) {
+    super.onNewState(state, prevState);
+    if (state == OperationState.FINISHED) {
+      HiveSessionImpl impl = PersistableSessionUtils.unwrapSession(parentSession);
+      if (impl != null) {
+        impl.onOperationFinished(statement);
+      }
+    }
   }
 
   /* (non-Javadoc)

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.mapred;
 
@@ -51,20 +52,25 @@ public class WebHCatJTShim23 implements WebHCatJTShim {
   /**
    * Create a connection to the Job Tracker.
    */
-  public WebHCatJTShim23(final Configuration conf, final UserGroupInformation ugi)
-          throws IOException {
+  public static WebHCatJTShim createInstance(final Configuration conf, final UserGroupInformation ugi)
+      throws IOException {
+    JobClient jc;
     try {
-    this.conf = conf;
-    jc = ugi.doAs(new PrivilegedExceptionAction<JobClient>() {
-      public JobClient run() throws IOException, InterruptedException  {
-        //create this in doAs() so that it gets a security context based passed in 'ugi'
-        return new JobClient(conf);
-      }
-    });
-    }
-    catch(InterruptedException ex) {
+      jc = ugi.doAs(new PrivilegedExceptionAction<JobClient>() {
+        public JobClient run() throws IOException, InterruptedException {
+          //create this in doAs() so that it gets a security context based passed in 'ugi'
+          return new JobClient(conf);
+        }
+      });
+    } catch (InterruptedException ex) {
       throw new RuntimeException("Failed to create JobClient", ex);
     }
+    return new WebHCatJTShim23(conf, jc);
+  }
+
+  private WebHCatJTShim23(final Configuration conf, final JobClient jc) {
+    this.conf = new Configuration(conf);
+    this.jc = jc;
   }
 
   /**

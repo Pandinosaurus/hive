@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.testutils.jdbc;
 
@@ -26,8 +27,6 @@ import java.sql.DriverManager;
 
 
 public class HiveBurnInClient {
-  private static final String driverName = "org.apache.hive.jdbc.HiveDriver";
-
   //default 80k (runs slightly over 1 day long)
   private static final int NUM_QUERY_ITERATIONS = 80000;
 
@@ -115,10 +114,9 @@ public class HiveBurnInClient {
   /**
    * @param args
    * @throws SQLException
-   * @throws ClassNotFoundException
    */
-  public static void main(String[] args) throws SQLException, ClassNotFoundException {
-    Class.forName(driverName);
+  public static void main(String[] args) throws SQLException {
+    // Ensure hive-jdbc jar is in the classpath
     int numberOfQueryIterations = NUM_QUERY_ITERATIONS;
 
     if (args.length > 0) {

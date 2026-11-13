@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.Stack;
 
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.ql.QueryProperties.QueryFeature;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
 import org.apache.hadoop.hive.ql.exec.GroupByOperator;
 import org.apache.hadoop.hive.ql.exec.Operator;
@@ -55,8 +57,9 @@ public class SimpleFetchAggregation extends Transform {
 
   @Override
   public ParseContext transform(ParseContext pctx) throws SemanticException {
-    if (pctx.getFetchTask() != null || !pctx.getQueryProperties().isQuery() ||
-        pctx.getQueryProperties().isAnalyzeRewrite() || pctx.getQueryProperties().isCTAS() ||
+    if (pctx.getFetchTask() != null || !pctx.getQueryProperties().hasFeature(QueryFeature.QUERY) ||
+        pctx.getQueryProperties().hasFeature(QueryFeature.REWRITE) ||
+        pctx.getQueryProperties().hasFeature(QueryFeature.CTAS) ||
         pctx.getLoadFileWork().size() > 1 || !pctx.getLoadTableWork().isEmpty()) {
       return pctx;
     }

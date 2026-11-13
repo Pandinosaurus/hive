@@ -9,18 +9,22 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.lockmgr;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.fs.FileUtil;
+import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.hive.metastore.txn.TxnHandler;
 import org.apache.hadoop.hive.metastore.utils.TestTxnDbUtil;
 import org.apache.hadoop.hive.metastore.txn.TxnStore;
 import org.apache.hadoop.hive.metastore.txn.TxnUtils;
@@ -35,18 +39,16 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
+
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVE_COMPACTOR_CLEANER_RETENTION_TIME;
 
 /**
  * Base class for "end-to-end" tests for DbTxnManager and simulate concurrent queries.
  */
 public abstract class DbTxnManagerEndToEndTestBase {
 
-  private static final String TEST_DATA_DIR = new File(
-    System.getProperty("java.io.tmpdir") + File.separator +
-      DbTxnManagerEndToEndTestBase.class.getCanonicalName() + "-" + System.currentTimeMillis())
-    .getPath().replaceAll("\\\\", "/");
-
-  protected static HiveConf conf = new HiveConf(Driver.class);
+  protected static HiveConfForTest conf = new HiveConfForTest(DbTxnManagerEndToEndTestBase.class);
   protected HiveTxnManager txnMgr;
   protected Context ctx;
   protected Driver driver, driver2;
@@ -59,6 +61,10 @@ public abstract class DbTxnManagerEndToEndTestBase {
     HiveConf.setBoolVar(conf, HiveConf.ConfVars.TXN_MERGE_INSERT_X_LOCK, true);
 
     MetastoreConf.setVar(conf, MetastoreConf.ConfVars.WAREHOUSE, getWarehouseDir());
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.COMPACTOR_INITIATOR_ON, true);
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.COMPACTOR_CLEANER_ON, true);
+    HiveConf.setTimeVar(conf, HIVE_COMPACTOR_CLEANER_RETENTION_TIME, 0, TimeUnit.SECONDS);
+
     TestTxnDbUtil.setConfValues(conf);
   }
   
@@ -79,7 +85,9 @@ public abstract class DbTxnManagerEndToEndTestBase {
     HiveConf.setIntVar(conf, HiveConf.ConfVars.HIVE_LOCKS_PARTITION_THRESHOLD, -1);
     HiveConf.setBoolVar(conf, HiveConf.ConfVars.HIVE_ACID_LOCKLESS_READS_ENABLED, false);
     HiveConf.setBoolVar(conf, HiveConf.ConfVars.TXN_WRITE_X_LOCK, false);
-    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.TXN_USE_MIN_HISTORY_LEVEL, true);
+
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.TXN_USE_MIN_HISTORY_WRITE_ID, true);
+    TxnHandler.ConfVars.setUseMinHistoryWriteId(true);
 
     driver = new Driver(new QueryState.Builder().withHiveConf(conf).nonIsolated().build());
     driver2 = new Driver(new QueryState.Builder().withHiveConf(conf).build());
@@ -99,18 +107,20 @@ public abstract class DbTxnManagerEndToEndTestBase {
       throw new RuntimeException("Could not create " + getWarehouseDir());
     }
   }
-  
+
   @After
   public void tearDown() throws Exception {
     driver.close();
+    conf.unset(ValidTxnList.VALID_TXNS_KEY);
+    
     driver2.close();
     if (txnMgr != null) {
       txnMgr.closeTxnManager();
     }
-    FileUtils.deleteDirectory(new File(TEST_DATA_DIR));
+    FileUtils.deleteDirectory(new File(conf.getTestDataDir()));
   }
 
   protected String getWarehouseDir() {
-    return TEST_DATA_DIR + "/warehouse";
+    return conf.getTestDataDir() + "/warehouse";
   }
 }

@@ -1,18 +1,26 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License. See accompanying LICENSE file.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.auth;
+
+import java.util.Optional;
+import javax.servlet.http.HttpServletResponse;
 
 /*
 Encapsulates any exceptions thrown by HiveMetastore server
@@ -22,18 +30,14 @@ public class HttpAuthenticationException extends Exception {
 
   private static final long serialVersionUID = 0;
 
-  /**
-   * @param cause original exception
-   */
-  public HttpAuthenticationException(Throwable cause) {
-    super(cause);
-  }
+  private final int statusCode;
+  private final String wwwAuthenticateHeader;
 
   /**
    * @param msg exception message
    */
   public HttpAuthenticationException(String msg) {
-    super(msg);
+    this(msg, null);
   }
 
   /**
@@ -41,7 +45,28 @@ public class HttpAuthenticationException extends Exception {
    * @param cause original exception
    */
   public HttpAuthenticationException(String msg, Throwable cause) {
-    super(msg, cause);
+    this(msg, cause, HttpServletResponse.SC_UNAUTHORIZED);
   }
 
+  public HttpAuthenticationException(String msg, Throwable cause, int statusCode) {
+    this(msg, cause, statusCode, null);
+  }
+
+  public HttpAuthenticationException(String msg, int statusCode, String wwwAuthenticateHeader) {
+    this(msg, null, statusCode, wwwAuthenticateHeader);
+  }
+
+  public HttpAuthenticationException(String msg, Throwable cause, int statusCode, String wwwAuthenticateHeader) {
+    super(msg, cause);
+    this.statusCode = statusCode;
+    this.wwwAuthenticateHeader = wwwAuthenticateHeader;
+  }
+
+  public int getStatusCode() {
+    return statusCode;
+  }
+
+  public Optional<String> getWwwAuthenticateHeader() {
+    return Optional.ofNullable(wwwAuthenticateHeader);
+  }
 }

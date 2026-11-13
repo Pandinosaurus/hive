@@ -9,22 +9,25 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.repl.ReplConst;
 import org.apache.hadoop.hive.metastore.api.CompactionRequest;
 import org.apache.hadoop.hive.metastore.api.CompactionType;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.HiveObjectType;
+import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.Table;
@@ -44,9 +47,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-import static org.apache.hadoop.hive.metastore.HMSHandler.isMustPurge;
-import static org.apache.hadoop.hive.metastore.HMSHandler.getWriteId;
 import static org.apache.hadoop.hive.metastore.HiveMetaStoreClient.RENAME_PARTITION_MAKE_COPY;
+import static org.apache.hadoop.hive.metastore.utils.MetaStoreServerUtils.getWriteId;
+import static org.apache.hadoop.hive.metastore.utils.MetaStoreServerUtils.isMustPurge;
 import static org.apache.hadoop.hive.metastore.utils.MetaStoreUtils.throwMetaException;
 
 
@@ -86,10 +89,15 @@ public class AcidEventListener extends TransactionalMetaStoreEventListener {
         
         if (currentTxn > 0) {
           try {
-            CompactionRequest rqst = new CompactionRequest(table.getDbName(), table.getTableName(), CompactionType.MAJOR);
+            CompactionRequest rqst = new CompactionRequest(table.getDbName(), table.getTableName(),
+                CompactionType.DEFERRED_CLEANUP);
             rqst.setRunas(TxnUtils.findUserToRunAs(table.getSd().getLocation(), table, conf));
             rqst.putToProperties("location", table.getSd().getLocation());
             rqst.putToProperties("ifPurge", Boolean.toString(isMustPurge(tableEvent.getEnvironmentContext(), table)));
+            if (Boolean.parseBoolean(tableEvent.getEnvironmentContext().getProperties()
+                .get(ReplConst.SOURCE_OF_REPLICATION))) {
+              rqst.putToProperties(ReplConst.SOURCE_OF_REPLICATION, Boolean.TRUE.toString());
+            }
             txnHandler.submitForCleanup(rqst, table.getWriteId(), currentTxn);
           } catch (InterruptedException | IOException e) {
             throwMetaException(e);
@@ -239,7 +247,7 @@ public class AcidEventListener extends TransactionalMetaStoreEventListener {
   private long getTxnId(EnvironmentContext context) {
     return Optional.ofNullable(context)
       .map(EnvironmentContext::getProperties)
-      .map(prop -> prop.get("txnId"))
+      .map(prop -> prop.get(hive_metastoreConstants.TXN_ID))
       .map(Long::parseLong)
       .orElse(0L);
   }

@@ -9,21 +9,25 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.lockmgr;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.metastore.Warehouse;
+import org.apache.hadoop.hive.metastore.api.LockMaterializationRebuildRequest;
 import org.apache.hadoop.hive.metastore.api.LockResponse;
 import org.apache.hadoop.hive.metastore.api.LockState;
 import org.apache.hadoop.hive.ql.Context;
@@ -38,6 +42,7 @@ import org.apache.hadoop.hive.ql.DriverState;
 import org.apache.hadoop.hive.ql.lockmgr.HiveLockObject.HiveLockObjectData;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.ql.metadata.Partition;
 import org.apache.hadoop.hive.ql.metadata.Table;
 
@@ -69,6 +74,11 @@ abstract class HiveTxnManagerImpl implements HiveTxnManager, Configurable {
   @Override
   public void closeTxnManager() {
     destruct();
+  }
+
+  @Override
+  public void clearCaches() {
+    // no op - implementations should override as needed
   }
 
   @Override
@@ -124,7 +134,7 @@ abstract class HiveTxnManagerImpl implements HiveTxnManager, Configurable {
     HiveLockManager lockMgr = getAndCheckLockManager();
 
     String tabName = unlockTbl.getTableName();
-    HiveLockObject obj = HiveLockObject.createFrom(hiveDB, tabName,
+    HiveLockObject obj = HiveLockObject.createFrom(hiveDB, null, tabName,
         unlockTbl.getPartSpec());
 
     List<HiveLock> locks = lockMgr.getLocks(obj, false, false);
@@ -145,9 +155,11 @@ abstract class HiveTxnManagerImpl implements HiveTxnManager, Configurable {
     HiveLockManager lockMgr = getAndCheckLockManager();
 
     HiveLockMode mode = HiveLockMode.valueOf(lockDb.getMode());
+    String catName = Objects.requireNonNullElse(lockDb.getCatalogName(),
+            HiveUtils.getCurrentCatalogOrDefault(conf));
     String dbName = lockDb.getDatabaseName();
 
-    Database dbObj = hiveDB.getDatabase(dbName);
+    Database dbObj = hiveDB.getDatabase(catName, dbName);
     if (dbObj == null) {
       throw new HiveException("Database " + dbName + " does not exist ");
     }
@@ -157,7 +169,7 @@ abstract class HiveTxnManagerImpl implements HiveTxnManager, Configurable {
             String.valueOf(System.currentTimeMillis()),
             "EXPLICIT", lockDb.getQueryStr(), conf);
 
-    HiveLock lck = lockMgr.lock(new HiveLockObject(dbObj.getName(), lockData), mode, true);
+    HiveLock lck = lockMgr.lock(new HiveLockObject(dbObj, lockData), mode, true);
     if (lck == null) {
       return 1;
     }
@@ -168,14 +180,15 @@ abstract class HiveTxnManagerImpl implements HiveTxnManager, Configurable {
   public int unlockDatabase(Hive hiveDB, UnlockDatabaseDesc unlockDb) throws HiveException {
     HiveLockManager lockMgr = getAndCheckLockManager();
 
+    String catName = Objects.requireNonNullElse(unlockDb.getCatalogName(),
+            HiveUtils.getCurrentCatalogOrDefault(conf));
     String dbName = unlockDb.getDatabaseName();
 
-    Database dbObj = hiveDB.getDatabase(dbName);
+    Database dbObj = hiveDB.getDatabase(catName, dbName);
     if (dbObj == null) {
       throw new HiveException("Database " + dbName + " does not exist ");
     }
-    HiveLockObject obj = new HiveLockObject(dbObj.getName(), null);
-
+    HiveLockObject obj =  new HiveLockObject(dbObj, null);
     List<HiveLock> locks = lockMgr.getLocks(obj, false, false);
     if ((locks == null) || (locks.isEmpty())) {
       throw new HiveException("Database " + dbName + " is not locked ");
@@ -223,6 +236,13 @@ abstract class HiveTxnManagerImpl implements HiveTxnManager, Configurable {
 
   @Override
   public LockResponse acquireMaterializationRebuildLock(String dbName, String tableName, long txnId)
+      throws LockException {
+    return acquireMaterializationRebuildLock(new LockMaterializationRebuildRequest(Warehouse.DEFAULT_CATALOG_NAME,
+        dbName, tableName, txnId));
+  }
+
+  @Override
+  public LockResponse acquireMaterializationRebuildLock(LockMaterializationRebuildRequest rqst)
       throws LockException {
     // This is default implementation. Locking only works for incremental maintenance
     // which only works for DB transactional manager, thus we cannot acquire a lock.

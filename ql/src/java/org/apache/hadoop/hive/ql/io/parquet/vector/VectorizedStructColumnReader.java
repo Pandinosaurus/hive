@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.parquet.vector;
@@ -29,9 +30,11 @@ import java.util.List;
 public class VectorizedStructColumnReader implements VectorizedColumnReader {
 
   private final List<VectorizedColumnReader> fieldReaders;
+  private final int structDefLevel;
 
-  public VectorizedStructColumnReader(List<VectorizedColumnReader> fieldReaders) {
+  public VectorizedStructColumnReader(List<VectorizedColumnReader> fieldReaders, int structDefLevel) {
     this.fieldReaders = fieldReaders;
+    this.structDefLevel = structDefLevel;
   }
 
   @Override
@@ -46,14 +49,29 @@ public class VectorizedStructColumnReader implements VectorizedColumnReader {
       fieldReaders.get(i)
         .readBatch(total, vectors[i], structTypeInfo.getAllStructFieldTypeInfos().get(i));
       structColumnVector.isRepeating = structColumnVector.isRepeating && vectors[i].isRepeating;
-
-      for (int j = 0; j < vectors[i].isNull.length; j++) {
-        structColumnVector.isNull[j] =
-          (i == 0) ? vectors[i].isNull[j] : structColumnVector.isNull[j] && vectors[i].isNull[j];
-      }
-      structColumnVector.noNulls =
-        (i == 0) ? vectors[i].noNulls : structColumnVector.noNulls && vectors[i].noNulls;
     }
+    int[] defLevels = getDefinitionLevels();
 
+    // Evaluate struct nullability using Parquet Definition Levels
+    if (defLevels != null) {
+      for (int j = 0; j < total; j++) {
+        if (defLevels[j] < structDefLevel) {
+          // The Definition Level boundary crossed the struct. The whole struct is null.
+          structColumnVector.isNull[j] = true;
+          structColumnVector.noNulls = false;
+        }
+      }
+    }
+  }
+
+  @Override
+  public int[] getDefinitionLevels() {
+    for (VectorizedColumnReader reader : fieldReaders) {
+      int[] defLevels = reader.getDefinitionLevels();
+      if (defLevels != null) {
+        return defLevels;
+      }
+    }
+    return null;
   }
 }

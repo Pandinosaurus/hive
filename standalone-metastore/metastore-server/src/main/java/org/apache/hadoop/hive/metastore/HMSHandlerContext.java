@@ -9,21 +9,26 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.hive.metastore.handler.BaseHandler;
 import org.apache.hadoop.hive.metastore.txn.TxnStore;
 import org.apache.hadoop.hive.metastore.txn.TxnUtils;
+import org.slf4j.Logger;
 
 /**
  * When one hms client connects in, we create a handler context for it.
@@ -38,7 +43,7 @@ public final class HMSHandlerContext {
   private TxnStore txnStore;
 
   // Thread local HMSHandler used during shutdown to notify meta listeners
-  private HMSHandler hmsHandler;
+  private BaseHandler hmsHandler;
 
   // Thread local configuration is needed as many threads could make changes
   // to the conf using the connection hook
@@ -54,6 +59,57 @@ public final class HMSHandlerContext {
 
   private Map<String, com.codahale.metrics.Timer.Context> timerContexts = new HashMap<>();
 
+  // Unique ID of current thrift call
+  private CallCtx callCtx;
+
+  public static final class CallCtx {
+    private final String methodName;
+    private long totalTime;
+    private int queryCount;
+    private long maxJdbcTimeMs;
+
+    public CallCtx(String methodName) {
+      this.methodName = methodName;
+    }
+
+    public String methodName() {
+      return methodName;
+    }
+
+    public void recordJdbcExecution(long timeSpentMs) {
+      queryCount++;
+      totalTime += timeSpentMs;
+      maxJdbcTimeMs = Math.max(maxJdbcTimeMs, timeSpentMs);
+    }
+
+    public int getQueryCount() {
+      return queryCount;
+    }
+
+    public long getTotalTime() {
+      return totalTime;
+    }
+
+    public long getMaxJdbcTimeMs() {
+      return maxJdbcTimeMs;
+    }
+
+    public void logJdbcSummary(Logger Log, Configuration configuration) {
+      if (queryCount == 0) {
+        return;
+      }
+      Log.debug("{} jdbc summary: {} queries, {} ms total, {} ms max per query",
+          methodName, queryCount, totalTime, maxJdbcTimeMs);
+      long slowThreshold = MetastoreConf.getTimeVar(configuration,
+          MetastoreConf.ConfVars.METASTORE_JDBC_SLOW_QUERY_THRESHOLD, TimeUnit.MILLISECONDS);
+      if (slowThreshold > 0 && totalTime > slowThreshold) {
+        Log.warn("{} jdbc summary: {} queries, {} ms total, {} ms max per query (no single query exceeded "
+                + "the slow threshold, but aggregate JDBC time is high)",
+            methodName, queryCount, totalTime, maxJdbcTimeMs);
+      }
+    }
+  }
+
   private HMSHandlerContext() {
   }
 
@@ -61,7 +117,7 @@ public final class HMSHandlerContext {
     return Optional.ofNullable(context.get().rawStore);
   }
 
-  public static Optional<HMSHandler> getHMSHandler() {
+  public static Optional<BaseHandler> getHMSHandler() {
     return Optional.ofNullable(context.get().hmsHandler);
   }
 
@@ -88,6 +144,14 @@ public final class HMSHandlerContext {
     return context.get().timerContexts;
   }
 
+  public static Optional<CallCtx> getCallCtx() {
+    return Optional.ofNullable(context.get().callCtx);
+  }
+
+  public static void setCallCtx(CallCtx ctx) {
+    context.get().callCtx = ctx;
+  }
+
   public static void setRawStore(RawStore rawStore) {
     context.get().rawStore = rawStore;
   }
@@ -96,7 +160,7 @@ public final class HMSHandlerContext {
     context.get().txnStore = txnStore;
   }
 
-  public static void setHMSHandler(HMSHandler hmsHandler) {
+  public static void setHMSHandler(BaseHandler hmsHandler) {
     context.get().hmsHandler = hmsHandler;
   }
 

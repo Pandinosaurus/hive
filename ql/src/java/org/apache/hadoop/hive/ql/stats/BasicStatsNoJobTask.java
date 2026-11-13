@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.stats;
@@ -40,6 +41,7 @@ import org.apache.hadoop.hive.common.StatsSetupConst;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
 import org.apache.hadoop.hive.metastore.api.InvalidOperationException;
+import org.apache.hadoop.hive.metastore.utils.SmallFilesWarningUtil;
 import org.apache.hadoop.hive.ql.CompilationOpContext;
 import org.apache.hadoop.hive.ql.exec.StatsTask;
 import org.apache.hadoop.hive.ql.exec.Utilities;
@@ -54,6 +56,7 @@ import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.TableSpec;
 import org.apache.hadoop.hive.ql.plan.BasicStatsNoJobWork;
 import org.apache.hadoop.hive.ql.plan.api.StageType;
+import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.session.SessionState.LogHelper;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputFormat;
@@ -76,16 +79,16 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * StatsNoJobTask is used in cases where stats collection is the only task for the given query (no
  * parent MR or Tez job). It is used in the following cases 1) ANALYZE with noscan for
  * file formats that implement StatsProvidingRecordReader interface: ORC format (implements
- * StatsProvidingRecordReader) stores column statistics for all columns in the file footer. Its much
+ * StatsProvidingRecordReader) stores column statistics for all columns in the file footer. It's much
  * faster to compute the table/partition statistics by reading the footer than scanning all the
  * rows. This task can be used for computing basic stats like numFiles, numRows, fileSize,
  * rawDataSize from ORC footer.
- * However, this cannot be used for full ACID tables, since some of the files may contain updates
+ * However, this cannot be used for full ACID tables, since some files may contain updates
  * and deletes to existing rows, so summing up the per-file row counts is invalid.
  **/
 public class BasicStatsNoJobTask implements IStatsProcessor {
 
-  private static transient final Logger LOG = LoggerFactory.getLogger(BasicStatsNoJobTask.class);
+  private static final Logger LOG = LoggerFactory.getLogger(BasicStatsNoJobTask.class);
   private HiveConf conf;
 
   private BasicStatsNoJobWork work;
@@ -99,7 +102,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
 
   public static boolean canUseBasicStats(
       Table table, Class<? extends InputFormat> inputFormat) {
-      return canUseFooterScan(table, inputFormat) || useBasicStatsFromStorageHandler(table);
+      return canUseFooterScan(table, inputFormat) || storageHandlerOwnsBasicStats(table);
   }
 
   public static boolean canUseFooterScan(Table table, Class<? extends InputFormat> inputFormat) {
@@ -107,8 +110,8 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
         || MapredParquetInputFormat.class.isAssignableFrom(inputFormat);
   }
 
-  private static boolean useBasicStatsFromStorageHandler(Table table) {
-    return table.isNonNative() && table.getStorageHandler().canProvideBasicStatistics();
+  public static boolean storageHandlerOwnsBasicStats(Table table) {
+    return table.isNonNative() && table.getStorageHandler().canProvideBasicStatistics(table);
   }
 
 
@@ -124,7 +127,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
 
     ExecutorService threadPool = StatsTask.newThreadPool(conf);
 
-    return aggregateStats(threadPool, db);
+    return aggregateStats(threadPool, db, tbl);
   }
 
   public StageType getType() {
@@ -140,6 +143,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
     protected Partish partish;
     protected Object result;
     protected LogHelper console;
+    protected HiveConf conf;
 
     public static Function<StatCollector, String> SIMPLE_NAME_FUNCTION =
         sc -> String.format("%s#%s", sc.partish.getTable().getCompleteName(), sc.partish.getPartishType());
@@ -148,6 +152,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
 
     protected void init(HiveConf conf, LogHelper console) throws IOException {
       this.console = console;
+      this.conf = conf;
     }
 
     protected final boolean isValid() {
@@ -170,17 +175,28 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
     public void run() {
       try {
         Table table = partish.getTable();
-        Map<String, String> parameters;
-        Map<String, String> basicStatistics = table.getStorageHandler().getBasicStatistics(partish);
-        if (partish.getPartition() != null) {
-          parameters = partish.getPartParameters();
-          result = new Partition(table, partish.getPartition().getTPartition());
-        } else {
-          parameters = table.getParameters();
-          result = new Table(table.getTTable());
+        Map<String, String> parameters = table.getParameters();
+        // computes and publishes the statistics the storage handler maintains (e.g. the Iceberg
+        // partition stats file) before reading them back: ANALYZE catches up on writes that
+        // skipped the auto-gathering (a no-op when the statistics are already current)
+        Map<String, String> basicStatistics = table.getStorageHandler().computeBasicStatistics(table);
+        result = new Table(table.getTTable());
+        if (basicStatistics != null) {
+          parameters.putAll(basicStatistics);
+          StatsSetupConst.setBasicStatsState(parameters, StatsSetupConst.TRUE);
         }
-        parameters.putAll(basicStatistics);
-        StatsSetupConst.setBasicStatsState(parameters, StatsSetupConst.TRUE);
+
+        String who = (partish.getPartition() == null) ? ("table " + partish.getTable().getFullyQualifiedName())
+                : ("partition " + partish.getPartition().getName());
+        long threshold = conf.getLongVar(HiveConf.ConfVars.HIVE_MERGE_MAP_FILES_AVG_SIZE);
+        SmallFilesWarningUtil.smallFilesWarnings(parameters, 100L, threshold, who, "[ANALYZE][NOSCAN]")
+                .ifPresent(msg -> {
+                  LOG.warn(msg);
+                  SessionState ss = SessionState.get();
+                  if (ss != null && ss.getConsole() != null) {
+                    ss.getConsole().printInfo(msg);
+                  }
+                });
         String msg = partish.getSimpleName() + " stats: [" + toString(parameters) + ']';
         LOG.debug(msg);
         console.printInfo(msg);
@@ -206,6 +222,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
     @Override
     public void init(HiveConf conf, LogHelper console) throws IOException {
       this.console = console;
+      this.conf = conf;
       dir = new Path(partish.getPartSd().getLocation());
       fs = dir.getFileSystem(conf);
     }
@@ -231,7 +248,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
         }
         ThreadPoolExecutor tpE = null;
         List<Future<FileStats>> futures = null;
-        int numThreadsFactor = HiveConf.getIntVar(jc, HiveConf.ConfVars.BASICSTATSTASKSMAXTHREADSFACTOR);
+        int numThreadsFactor = HiveConf.getIntVar(jc, HiveConf.ConfVars.BASIC_STATS_TASKS_MAX_THREADS_FACTOR);
         if (fileList.size() > 1 && numThreadsFactor > 0) {
           int numThreads = Math.min(fileList.size(), numThreadsFactor * Runtime.getRuntime().availableProcessors());
           ThreadFactory threadFactory = new ThreadFactoryBuilder().setNameFormat("Basic-Stats-Thread-%d").build();
@@ -293,6 +310,18 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
         parameters.put(StatsSetupConst.NUM_FILES, String.valueOf(numFiles));
         parameters.put(StatsSetupConst.NUM_ERASURE_CODED_FILES, String.valueOf(numErasureCodedFiles));
 
+        String who = (partish.getPartition() == null) ? ("table " + partish.getTable().getFullyQualifiedName())
+                : ("partition " + partish.getPartition().getName());
+        long threshold = conf.getLongVar(HiveConf.ConfVars.HIVE_MERGE_MAP_FILES_AVG_SIZE);
+        SmallFilesWarningUtil.smallFilesWarnings(parameters, 100L, threshold, who, "[ANALYZE][NOSCAN]")
+                .ifPresent(msg -> {
+                  LOG.warn(msg);
+                  SessionState ss = SessionState.get();
+                  if (ss != null && ss.getConsole() != null) {
+                    ss.getConsole().printInfo(msg);
+                  }
+                });
+
         if (partish.getPartition() != null) {
           result = new Partition(partish.getTable(), partish.getPartition().getTPartition());
         } else {
@@ -307,10 +336,12 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
         console.printInfo("[Warning] could not update stats for " + partish.getSimpleName() + ".", "Failed with exception " + e.getMessage() + "\n" + StringUtils.stringifyException(e));
       }
     }
-
   }
 
   private Collection<Partition> getPartitions(Table table) {
+    if (table.hasNonNativePartitionSupport()) {
+      return null;
+    }
     Collection<Partition> partitions = null;
     if (work.getPartitions() == null || work.getPartitions().isEmpty()) {
       if (table.isPartitioned()) {
@@ -336,7 +367,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
   }
 
 
-  private int aggregateStats(ExecutorService threadPool, Hive db) {
+  private int aggregateStats(ExecutorService threadPool, Hive db, Table tbl) {
     int ret = 0;
     try {
       JobConf jc = new JobConf(conf);
@@ -353,7 +384,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
 
       List<StatCollector> scs = new ArrayList();
       for (Partish partish : partishes) {
-        if (useBasicStatsFromStorageHandler(table)) {
+        if (storageHandlerOwnsBasicStats(table)) {
           scs.add(new HiveStorageHandlerStatCollector(partish));
         } else {
           scs.add(new FooterStatCollector(jc, partish));
@@ -369,7 +400,19 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
       shutdownAndAwaitTermination(threadPool);
       LOG.debug("Stats collection threadpool shutdown successful.");
 
-      ret = updatePartitions(db, scs, table);
+      if (work.isStatsReliable()) {
+        for (StatCollector statsCollection : scs) {
+          if (!statsCollection.isValid()) {
+            LOG.debug("Stats requested to be reliable. Empty stats found: {}", statsCollection.partish.getSimpleName());
+            return -1;
+          }
+        }
+      }
+      Table newTbl = updatePartitions(db, scs, table);
+      if (newTbl != null) {
+        // ColStatsProcessor writes the task's table object back: hand it the parameters just written
+        tbl.setTTable(newTbl.getTTable());
+      }
 
     } catch (Exception e) {
       console.printError("Failed to collect footer statistics.", "Failed with exception " + e.getMessage() + "\n" + StringUtils.stringifyException(e));
@@ -384,20 +427,16 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
     return ret;
   }
 
-  private int updatePartitions(Hive db, List<StatCollector> scs, Table table) throws InvalidOperationException, HiveException {
+  /**
+   * @return the table whose statistics were written, or null
+   */
+  private Table updatePartitions(Hive db, List<StatCollector> scs, Table table)
+      throws InvalidOperationException, HiveException {
 
     String tableFullName = table.getFullyQualifiedName();
 
     if (scs.isEmpty()) {
-      return 0;
-    }
-    if (work.isStatsReliable()) {
-      for (StatCollector statsCollection : scs) {
-        if (!statsCollection.isValid()) {
-          LOG.debug("Stats requested to be reliable. Empty stats found: {}", statsCollection.partish.getSimpleName());
-          return -1;
-        }
-      }
+      return null;
     }
     List<StatCollector> validColectors = Lists.newArrayList();
     for (StatCollector statsCollection : scs) {
@@ -422,16 +461,21 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
 
     LOG.debug("Updating stats for: {}", tableFullName);
 
+    Table newTbl = null;
     for (String partName : collectorsByTable.keySet()) {
       ImmutableList<StatCollector> values = collectorsByTable.get(partName);
 
       if (values == null) {
-        throw new RuntimeException("very intresting");
+        throw new RuntimeException("very interesting");
       }
 
-      if (values.get(0).result instanceof Table) {
-        db.alterTable(tableFullName, (Table) values.get(0).result, environmentContext, true);
-        LOG.debug("Updated stats for {}.", tableFullName);
+      if (values.get(0).result instanceof Table result) {
+        // the metastore keeps one set of counts, and they describe the table, not a branch
+        if (table.getSnapshotRef() == null) {
+          db.alterTable(tableFullName, result, environmentContext, true);
+          LOG.debug("Updated stats for {}.", tableFullName);
+          newTbl = result;
+        }
       } else {
         if (values.get(0).result instanceof Partition) {
           List<Partition> results = Lists.transform(values, StatCollector.EXTRACT_RESULT_FUNCTION);
@@ -443,7 +487,7 @@ public class BasicStatsNoJobTask implements IStatsProcessor {
       }
     }
     LOG.debug("Updated stats for: {}", tableFullName);
-    return 0;
+    return newTbl;
   }
 
   private void shutdownAndAwaitTermination(ExecutorService threadPool) {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse.type;
@@ -139,6 +140,11 @@ public class TypeCheckProcFactory<T> {
         serdeConstants.INTERVAL_DAY_TIME_TYPE_NAME);
     CONVERSION_FUNCTION_TEXT_MAP.put(HiveParser.TOK_DECIMAL,
         serdeConstants.DECIMAL_TYPE_NAME);
+    CONVERSION_FUNCTION_TEXT_MAP.put(HiveParser.TOK_VARIANT,
+        serdeConstants.VARIANT_TYPE_NAME);
+    CONVERSION_FUNCTION_TEXT_MAP.put(HiveParser.TOK_MAP, "toMap");
+    CONVERSION_FUNCTION_TEXT_MAP.put(HiveParser.TOK_LIST, "toArray");
+    CONVERSION_FUNCTION_TEXT_MAP.put(HiveParser.TOK_STRUCT, "toStruct");
 
     WINDOWING_TOKENS = new HashSet<Integer>();
     WINDOWING_TOKENS.add(HiveParser.KW_OVER);
@@ -592,6 +598,19 @@ public class TypeCheckProcFactory<T> {
   }
 
   /**
+   * Rejects a by-name reference to a column marked ambiguous at a subquery/CTE boundary
+   * (HIVE-29580). Call after each by-name resolution of a user-written column reference;
+   * expression-map resolutions (processGByExpr) stay unchecked so Hive's own rewrites can
+   * reference marked columns.
+   */
+  static void checkAmbiguousName(ColumnInfo colInfo) throws SemanticException {
+    if (colInfo != null && colInfo.hasAmbiguousName()) {
+      throw new SemanticException(ErrorMsg.AMBIGUOUS_COLUMN.getMsg(
+          colInfo.getAlias() + " in " + colInfo.getTabAlias()));
+    }
+  }
+
+  /**
    * Processor for table columns.
    */
   public class ColumnExprProcessor implements SemanticNodeProcessor {
@@ -656,6 +675,7 @@ public class TypeCheckProcFactory<T> {
             return null;
           }
           // It's a column.
+          checkAmbiguousName(colInfo);
           return exprFactory.toExpr(colInfo, usedRR, offset);
         } else {
           // It's a table alias.
@@ -690,6 +710,7 @@ public class TypeCheckProcFactory<T> {
           }
         } else {
           // It's a column.
+          checkAmbiguousName(colInfo);
           return exprFactory.toExpr(colInfo, usedRR, offset);
         }
       }
@@ -995,25 +1016,26 @@ public class TypeCheckProcFactory<T> {
           // different value type. The reason is that Hive and Calcite treat
           // types in IN clauses differently and it is practically impossible
           // to find some correct implementation unless this is done.
-          boolean hasNullValue = false;
           ListMultimap<TypeInfo, T> expressions = ArrayListMultimap.create();
           for (int i = 1; i < children.size(); i++) {
             T columnDesc = children.get(0);
             T valueDesc = interpretNode(columnDesc, children.get(i));
-            if (valueDesc == null) {
-              // Keep original
-              TypeInfo targetType = exprFactory.getTypeInfo(children.get(i));
-              if (!expressions.containsKey(targetType)) {
-                expressions.put(targetType, columnDesc);
-              }
-              expressions.put(targetType, children.get(i));
-            } else {
+            if (valueDesc != null) {
+              // Only add to the expression map if types can be coerced
               TypeInfo targetType = exprFactory.getTypeInfo(valueDesc);
               if (!expressions.containsKey(targetType)) {
                 expressions.put(targetType, columnDesc);
               }
               expressions.put(targetType, valueDesc);
             }
+          }
+          if(expressions.isEmpty()) {
+            // We will only hit this when none of the operands inside the "in" clause can be type-coerced
+            // That would imply that the result of "in" is a boolean "false"
+            // This should not impact those cases where the "in" clause is used on a boolean column and
+            // there is no operand in the "in" clause that cannot be type-coerced into boolean because
+            // in case of boolean, Hive does not allow such use cases and throws an error
+            return exprFactory.createBooleanConstantExpr("false");
           }
 
           children.clear();
@@ -1039,8 +1061,8 @@ public class TypeCheckProcFactory<T> {
           // flatten OR
           List<T> childrenList = new ArrayList<>(children.size());
           for (T child : children) {
-            if (TypeInfoFactory.getPrimitiveTypeInfo("void").equals(exprFactory.getTypeInfo(child))) {
-              child = exprFactory.setTypeInfo(child, TypeInfoFactory.getPrimitiveTypeInfo("boolean"));
+            if (TypeInfoFactory.getPrimitiveTypeInfo(serdeConstants.VOID_TYPE_NAME).equals(exprFactory.getTypeInfo(child))) {
+              child = exprFactory.setTypeInfo(child, TypeInfoFactory.getPrimitiveTypeInfo(serdeConstants.BOOLEAN_TYPE_NAME));
             }
             if (exprFactory.isORFuncCallExpr(child)) {
               childrenList.addAll(exprFactory.getExprChildren(child));
@@ -1053,8 +1075,8 @@ public class TypeCheckProcFactory<T> {
           // flatten AND
           List<T> childrenList = new ArrayList<>(children.size());
           for (T child : children) {
-            if (TypeInfoFactory.getPrimitiveTypeInfo("void").equals(exprFactory.getTypeInfo(child))) {
-              child = exprFactory.setTypeInfo(child, TypeInfoFactory.getPrimitiveTypeInfo("boolean"));
+            if (TypeInfoFactory.getPrimitiveTypeInfo(serdeConstants.VOID_TYPE_NAME).equals(exprFactory.getTypeInfo(child))) {
+              child = exprFactory.setTypeInfo(child, TypeInfoFactory.getPrimitiveTypeInfo(serdeConstants.BOOLEAN_TYPE_NAME));
             }
             if (exprFactory.isANDFuncCallExpr(child)) {
               childrenList.addAll(exprFactory.getExprChildren(child));
@@ -1134,6 +1156,10 @@ public class TypeCheckProcFactory<T> {
           return timestampLocalTZTypeInfo;
         case HiveParser.TOK_DECIMAL:
           return ParseUtils.getDecimalTypeTypeInfo(funcNameNode);
+        case HiveParser.TOK_MAP:
+        case HiveParser.TOK_LIST:
+        case HiveParser.TOK_STRUCT:
+          return ParseUtils.getComplexTypeTypeInfo(funcNameNode);
         default:
           return null;
       }
@@ -1291,6 +1317,7 @@ public class TypeCheckProcFactory<T> {
             ErrorMsg.INVALID_COLUMN.getMsg(), expr.getChild(1)), expr);
         return null;
       }
+      checkAmbiguousName(colInfo);
       return exprFactory.toExpr(colInfo, usedRR, offset);
     }
 
@@ -1409,7 +1436,9 @@ public class TypeCheckProcFactory<T> {
       // Return nulls for conversion operators
       if (CONVERSION_FUNCTION_TEXT_MAP.keySet().contains(expr.getType())
           || expr.getToken().getType() == HiveParser.CharSetName
-          || expr.getToken().getType() == HiveParser.CharSetLiteral) {
+          || expr.getToken().getType() == HiveParser.CharSetLiteral
+          || expr.getType() == HiveParser.TOK_TABCOL
+          || expr.getType() == HiveParser.TOK_TABCOLLIST) {
         return null;
       }
 

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -44,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.nio.charset.Charset;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -55,7 +57,6 @@ import java.util.stream.IntStream;
 /**
  * Kafka Iterator Tests.
  */
-@org.junit.Ignore("HIVE-23838: KafkaRecordIteratorTest is flaky")
 @RunWith(Parameterized.class) public class KafkaRecordIteratorTest {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaRecordIteratorTest.class);
   private static final int RECORD_NUMBER = 19384;
@@ -92,7 +93,7 @@ import java.util.stream.IntStream;
       boolean readUncommitted,
       List<ConsumerRecord<byte[], byte[]>> expectedRecords) {
     this.currentTopic = currentTopic;
-    // when true means the the topic is not Transactional topic
+    // when true means the topic is not Transactional topic
     this.readUncommitted = readUncommitted;
     this.expectedRecords = expectedRecords;
     this.topicPartition = new TopicPartition(currentTopic, 0);
@@ -279,7 +280,6 @@ import java.util.stream.IntStream;
     producerProps.setProperty("bootstrap.servers", KafkaBrokerResource.BROKER_IP_PORT);
     producerProps.setProperty("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
     producerProps.setProperty("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer");
-    producerProps.setProperty("max.block.ms", "10000");
     if (txId != null) {
       producerProps.setProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, txId);
     }
@@ -306,7 +306,7 @@ import java.util.stream.IntStream;
   @After public void tearDown() {
     this.kafkaRecordIterator = null;
     if (this.consumer != null) {
-      this.consumer.close();
+      this.consumer.close(Duration.ZERO);
     }
   }
 

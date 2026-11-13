@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -24,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -234,10 +234,10 @@ public final class ArchiveUtils {
 
   /**
    * Determines if one can insert into partition(s), or there's a conflict with
-   * archive. It can be because partition is itself archived or it is to be
+   * archive. It can be because partition is itself archived, or it is to be
    * created inside existing archive. The second case is when partition doesn't
-   * exist yet, but it would be inside of an archive if it existed. This one is
-   * quite tricky to check, we need to find at least one partition inside of
+   * exist yet, but it would be inside an archive if it existed. This one is
+   * quite tricky to check, we need to find at least one partition inside
    * the parent directory. If it is archived and archiving level tells that
    * the archival was done of directory partition is in it means we cannot
    * insert; otherwise we can.
@@ -254,7 +254,7 @@ public final class ArchiveUtils {
    * @throws HiveException
    */
   public static String conflictingArchiveNameOrNull(Hive db, Table tbl,
-        LinkedHashMap<String, String> partSpec)
+        Map<String, String> partSpec)
       throws HiveException {
 
     List<FieldSchema> partKeys = tbl.getPartitionKeys();

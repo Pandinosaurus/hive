@@ -9,30 +9,42 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.session;
 
 import java.util.Map;
 import java.util.Optional;
+
+import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.QueryState;
+import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
+import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
+import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
+import org.apache.hadoop.hive.ql.plan.ExprNodeGenericFuncDesc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SessionStateUtil {
-
   private static final Logger LOG = LoggerFactory.getLogger(SessionStateUtil.class);
+
   private static final String COMMIT_INFO_PREFIX = "COMMIT_INFO.";
+  private static final String CONFLICT_DETECTION_FILTER = "conflictDetectionFilter.";
+  public static final String DEFAULT_TABLE_LOCATION = "defaultLocation";
+  public static final String MISSING_COLUMNS = "missingColumns";
+  public static final String COLUMN_DEFAULTS = "columnDefaults";
+  public static final String ROW_LINEAGE = "rowLineage";
+  public static final String OUTPUT_TABLE_COUNT = "outputTablesCount";
 
   private SessionStateUtil() {
-
   }
 
   /**
@@ -42,7 +54,8 @@ public class SessionStateUtil {
    * could not be found
    */
   public static Optional<Object> getResource(Configuration conf, String key) {
-    return getQueryState(conf).map(state -> state.getResource(key));
+    return getQueryState(conf)
+        .map(queryState -> queryState.getResource(key));
   }
 
   /**
@@ -52,34 +65,34 @@ public class SessionStateUtil {
    * resource itself could not be found, or the resource is not of type String
    */
   public static Optional<String> getProperty(Configuration conf, String key) {
-    return getResource(conf, key).filter(o -> o instanceof String).map(o -> (String) o);
+    return getResource(conf, key).filter(String.class::isInstance)
+        .map(String.class::cast);
   }
 
   /**
    * @param conf Configuration object used for getting the query state, should contain the query id
    * @param key The resource identifier
    * @param resource The resource to save into the QueryState
-   * @return whether operation succeeded
    */
-  public static boolean addResource(Configuration conf, String key, Object resource) {
-    Optional<QueryState> queryState = getQueryState(conf);
-    if (queryState.isPresent()) {
-      queryState.get().addResource(key, resource);
-      return true;
-    } else {
-      return false;
-    }
+  public static void addResource(Configuration conf, String key, Object resource) {
+    getQueryState(conf)
+        .ifPresent(queryState -> queryState.addResource(key, resource));
+  }
+
+  public static void addResourceOrThrow(Configuration conf, String key, Object resource) {
+    getQueryState(conf)
+        .orElseThrow(() -> new IllegalStateException("Query state is missing; failed to add resource for " + key))
+        .addResource(key, resource);
   }
 
   /**
    * @param conf Configuration object used for getting the query state, should contain the query id
    * @param tableName Name of the table for which the commit info should be retrieved
-   * @return the CommitInfo, or empty Optional if not present
+   * @return the CommitInfo map. Key: jobId, Value: {@link CommitInfo}, or empty Optional if not present
    */
-  public static Optional<CommitInfo> getCommitInfo(Configuration conf, String tableName) {
+  public static Optional<Map<String, CommitInfo>> getCommitInfo(Configuration conf, String tableName) {
     return getResource(conf, COMMIT_INFO_PREFIX + tableName)
-        .filter(o -> o instanceof CommitInfo)
-        .map(o -> (CommitInfo) o);
+        .map(obj -> (Map<String, CommitInfo>) obj);
   }
 
   /**
@@ -88,20 +101,59 @@ public class SessionStateUtil {
    * @param jobId The job ID
    * @param taskNum The number of successful tasks for the job
    * @param additionalProps Any additional properties related to the job commit
-   * @return whether the operation succeeded
    */
-  public static boolean addCommitInfo(Configuration conf, String tableName, String jobId, int taskNum,
-                                         Map<String, String> additionalProps) {
+  public static void addCommitInfo(
+      Configuration conf, String tableName, String jobId, int taskNum, Map<String, String> additionalProps) {
+
     CommitInfo commitInfo = new CommitInfo()
         .withJobID(jobId)
         .withTaskNum(taskNum)
         .withProps(additionalProps);
-    return addResource(conf, COMMIT_INFO_PREFIX + tableName, commitInfo);
+
+    getCommitInfo(conf, tableName)
+        .ifPresentOrElse(commitInfoMap -> commitInfoMap.put(jobId, commitInfo),
+            () -> {
+              Map<String, CommitInfo> newCommitInfoMap = Maps.newHashMap();
+              newCommitInfoMap.put(jobId, commitInfo);
+
+              addResource(conf, COMMIT_INFO_PREFIX + tableName, newCommitInfoMap);
+            });
   }
 
-  private static Optional<QueryState> getQueryState(Configuration conf) {
+  public static Optional<ExprNodeGenericFuncDesc> getConflictDetectionFilter(Configuration conf, Object tableName) {
+    return getResource(conf, CONFLICT_DETECTION_FILTER + tableName)
+        .map(ExprNodeGenericFuncDesc.class::cast);
+  }
+
+  public static void setConflictDetectionFilter(Configuration conf, String tableName, ExprNodeDesc filterExpr) {
+    String key = CONFLICT_DETECTION_FILTER + tableName;
+
+    getConflictDetectionFilter(conf, tableName)
+        .ifPresentOrElse(prevFilterExpr -> {
+            if (!prevFilterExpr.isSame(filterExpr)) {
+              ExprNodeDesc disjunction = null;
+              try {
+                disjunction = ExprNodeDescUtils.disjunction(prevFilterExpr, filterExpr);
+              } catch (UDFArgumentException e) {
+                LOG.warn("Unable to create conflict detection filter, proceeding without it: ", e);
+              }
+              addResource(conf, key, disjunction);
+            }
+        }, () -> addResource(conf, key, filterExpr));
+  }
+
+  public static Optional<QueryState> getQueryState(Configuration conf) {
     return Optional.ofNullable(SessionState.get())
-        .map(session -> session.getQueryState(conf.get(HiveConf.ConfVars.HIVEQUERYID.varname, "")));
+        .map(ss -> ss.getQueryState(HiveConf.getQueryId(conf)));
+  }
+
+  public static void setOutputTableCount(Configuration conf, int outputTableCount) {
+    SessionStateUtil.addResource(conf, OUTPUT_TABLE_COUNT, outputTableCount);
+  }
+
+  public static Optional<Integer> getOutputTableCount(Configuration conf) {
+    return getResource(conf, OUTPUT_TABLE_COUNT)
+        .map(Integer.class::cast);
   }
 
   /**

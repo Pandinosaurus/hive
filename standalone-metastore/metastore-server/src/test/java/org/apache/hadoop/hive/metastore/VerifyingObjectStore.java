@@ -9,21 +9,24 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
 
 import static org.apache.commons.lang3.StringUtils.repeat;
+import static org.apache.hadoop.hive.metastore.utils.StringUtils.normalizeIdentifier;
 
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -33,6 +36,14 @@ import java.util.Set;
 
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.hadoop.hive.common.TableName;
+import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.metastore.api.InvalidObjectException;
+import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.client.builder.GetPartitionsArgs;
+import org.apache.hadoop.hive.metastore.metastore.iface.ColStatsStore;
+import org.apache.hadoop.hive.metastore.metastore.iface.TableStore;
+import org.apache.hadoop.hive.metastore.utils.DirectSqlConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hive.metastore.api.ColumnStatistics;
@@ -51,76 +62,148 @@ public class VerifyingObjectStore extends ObjectStore {
 
   @Override
   public List<Partition> getPartitionsByFilter(String catName, String dbName, String tblName,
-                                               String filter, short maxParts)
+                                               GetPartitionsArgs args)
       throws MetaException, NoSuchObjectException {
-    List<Partition> sqlResults = getPartitionsByFilterInternal(
-        catName, dbName, tblName, filter, maxParts, true, false);
-    List<Partition> ormResults = getPartitionsByFilterInternal(
-        catName, dbName, tblName, filter, maxParts, false, true);
-    verifyLists(sqlResults, ormResults, Partition.class);
-    return sqlResults;
+    TableStore tableStore = unwrap(TableStore.class);
+    try (DirectSqlConfigurator configurator = new DirectSqlConfigurator(conf, false)) {
+      List<Partition> ormResults = tableStore.getPartitionsByFilter(new TableName(catName, dbName, tblName), args);
+      configurator.tryDirectSql(true);
+      List<Partition> sqlResults = tableStore.getPartitionsByFilter(new TableName(catName, dbName, tblName), args);
+      verifyLists(sqlResults, ormResults, Partition.class);
+      return sqlResults;
+    }
   }
 
   @Override
   public List<Partition> getPartitionsByNames(String catName, String dbName, String tblName,
       List<String> partNames) throws MetaException, NoSuchObjectException {
-    List<Partition> sqlResults = getPartitionsByNamesInternal(
-        catName, dbName, tblName, partNames, true, false);
-    List<Partition> ormResults = getPartitionsByNamesInternal(
-        catName, dbName, tblName, partNames, false, true);
-    verifyLists(sqlResults, ormResults, Partition.class);
-    return sqlResults;
+    GetPartitionsArgs args = new GetPartitionsArgs.GetPartitionsArgsBuilder().partNames(partNames).build();
+    TableStore tableStore = unwrap(TableStore.class);
+    try (DirectSqlConfigurator configurator = new DirectSqlConfigurator(conf, false)) {
+      List<Partition> ormResults = tableStore.getPartitionsByNames(new TableName(catName, dbName, tblName), args);
+      configurator.tryDirectSql(true);
+      List<Partition> sqlResults = tableStore.getPartitionsByNames(new TableName(catName, dbName, tblName), args);
+      verifyLists(sqlResults, ormResults, Partition.class);
+      return sqlResults;
+    }
   }
 
   @Override
-  public boolean getPartitionsByExpr(String catName, String dbName, String tblName, byte[] expr,
-      String defaultPartitionName, short maxParts, List<Partition> result) throws TException {
+  public boolean getPartitionsByExpr(String catName, String dbName, String tblName, List<Partition> result,
+      GetPartitionsArgs args) throws TException {
     List<Partition> ormParts = new LinkedList<>();
-    boolean sqlResult = getPartitionsByExprInternal(
-        catName, dbName, tblName, expr, defaultPartitionName, maxParts, result, true, false);
-    boolean ormResult = getPartitionsByExprInternal(
-        catName, dbName, tblName, expr, defaultPartitionName, maxParts, ormParts, false, true);
-    if (sqlResult != ormResult) {
-      String msg = "The unknown flag is different - SQL " + sqlResult + ", ORM " + ormResult;
-      LOG.error(msg);
-      throw new MetaException(msg);
+    TableStore tableStore = unwrap(TableStore.class);
+    try (DirectSqlConfigurator configurator = new DirectSqlConfigurator(conf, false)) {
+      boolean ormResult = tableStore.getPartitionsByExpr(new TableName(catName, dbName, tblName), ormParts, args);
+      configurator.tryDirectSql(true);
+      boolean sqlResult = tableStore.getPartitionsByExpr(new TableName(catName, dbName, tblName), result, args);
+      if (sqlResult != ormResult) {
+        String msg = "The unknown flag is different - SQL " + sqlResult + ", ORM " + ormResult;
+        LOG.error(msg);
+        throw new MetaException(msg);
+      }
+      verifyLists(result, ormParts, Partition.class);
+      return sqlResult;
     }
-    verifyLists(result, ormParts, Partition.class);
-    return sqlResult;
   }
 
   @Override
   public List<Partition> getPartitions(
-      String catName, String dbName, String tableName, int maxParts) throws MetaException, NoSuchObjectException {
+      String catName, String dbName, String tableName, GetPartitionsArgs args) throws MetaException, NoSuchObjectException {
     openTransaction();
-    List<Partition> sqlResults = getPartitionsInternal(catName, dbName, tableName, maxParts, true, false);
-    List<Partition> ormResults = getPartitionsInternal(catName, dbName, tableName, maxParts, false, true);
-    verifyLists(sqlResults, ormResults, Partition.class);
-    commitTransaction();
-    return sqlResults;
+    TableStore tableStore = unwrap(TableStore.class);
+    try (DirectSqlConfigurator configurator = new DirectSqlConfigurator(conf, false)) {
+      List<Partition> ormResults = tableStore.getPartitions(new TableName(catName, dbName, tableName), args);
+      configurator.tryDirectSql(true);
+      List<Partition> sqlResults = tableStore.getPartitions(new TableName(catName, dbName, tableName), args);
+      verifyLists(sqlResults, ormResults, Partition.class);
+      commitTransaction();
+      return sqlResults;
+    }
   }
 
   @Override
   public ColumnStatistics getTableColumnStatistics(String catName, String dbName,
       String tableName, List<String> colNames, String engine) throws MetaException, NoSuchObjectException {
-    ColumnStatistics sqlResult = getTableColumnStatisticsInternal(
-        catName, dbName, tableName, colNames, engine, true, false);
-    ColumnStatistics jdoResult = getTableColumnStatisticsInternal(
-        catName, dbName, tableName, colNames, engine, false, true);
-    verifyObjects(sqlResult, jdoResult, ColumnStatistics.class);
-    return sqlResult;
+    ColStatsStore colStatsStore = unwrap(ColStatsStore.class);
+    try (DirectSqlConfigurator configurator = new DirectSqlConfigurator(conf, false)) {
+      ColumnStatistics jdoResult = colStatsStore.getTableColumnStatistics(new TableName(catName, dbName, tableName), colNames, engine);
+      configurator.tryDirectSql(true);
+      ColumnStatistics sqlResult = colStatsStore.getTableColumnStatistics(new TableName(catName, dbName, tableName), colNames, engine);
+      verifyObjects(sqlResult, jdoResult, ColumnStatistics.class);
+      return sqlResult;
+    }
+  }
+
+  @Override
+  public List<Partition> alterPartitions(String catName, String dbName, String tblName, List<List<String>> part_vals,
+      List<Partition> newParts, long writeId, String queryWriteIdList) throws InvalidObjectException, MetaException {
+    List<Partition> results = new ArrayList<>(newParts.size());
+    catName = normalizeIdentifier(catName);
+    dbName = normalizeIdentifier(dbName);
+    tblName = normalizeIdentifier(tblName);
+    boolean success = false;
+    try {
+      openTransaction();
+      if (writeId > 0) {
+        newParts.forEach(newPart -> newPart.setWriteId(writeId));
+      }
+      TableName tableName = new TableName(catName, dbName, tblName);
+      Table table = unwrap(TableStore.class).getTable(tableName, queryWriteIdList, -1);
+      if (table == null) {
+        throw new NoSuchObjectException("Table " + tableName + " doesn't exist");
+      }
+      List<FieldSchema> partCols = table.getPartitionKeys();
+      List<String> partNames = new ArrayList<>();
+      for (List<String> partVal : part_vals) {
+        partNames.add(Warehouse.makePartName(partCols, partVal));
+      }
+      // We might have made some changes over the partition due to deleting the
+      // stale column statistics earlier, and they haven't been committed yet, the cached instances
+      // could be different from that in the datastore.
+      // We cannot verify the partitions by getPartitionsByNames now.
+      GetPartitionsArgs args = new GetPartitionsArgs.GetPartitionsArgsBuilder().partNames(partNames).build();
+      List<Partition> oldParts = unwrap(TableStore.class).getPartitionsByNames(new TableName(catName, dbName, tblName), args);
+      if (oldParts.size() != partNames.size()) {
+        throw new MetaException("Some partitions to be altered are missing");
+      }
+      List<Partition> tmpNewParts = new ArrayList<>(newParts);
+      TableStore tableStore = unwrap(TableStore.class);
+      try (DirectSqlConfigurator configurator = new DirectSqlConfigurator(conf, true)) {
+        tableStore.alterPartitions(new TableName(catName, dbName, tblName), part_vals, newParts, writeId,
+            queryWriteIdList);
+        configurator.tryDirectSql(false);
+        tableStore.alterPartitions(new TableName(catName, dbName, tblName), part_vals, oldParts, writeId,
+            queryWriteIdList);
+        configurator.tryDirectSql(true);
+        tableStore.alterPartitions(new TableName(catName, dbName, tblName), part_vals, tmpNewParts, writeId,
+            queryWriteIdList);
+      }
+      // commit the changes
+      success = commitTransaction();
+    } catch (Exception exception) {
+      LOG.error("Alter failed", exception);
+      throw new MetaException(exception.getMessage());
+    } finally {
+      rollbackAndCleanup(success, null);
+    }
+    return results;
   }
 
   @Override
   public List<ColumnStatistics> getPartitionColumnStatistics(String catName, String dbName,
       String tableName, List<String> partNames, List<String> colNames, String engine)
       throws MetaException, NoSuchObjectException {
-    List<ColumnStatistics> sqlResult = getPartitionColumnStatisticsInternal(
-        catName, dbName, tableName, partNames, colNames, engine, true, false);
-    List<ColumnStatistics> jdoResult = getPartitionColumnStatisticsInternal(
-        catName, dbName, tableName, partNames, colNames, engine, false, true);
-    verifyLists(sqlResult, jdoResult, ColumnStatistics.class);
-    return sqlResult;
+    ColStatsStore colStatsStore = unwrap(ColStatsStore.class);
+    try (DirectSqlConfigurator configurator = new DirectSqlConfigurator(conf, false)) {
+      List<ColumnStatistics> jdoResult =
+          colStatsStore.getPartitionColumnStatistics(new TableName(catName, dbName, tableName), partNames, colNames, engine);
+      configurator.tryDirectSql(true);
+      List<ColumnStatistics> sqlResult =
+          colStatsStore.getPartitionColumnStatistics(new TableName(catName, dbName, tableName), partNames, colNames, engine);
+      verifyLists(sqlResult, jdoResult, ColumnStatistics.class);
+      return sqlResult;
+    }
   }
 
   private void verifyObjects(

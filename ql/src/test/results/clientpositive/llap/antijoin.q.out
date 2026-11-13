@@ -221,7 +221,7 @@ POSTHOOK: Input: default@t2_n33
 #### A masked pattern was here ####
 CBO PLAN:
 HiveSortExchange(distribution=[any], collation=[[0, 1]])
-  HiveProject(key=[$0], value=[$1])
+  HiveProject(a.key=[$0], a.value=[$1])
     HiveAntiJoin(condition=[=($0, $3)], joinType=[anti])
       HiveProject(key=[$0], value=[$1])
         HiveTableScan(table=[[default, t1_n55]], table:alias=[a])
@@ -347,12 +347,13 @@ POSTHOOK: Input: default@t1_n55
 POSTHOOK: Input: default@t2_n33
 #### A masked pattern was here ####
 CBO PLAN:
-HiveAntiJoin(condition=[=($0, $2)], joinType=[anti])
-  HiveProject(key=[$0], value=[$1])
-    HiveTableScan(table=[[default, t1_n55]], table:alias=[a])
-  HiveProject(key=[$0])
-    HiveFilter(condition=[IS NOT NULL($0)])
-      HiveTableScan(table=[[default, t2_n33]], table:alias=[b])
+HiveProject(a.key=[$0], a.value=[$1])
+  HiveAntiJoin(condition=[=($0, $2)], joinType=[anti])
+    HiveProject(key=[$0], value=[$1])
+      HiveTableScan(table=[[default, t1_n55]], table:alias=[a])
+    HiveProject(key=[$0])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[default, t2_n33]], table:alias=[b])
 
 PREHOOK: query: select a.key, a.value from t1_n55 a left join t2_n33 b on a.key=b.key where b.key is null
 PREHOOK: type: QUERY
@@ -534,7 +535,7 @@ POSTHOOK: Input: default@t3_n12
 #### A masked pattern was here ####
 CBO PLAN:
 HiveSortExchange(distribution=[any], collation=[[0, 1]])
-  HiveProject(key=[$1], value=[$2])
+  HiveProject(a.key=[$1], a.value=[$2])
     HiveJoin(condition=[=($1, $0)], joinType=[inner], algorithm=[none], cost=[not available])
       HiveProject(key=[$0])
         HiveFilter(condition=[IS NOT NULL($0)])
@@ -679,7 +680,7 @@ POSTHOOK: Input: default@t2_n33
 #### A masked pattern was here ####
 CBO PLAN:
 HiveSortExchange(distribution=[any], collation=[[0, 1]])
-  HiveProject(key=[$0], value=[$1])
+  HiveProject(a.key=[$0], a.value=[$1])
     HiveAntiJoin(condition=[=($0, $3)], joinType=[anti])
       HiveProject(key=[$0], value=[$1])
         HiveTableScan(table=[[default, t1_n55]], table:alias=[a])
@@ -797,12 +798,13 @@ POSTHOOK: Input: default@t1_n55
 POSTHOOK: Input: default@t2_n33
 #### A masked pattern was here ####
 CBO PLAN:
-HiveAntiJoin(condition=[=($0, $2)], joinType=[anti])
-  HiveProject(key=[$0], value=[$1])
-    HiveTableScan(table=[[default, t1_n55]], table:alias=[a])
-  HiveProject(key=[$0])
-    HiveFilter(condition=[IS NOT NULL($0)])
-      HiveTableScan(table=[[default, t2_n33]], table:alias=[b])
+HiveProject(a.key=[$0], a.value=[$1])
+  HiveAntiJoin(condition=[=($0, $2)], joinType=[anti])
+    HiveProject(key=[$0], value=[$1])
+      HiveTableScan(table=[[default, t1_n55]], table:alias=[a])
+    HiveProject(key=[$0])
+      HiveFilter(condition=[IS NOT NULL($0)])
+        HiveTableScan(table=[[default, t2_n33]], table:alias=[b])
 
 PREHOOK: query: select a.key, a.value from t1_n55 a left join t2_n33 b on a.key=b.key where b.key is null
 PREHOOK: type: QUERY
@@ -970,7 +972,7 @@ POSTHOOK: Input: default@t3_n12
 #### A masked pattern was here ####
 CBO PLAN:
 HiveSortExchange(distribution=[any], collation=[[0, 1]])
-  HiveProject(key=[$1], value=[$2])
+  HiveProject(a.key=[$1], a.value=[$2])
     HiveJoin(condition=[=($1, $0)], joinType=[inner], algorithm=[none], cost=[not available])
       HiveProject(key=[$0])
         HiveFilter(condition=[IS NOT NULL($0)])
@@ -1006,13 +1008,12 @@ POSTHOOK: Input: default@t3_n12
 5	val_5
 5	val_5
 9	val_9
-Warning: Map Join MAPJOIN[15][bigTable=?] in task 'Map 1' is a cross product
-PREHOOK: query: explain select a.key from t1_n55 a left join t2_n33 b on a.key = b.key where b.key is null and b.value > 'val_1'
+PREHOOK: query: explain select a.key from t1_n55 a left join t2_n33 b on a.key = b.key where b.key is null and b.value is null
 PREHOOK: type: QUERY
 PREHOOK: Input: default@t1_n55
 PREHOOK: Input: default@t2_n33
 #### A masked pattern was here ####
-POSTHOOK: query: explain select a.key from t1_n55 a left join t2_n33 b on a.key = b.key where b.key is null and b.value > 'val_1'
+POSTHOOK: query: explain select a.key from t1_n55 a left join t2_n33 b on a.key = b.key where b.key is null and b.value is null
 POSTHOOK: type: QUERY
 POSTHOOK: Input: default@t1_n55
 POSTHOOK: Input: default@t2_n33
@@ -1033,53 +1034,55 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: a
-                  filterExpr: (key is null and key is not null) (type: boolean)
                   Statistics: Num rows: 11 Data size: 44 Basic stats: COMPLETE Column stats: COMPLETE
-                  Filter Operator
-                    predicate: (key is null and key is not null) (type: boolean)
-                    Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
-                    Limit
-                      Number of rows: 0
+                  Select Operator
+                    expressions: key (type: int)
+                    outputColumnNames: _col0
+                    Statistics: Num rows: 11 Data size: 44 Basic stats: COMPLETE Column stats: COMPLETE
+                    Map Join Operator
+                      condition map:
+                           Anti Join 0 to 1
+                      keys:
+                        0 _col0 (type: int)
+                        1 _col0 (type: int)
+                      outputColumnNames: _col0
+                      input vertices:
+                        1 Map 2
                       Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
-                      Select Operator
-                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                        Map Join Operator
-                          condition map:
-                               Inner Join 0 to 1
-                          keys:
-                            0 
-                            1 
-                          input vertices:
-                            1 Map 2
-                          Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                          Select Operator
-                            expressions: null (type: int)
-                            outputColumnNames: _col0
-                            Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
-                            File Output Operator
-                              compressed: false
-                              Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
-                              table:
-                                  input format: org.apache.hadoop.mapred.SequenceFileInputFormat
-                                  output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
-                                  serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
+                      File Output Operator
+                        compressed: false
+                        Statistics: Num rows: 1 Data size: 4 Basic stats: COMPLETE Column stats: COMPLETE
+                        table:
+                            input format: org.apache.hadoop.mapred.SequenceFileInputFormat
+                            output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
+                            serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
             Execution mode: vectorized, llap
             LLAP IO: all inputs
         Map 2 
             Map Operator Tree:
                 TableScan
                   alias: b
-                  filterExpr: (key is null and (value > 'val_1') and key is not null) (type: boolean)
-                  Statistics: Num rows: 11 Data size: 1023 Basic stats: COMPLETE Column stats: COMPLETE
+                  filterExpr: key is not null (type: boolean)
+                  Statistics: Num rows: 11 Data size: 44 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (key is null and (value > 'val_1') and key is not null) (type: boolean)
-                    Statistics: Num rows: 1 Data size: 93 Basic stats: COMPLETE Column stats: COMPLETE
+                    predicate: key is not null (type: boolean)
+                    Statistics: Num rows: 11 Data size: 44 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
-                      Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
-                      Reduce Output Operator
-                        null sort order: 
-                        sort order: 
-                        Statistics: Num rows: 1 Data size: 8 Basic stats: COMPLETE Column stats: COMPLETE
+                      expressions: key (type: int)
+                      outputColumnNames: _col0
+                      Statistics: Num rows: 11 Data size: 44 Basic stats: COMPLETE Column stats: COMPLETE
+                      Group By Operator
+                        keys: _col0 (type: int)
+                        minReductionHashAggr: 0.4
+                        mode: hash
+                        outputColumnNames: _col0
+                        Statistics: Num rows: 7 Data size: 28 Basic stats: COMPLETE Column stats: COMPLETE
+                        Reduce Output Operator
+                          key expressions: _col0 (type: int)
+                          null sort order: z
+                          sort order: +
+                          Map-reduce partition columns: _col0 (type: int)
+                          Statistics: Num rows: 7 Data size: 28 Basic stats: COMPLETE Column stats: COMPLETE
             Execution mode: vectorized, llap
             LLAP IO: all inputs
 

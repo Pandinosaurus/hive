@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.mapjoin;
@@ -87,7 +88,7 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
 
   // Pre-allocated member for storing the (physical) batch index of matching row (single- or
   // multi-small-table-valued) indexes during a process call.
-  protected transient int[] allMatchs;
+  protected transient int[] allMatches;
 
   /*
    *  Pre-allocated members for storing information equal key series for small-table matches.
@@ -95,7 +96,7 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
    *  ~HashMapResultIndices
    *                Index into the hashMapResults array for the match.
    *  ~AllMatchIndices
-   *                (Logical) indices into allMatchs to the first row of a match of a
+   *                (Logical) indices into allMatches to the first row of a match of a
    *                possible series of duplicate keys.
    *  ~IsSingleValue
    *                Whether there is 1 or multiple small table values.
@@ -150,7 +151,7 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
 
     inputSelected = new int[VectorizedRowBatch.DEFAULT_SIZE];
 
-    allMatchs = new int[VectorizedRowBatch.DEFAULT_SIZE];
+    allMatches = new int[VectorizedRowBatch.DEFAULT_SIZE];
 
     equalKeySeriesHashMapResultIndices = new int[VectorizedRowBatch.DEFAULT_SIZE];
     equalKeySeriesAllMatchIndices = new int[VectorizedRowBatch.DEFAULT_SIZE];
@@ -421,7 +422,7 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
    *          The big table batch with any matching and any non matching rows both as
    *          selected in use.
    * @param allMatchCount
-   *          Number of matches in allMatchs.
+   *          Number of matches in allMatches.
    * @param equalKeySeriesCount
    *          Number of single value matches.
    * @param atLeastOneNonMatch
@@ -466,7 +467,7 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
       }
   
       if (atLeastOneNonMatch) {
-        noMatchCount = subtract(nonSpills, nonSpillCount, allMatchs, allMatchCount,
+        noMatchCount = subtract(nonSpills, nonSpillCount, allMatches, allMatchCount,
                 noMatchs);
 
         if (LOG.isDebugEnabled()) {
@@ -482,7 +483,7 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
 
       if (atLeastOneNonMatch) {
         noMatchCount = subtractFromInputSelected(
-            inputSelectedInUse, inputLogicalSize, allMatchs, allMatchCount, noMatchs);
+            inputSelectedInUse, inputLogicalSize, allMatches, allMatchCount, noMatchs);
 
         if (LOG.isDebugEnabled()) {
           LOG.debug("finishOuter spillCount == 0" +
@@ -507,10 +508,10 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
 
         if (isSingleValue) {
           numSel = generateHashMapResultSingleValue(
-                      batch, hashMapResult, allMatchs, allMatchesIndex, duplicateCount, numSel);
+                      batch, hashMapResult, allMatches, allMatchesIndex, duplicateCount, numSel);
         } else {
           generateHashMapResultMultiValue(
-              batch, hashMapResult, allMatchs, allMatchesIndex, duplicateCount);
+              batch, hashMapResult, allMatches, allMatchesIndex, duplicateCount);
         }
       }
 
@@ -587,16 +588,12 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
       // key as null, too.
       //
       for (int column : outerSmallTableKeyColumnMap) {
-        ColumnVector colVector = batch.cols[column];
-        colVector.noNulls = false;
-        colVector.isNull[batchIndex] = true;
+        batch.cols[column].clearValue(batchIndex);
       }
 
       // Small table values are set to null.
       for (int column : smallTableValueColumnMap) {
-        ColumnVector colVector = batch.cols[column];
-        colVector.noNulls = false;
-        colVector.isNull[batchIndex] = true;
+        batch.cols[column].clearValue(batchIndex);
       }
     }
   }
@@ -746,15 +743,13 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
     //
     for (int column : outerSmallTableKeyColumnMap) {
       ColumnVector colVector = batch.cols[column];
-      colVector.noNulls = false;
-      colVector.isNull[0] = true;
+      colVector.clearValue(0);
       colVector.isRepeating = true;
     }
 
     for (int column : smallTableValueColumnMap) {
       ColumnVector colVector = batch.cols[column];
-      colVector.noNulls = false;
-      colVector.isNull[0] = true;
+      colVector.clearValue(0);
       colVector.isRepeating = true;
     }
   }
@@ -824,6 +819,7 @@ public abstract class VectorMapJoinOuterGenerateResultOperator
     case SHORT:
     case INT:
     case LONG:
+    case DATE:
       generateFullOuterLongKeySmallTableNoMatches();
       break;
     case STRING:

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -25,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Optional;
 
 import org.apache.hadoop.hive.metastore.api.GetPartitionsByNamesRequest;
 import org.apache.hadoop.hive.metastore.client.builder.GetTablesRequestBuilder;
@@ -821,6 +823,7 @@ public class TestHiveMetastoreTransformer {
       count = 300;
       tProps.put("TBLNAME", "test_limit");
       tProps.put("TABLECOUNT", count);
+      tProps.remove("CAPABILITIES"); // CAPABILITIES are already appended to PROPERTIES
       tables = createTables(tProps);
       assertEquals("Unexpected number of tables created", count, tables.size());
 
@@ -934,7 +937,8 @@ public class TestHiveMetastoreTransformer {
       properties.append("transactional_properties=insert_only");
       tProps.put("TBLNAME", tblName);
       tProps.put("PROPERTIES", properties.toString());
-      setHMSClient("createTable", new String[] {"HIVEMANAGEDINSERTWRITE,HIVEFULLACIDWRITE"});
+      tProps.put("TBLTYPE", type);
+      setHMSClient("createTable", new String[] {"HIVEMANAGEDINSERTWRITE", "HIVEFULLACIDWRITE"});
       table = createTableWithCapabilities(tProps);
       resetHMSClient();
 
@@ -1276,7 +1280,7 @@ public class TestHiveMetastoreTransformer {
       table_params = new StringBuilder();
       table_params.append("key1=val1");
       table_params.append(";");
-      table_params.append("transactional_properties=insert_only");
+      table_params.append("transactional=true;transactional_properties=insert_only");
       tProps.put("PROPERTIES", table_params.toString());
 
       List<String> capabilities = new ArrayList<>();
@@ -1772,7 +1776,7 @@ public class TestHiveMetastoreTransformer {
     String tblName  = (String)props.get("TBLNAME");
     List<String> caps = (List<String>)props.get("CAPABILITIES");
     StringBuilder table_params = new StringBuilder();
-    table_params.append((String)props.get("PROPERTIES"));
+    Optional.ofNullable(props.get("PROPERTIES")).ifPresent(table_params::append);
     if (caps != null)
       table_params.append(CAPABILITIES_KEY).append("=").append(String.join(",", caps));
     props.put("PROPERTIES", table_params.toString());

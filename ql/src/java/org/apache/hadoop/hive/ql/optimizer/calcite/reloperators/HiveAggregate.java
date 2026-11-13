@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.reloperators;
 
@@ -24,6 +25,7 @@ import java.util.Set;
 import org.apache.calcite.linq4j.Ord;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.rel.RelInput;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelShuttle;
 import org.apache.calcite.rel.core.Aggregate;
@@ -32,12 +34,15 @@ import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.rel.type.RelDataTypeField;
+import org.apache.calcite.sql.SqlAggFunction;
 import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.sql.type.SqlTypeUtil;
 import org.apache.calcite.util.ImmutableBitSet;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelShuttle;
 import org.apache.hadoop.hive.ql.optimizer.calcite.TraitsUtil;
 
 import com.google.common.collect.Sets;
+import org.apache.hadoop.hive.ql.optimizer.calcite.translator.SqlFunctionConverter;
 
 public class HiveAggregate extends Aggregate implements HiveRelNode {
 
@@ -51,15 +56,35 @@ public class HiveAggregate extends Aggregate implements HiveRelNode {
             groupSet, groupSets, aggCalls);
   }
 
+  public HiveAggregate(RelInput input) {
+    this(
+        input.getCluster(),
+        input.getTraitSet(),
+        input.getInput(),
+        input.getBitSet("group"),
+        input.getBitSetList("groups"),
+        input.getAggregateCalls("aggs")
+            .stream()
+            .map(call -> HiveAggregate.replaceAggFunction(input.getInput().getRowType(), call))
+            .toList());
+  }
+
+  private static AggregateCall replaceAggFunction(RelDataType rowType, AggregateCall aggCall) {
+    // Fix the return type of the agg function
+    SqlAggFunction aggFunction = SqlFunctionConverter.getCalciteAggFn(
+        aggCall.getAggregation().getName(),
+        SqlTypeUtil.projectTypes(rowType, aggCall.getArgList()),
+        aggCall.getType());
+    return AggregateCall.create(aggFunction, aggCall.isDistinct(), aggCall.isApproximate(), aggCall.ignoreNulls(),
+        aggCall.rexList, aggCall.getArgList(), aggCall.filterArg, aggCall.distinctKeys, aggCall.getCollation(),
+        aggCall.getType(), aggCall.getName());
+  }
+
   @Override
   public Aggregate copy(RelTraitSet traitSet, RelNode input,
           ImmutableBitSet groupSet,
           List<ImmutableBitSet> groupSets, List<AggregateCall> aggCalls) {
     return new HiveAggregate(getCluster(), traitSet, input, groupSet, groupSets, aggCalls);
-  }
-
-  @Override
-  public void implement(Implementor implementor) {
   }
 
   // getRows will call estimateRowCount

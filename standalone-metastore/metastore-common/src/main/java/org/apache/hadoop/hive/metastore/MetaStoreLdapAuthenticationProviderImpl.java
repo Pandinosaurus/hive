@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -39,6 +40,7 @@ import org.apache.hadoop.hive.metastore.ldap.FilterFactory;
 import org.apache.hadoop.hive.metastore.ldap.GroupFilterFactory;
 import org.apache.hadoop.hive.metastore.ldap.LdapUtils;
 import org.apache.hadoop.hive.metastore.ldap.UserFilterFactory;
+import org.apache.hadoop.hive.metastore.ldap.UserGroupSearchFilterFactory;
 import org.apache.hadoop.hive.metastore.ldap.UserSearchFilterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,7 @@ public class MetaStoreLdapAuthenticationProviderImpl implements MetaStorePasswdA
           LoggerFactory.getLogger(MetaStoreLdapAuthenticationProviderImpl.class);
 
   private static final List<FilterFactory> FILTER_FACTORIES = ImmutableList.<FilterFactory>of(
+      new UserGroupSearchFilterFactory(),
       new CustomQueryFilterFactory(),
       new ChainFilterFactory(new UserSearchFilterFactory(), new UserFilterFactory(),
           new GroupFilterFactory())

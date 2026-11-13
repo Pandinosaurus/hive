@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.tools;
@@ -58,11 +59,15 @@ public class BenchmarkUtils {
 
   // Create a simple table with a single column and single partition
   static void createPartitionedTable(HMSClient client, String dbName, String tableName) {
+    createPartitionedTable(client, dbName, tableName, createSchema(Collections.singletonList("date")));
+  }
+
+  static void createPartitionedTable(HMSClient client, String dbName, String tableName, List<FieldSchema> partitionKeys) {
     throwingSupplierWrapper(() -> client.createTable(
         new Util.TableBuilder(dbName, tableName)
             .withType(TableType.MANAGED_TABLE)
             .withColumns(createSchema(Collections.singletonList("name:string")))
-            .withPartitionKeys(createSchema(Collections.singletonList("date")))
+            .withPartitionKeys(partitionKeys)
             .build()));
   }
 
@@ -72,7 +77,9 @@ public class BenchmarkUtils {
     List<Long> notCleanedTxns = new ArrayList<>();
     throwingSupplierWrapper(() -> {
       List<TxnInfo> txnInfos = client.getOpenTxnsInfo();
-      return txnInfos.stream().anyMatch(txnsOpenedByBenchmark::contains);
+      return txnInfos.stream()
+              .map(TxnInfo::getId) // extract txnId from TxnInfo
+              .anyMatch(txnsOpenedByBenchmark::contains);
     });
 
     return false;

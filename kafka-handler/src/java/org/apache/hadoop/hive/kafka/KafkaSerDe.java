@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -46,6 +47,8 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -65,6 +68,8 @@ import java.util.stream.Collectors;
  */
 @SerDeSpec(schemaProps = { serdeConstants.LIST_COLUMNS, serdeConstants.LIST_COLUMN_TYPES }) public class KafkaSerDe
     extends AbstractSerDe {
+
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaSerDe.class);
 
   /**
    * Delegate SerDe used to Serialize and DeSerialize data form/to Kafka.
@@ -129,7 +134,7 @@ import java.util.stream.Collectors;
       String schemaFromProperty = properties.getProperty(AvroSerdeUtils.AvroTableProperties.SCHEMA_LITERAL.getPropName(), "");
       Preconditions.checkArgument(!schemaFromProperty.isEmpty(), "Avro Schema is empty Can not go further");
       Schema schema = AvroSerdeUtils.getSchemaFor(schemaFromProperty);
-      log.debug("Building Avro Reader with schema {}", schemaFromProperty);
+      LOG.debug("Building Avro Reader with schema {}", schemaFromProperty);
       bytesConverter = getByteConverterForAvroDelegate(schema, properties);
     } else {
       bytesConverter = new BytesWritableConverter();
@@ -260,7 +265,7 @@ import java.util.stream.Collectors;
 
   /**
    * Returns a view of input object inspector list between:
-   * <tt>0</tt> inclusive and the specified <tt>toIndex</tt>, exclusive.
+   * <pre>0</pre> inclusive and the specified <pre>toIndex</pre>, exclusive.
    */
   private static final class SubStructObjectInspector extends StructObjectInspector {
 

@@ -9,20 +9,21 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.partition.alter;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.ddl.DDLOperation;
 import org.apache.hadoop.hive.ql.ddl.DDLOperationContext;
@@ -30,7 +31,6 @@ import org.apache.hadoop.hive.ql.ddl.DDLUtils;
 import org.apache.hadoop.hive.ql.hooks.ReadEntity;
 import org.apache.hadoop.hive.ql.hooks.WriteEntity;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
-import org.apache.hadoop.hive.ql.metadata.Partition;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorConverters;
@@ -92,14 +92,14 @@ public class AlterTableAlterPartitionOperation extends DDLOperation<AlterTableAl
     Converter converter = ObjectInspectorConverters.getConverter(
         PrimitiveObjectInspectorFactory.javaStringObjectInspector, outputOI);
 
-    Set<Partition> partitions = context.getDb().getAllPartitionsOf(tbl);
-    for (Partition part : partitions) {
-      if (part.getName().equals(context.getConf().getVar(HiveConf.ConfVars.DEFAULTPARTITIONNAME))) {
-        continue;
-      }
-
+    List<String> partNames = context.getDb().getPartitionNames(tbl, (short) -1);
+    for (String partName : partNames) {
       try {
-        String value = part.getValues().get(colIndex);
+        List<String> values = Warehouse.getPartValuesFromPartName(partName);
+        String value = values.get(colIndex);
+        if (value.equals(context.getConf().getVar(HiveConf.ConfVars.DEFAULT_PARTITION_NAME))) {
+          continue;
+        }
         Object convertedValue = converter.convert(value);
         if (convertedValue == null) {
           throw new HiveException(" Converting from " + TypeInfoFactory.stringTypeInfo + " to " + expectedType +
@@ -107,7 +107,7 @@ public class AlterTableAlterPartitionOperation extends DDLOperation<AlterTableAl
         }
       } catch (Exception e) {
         throw new HiveException("Exception while converting " + TypeInfoFactory.stringTypeInfo + " to " +
-            expectedType + " for value : " + part.getValues().get(colIndex));
+            expectedType + " for partition : " + partName + ", index: " + colIndex);
       }
     }
   }

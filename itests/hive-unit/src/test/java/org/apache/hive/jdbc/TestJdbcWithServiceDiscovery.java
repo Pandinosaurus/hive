@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.jdbc;
 
@@ -80,7 +81,6 @@ public class TestJdbcWithServiceDiscovery {
     miniHS2server1 = new MiniHS2.Builder().withConf(hiveConf1).withMiniMR().build();
     miniHS2server2 = new MiniHS2.Builder().withConf(hiveConf2).cleanupLocalDirOnStartup(false).build();
 
-    Class.forName(MiniHS2.getJdbcDriverName());
     String instanceId1 = UUID.randomUUID().toString();
     miniHS2server1.start(getConfOverlay(instanceId1));
     miniHS2directUrl1 =

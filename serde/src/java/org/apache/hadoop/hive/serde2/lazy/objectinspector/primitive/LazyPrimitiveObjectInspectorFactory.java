@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.serde2.lazy.objectinspector.primitive;
@@ -149,6 +150,8 @@ public final class LazyPrimitiveObjectInspectorFactory {
       return getLazyBooleanObjectInspector(lazyParams.isExtendedBooleanLiteral());
     case TIMESTAMP:
       return getLazyTimestampObjectInspector(lazyParams.getTimestampFormats());
+    case TIMESTAMPLOCALTZ:
+      return new LazyTimestampLocalTZObjectInspector((TimestampLocalTZTypeInfo)typeInfo, lazyParams.getTimestampFormats());
     default:
      return getLazyObjectInspector(typeInfo);
     }
@@ -171,9 +174,6 @@ public final class LazyPrimitiveObjectInspectorFactory {
       break;
     case DECIMAL:
       poi = new LazyHiveDecimalObjectInspector((DecimalTypeInfo)typeInfo);
-      break;
-    case TIMESTAMPLOCALTZ:
-      poi = new LazyTimestampLocalTZObjectInspector((TimestampLocalTZTypeInfo)typeInfo);
       break;
     default:
       throw new RuntimeException(

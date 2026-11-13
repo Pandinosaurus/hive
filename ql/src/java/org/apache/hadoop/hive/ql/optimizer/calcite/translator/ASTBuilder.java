@@ -9,18 +9,18 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.translator;
 
 import java.math.BigDecimal;
 import java.util.stream.Collectors;
 
-import org.apache.calcite.adapter.druid.DruidQuery;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.JoinRelType;
 import org.apache.calcite.rex.RexDynamicParam;
@@ -31,7 +31,6 @@ import org.apache.calcite.util.TimeString;
 import org.apache.calcite.util.TimestampString;
 import org.apache.hadoop.hive.common.type.HiveIntervalDayTime;
 import org.apache.hadoop.hive.common.type.HiveIntervalYearMonth;
-import org.apache.hadoop.hive.common.type.TimestampTZUtil;
 import org.apache.hadoop.hive.conf.Constants;
 import org.apache.hadoop.hive.ql.optimizer.calcite.RelOptHiveTable;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableScan;
@@ -70,19 +69,22 @@ public class ASTBuilder {
     HiveTableScan hts = null;
     if (scan instanceof HiveJdbcConverter) {
       hts = ((HiveJdbcConverter) scan).getTableScan().getHiveTableScan();
-    } else if (scan instanceof DruidQuery) {
-      hts = (HiveTableScan) ((DruidQuery) scan).getTableScan();
     } else {
       hts = (HiveTableScan) scan;
     }
 
     assert hts != null;
     RelOptHiveTable hTbl = (RelOptHiveTable) hts.getTable();
+    if (hTbl.getHiveTableMD().isMaterializedTable()) {
+      return cte(hTbl.getHiveTableMD().getTableName(), hts.getTableAlias());
+    }
     ASTBuilder tableNameBuilder = ASTBuilder.construct(HiveParser.TOK_TABNAME, "TOK_TABNAME")
         .add(HiveParser.Identifier, hTbl.getHiveTableMD().getDbName())
         .add(HiveParser.Identifier, hTbl.getHiveTableMD().getTableName());
     if (hTbl.getHiveTableMD().getMetaTable() != null) {
       tableNameBuilder.add(HiveParser.Identifier, hTbl.getHiveTableMD().getMetaTable());
+    } else if (hTbl.getHiveTableMD().getSnapshotRef() != null) {
+      tableNameBuilder.add(HiveParser.Identifier, hTbl.getHiveTableMD().getSnapshotRef());
     }
 
     ASTBuilder b = ASTBuilder.construct(HiveParser.TOK_TABREF, "TOK_TABREF").add(tableNameBuilder);
@@ -99,34 +101,14 @@ public class ASTBuilder {
       b.add(asOfBuilder);
     }
 
+    if (hTbl.getHiveTableMD().getVersionIntervalFrom() != null) {
+      ASTBuilder asOfBuilder = ASTBuilder.construct(HiveParser.TOK_FROM_VERSION, "TOK_FROM_VERSION")
+          .add(HiveParser.Number, hTbl.getHiveTableMD().getVersionIntervalFrom());
+      b.add(asOfBuilder);
+    }
+
     ASTBuilder propList = ASTBuilder.construct(HiveParser.TOK_TABLEPROPLIST, "TOK_TABLEPROPLIST");
-    if (scan instanceof DruidQuery) {
-      //Passing query spec, column names and column types to be used as part of Hive Physical execution
-      DruidQuery dq = (DruidQuery) scan;
-      //Adding Query specs to be used by org.apache.hadoop.hive.druid.io.DruidQueryBasedInputFormat
-      propList.add(ASTBuilder.construct(HiveParser.TOK_TABLEPROPERTY, "TOK_TABLEPROPERTY")
-              .add(HiveParser.StringLiteral, "\"" + Constants.DRUID_QUERY_JSON + "\"")
-              .add(HiveParser.StringLiteral, "\"" + SemanticAnalyzer.escapeSQLString(
-                      dq.getQueryString()) + "\""));
-      // Adding column names used later by org.apache.hadoop.hive.druid.serde.DruidSerDe
-      propList.add(ASTBuilder.construct(HiveParser.TOK_TABLEPROPERTY, "TOK_TABLEPROPERTY")
-          .add(HiveParser.StringLiteral, "\"" + Constants.DRUID_QUERY_FIELD_NAMES + "\"")
-          .add(HiveParser.StringLiteral,
-              "\"" + dq.getRowType().getFieldNames().stream().map(Object::toString)
-                  .collect(Collectors.joining(",")) + "\""
-          ));
-      // Adding column types used later by org.apache.hadoop.hive.druid.serde.DruidSerDe
-      propList.add(ASTBuilder.construct(HiveParser.TOK_TABLEPROPERTY, "TOK_TABLEPROPERTY")
-          .add(HiveParser.StringLiteral, "\"" + Constants.DRUID_QUERY_FIELD_TYPES + "\"")
-          .add(HiveParser.StringLiteral,
-              "\"" + dq.getRowType().getFieldList().stream()
-                  .map(e -> TypeConverter.convert(e.getType()).getTypeName())
-                  .collect(Collectors.joining(",")) + "\""
-          ));
-      propList.add(ASTBuilder.construct(HiveParser.TOK_TABLEPROPERTY, "TOK_TABLEPROPERTY")
-              .add(HiveParser.StringLiteral, "\"" + Constants.DRUID_QUERY_TYPE + "\"")
-              .add(HiveParser.StringLiteral, "\"" + dq.getQueryType().getQueryName() + "\""));
-    } else if (scan instanceof HiveJdbcConverter) {
+    if (scan instanceof HiveJdbcConverter) {
       HiveJdbcConverter jdbcConverter = (HiveJdbcConverter) scan;
       final String query = jdbcConverter.generateSql();
       LOGGER.debug("Generated SQL query: " + System.lineSeparator() + query);
@@ -137,14 +119,14 @@ public class ASTBuilder {
       propList.add(ASTBuilder.construct(HiveParser.TOK_TABLEPROPERTY, "TOK_TABLEPROPERTY")
           .add(HiveParser.StringLiteral, "\"" + Constants.JDBC_SPLIT_QUERY + "\"")
           .add(HiveParser.StringLiteral, "\"" + jdbcConverter.splittingAllowed() + "\""));
-      // Adding column names used later by org.apache.hadoop.hive.druid.serde.DruidSerDe
+      // Adding column names used later by JDBC storage handler
       propList.add(ASTBuilder.construct(HiveParser.TOK_TABLEPROPERTY, "TOK_TABLEPROPERTY")
           .add(HiveParser.StringLiteral, "\"" + Constants.JDBC_QUERY_FIELD_NAMES + "\"")
           .add(HiveParser.StringLiteral,
               "\"" + scan.getRowType().getFieldNames().stream().map(Object::toString)
                   .collect(Collectors.joining(",")) + "\""
           ));
-      // Adding column types used later by org.apache.hadoop.hive.druid.serde.DruidSerDe
+      // Adding column types used later by JDBC storage handler
       propList.add(ASTBuilder.construct(HiveParser.TOK_TABLEPROPERTY, "TOK_TABLEPROPERTY")
           .add(HiveParser.StringLiteral, "\"" + Constants.JDBC_QUERY_FIELD_TYPES + "\"")
           .add(HiveParser.StringLiteral,
@@ -173,11 +155,20 @@ public class ASTBuilder {
     // NOTE: Calcite considers tbls to be equal if their names are the same. Hence
     // we need to provide Calcite the fully qualified table name (dbname.tblname)
     // and not the user provided aliases.
-    // However in HIVE DB name can not appear in select list; in case of join
+    // However, in HIVE DB name can not appear in select list; in case of join
     // where table names differ only in DB name, Hive would require user
     // introducing explicit aliases for tbl.
     b.add(HiveParser.Identifier, hts.getTableAlias());
     return b.node();
+  }
+
+  /**
+   * @return an ASTNode representing a (table) reference to a CTE with the specified name and alias.
+   */
+  public static ASTNode cte(String name, final String alias) {
+    return ASTBuilder.construct(HiveParser.TOK_TABREF, "TOK_TABREF")
+        .add(ASTBuilder.construct(HiveParser.TOK_TABNAME, "TOK_TABNAME").add(HiveParser.Identifier, name))
+        .add(HiveParser.Identifier, alias).node();
   }
 
   public static ASTNode join(ASTNode left, ASTNode right, JoinRelType joinType, ASTNode cond) {

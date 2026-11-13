@@ -1,19 +1,20 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
- * regarding copyright ownership.The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
- * with the License.You may obtain a copy of the License at
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer;
@@ -32,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.ql.QueryProperties.QueryFeature;
 import org.apache.hadoop.hive.ql.exec.ColumnInfo;
 import org.apache.hadoop.hive.ql.exec.GroupByOperator;
 import org.apache.hadoop.hive.ql.exec.Operator;
@@ -83,7 +85,7 @@ public class GroupByOptimizer extends Transform {
     Map<SemanticRule, SemanticNodeProcessor> opRules = new LinkedHashMap<SemanticRule, SemanticNodeProcessor>();
     HiveConf conf = pctx.getConf();
 
-    if (!HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVEGROUPBYSKEW)) {
+    if (!HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_GROUPBY_SKEW)) {
       // process group-by pattern
       opRules.put(new RuleRegExp("R1",
           GroupByOperator.getOperatorName() + "%" +
@@ -188,7 +190,7 @@ public class GroupByOptimizer extends Transform {
         if (!groupByOpDesc.isDistinct()) {
           removeReduceSink = true;
         }
-        else if (!HiveConf.getBoolVar(hiveConf, HiveConf.ConfVars.HIVEGROUPBYSKEW)) {
+        else if (!HiveConf.getBoolVar(hiveConf, HiveConf.ConfVars.HIVE_GROUPBY_SKEW)) {
           // Optimize the query: select count(distinct keys) from T, where
           // T is bucketized and sorted by T
           // Partial aggregation can be done by the mappers in this scenario
@@ -212,7 +214,7 @@ public class GroupByOptimizer extends Transform {
         convertGroupByMapSideSortedGroupBy(hiveConf, groupByOp, depth);
       }
       else if (optimizeDistincts && !HiveConf.getBoolVar(hiveConf, HiveConf.ConfVars.HIVE_VECTORIZATION_ENABLED)) {
-        pGraphContext.getQueryProperties().setHasMapGroupBy(true);
+        pGraphContext.getQueryProperties().addFeature(QueryFeature.MAP_GROUP_BY);
         ReduceSinkOperator reduceSinkOp =
             (ReduceSinkOperator)groupByOp.getChildOperators().get(0);
         GroupByDesc childGroupByDesc =
@@ -514,7 +516,7 @@ public class GroupByOptimizer extends Transform {
     // The operators specified by depth and removed from the tree.
     protected void convertGroupByMapSideSortedGroupBy(
         HiveConf conf, GroupByOperator groupByOp, int depth) {
-      pGraphContext.getQueryProperties().setHasMapGroupBy(true);
+      pGraphContext.getQueryProperties().addFeature(QueryFeature.MAP_GROUP_BY);
 
       if (removeChildren(groupByOp, depth)) {
         // Use bucketized hive input format - that makes sure that one mapper reads the entire file

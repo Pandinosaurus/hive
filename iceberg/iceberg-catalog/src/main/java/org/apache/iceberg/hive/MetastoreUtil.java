@@ -19,57 +19,239 @@
 
 package org.apache.iceberg.hive;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.StatsSetupConst;
+import org.apache.hadoop.hive.common.TableName;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
+import org.apache.hadoop.hive.metastore.TableType;
+import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
+import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.metastore.api.SerDeInfo;
+import org.apache.hadoop.hive.metastore.api.SkewedInfo;
+import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
+import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
+import org.apache.hadoop.hive.serde.serdeConstants;
+import org.apache.iceberg.BaseMetastoreTableOperations;
+import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.common.DynMethods;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
+import org.apache.iceberg.relocated.com.google.common.collect.Lists;
+import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.apache.iceberg.types.Types;
+import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.view.BaseView;
+import org.apache.iceberg.view.SQLViewRepresentation;
+import org.apache.iceberg.view.View;
+import org.apache.iceberg.view.ViewMetadata;
+import org.apache.thrift.TException;
 
 public class MetastoreUtil {
 
-  // this class is unique to Hive3 and cannot be found in Hive2, therefore a good proxy to see if
-  // we are working against Hive3 dependencies
-  private static final String HIVE3_UNIQUE_CLASS = "org.apache.hadoop.hive.serde2.io.DateWritableV2";
+  public static final String DEFAULT_INPUT_FORMAT_CLASS = "org.apache.iceberg.mr.hive.HiveIcebergInputFormat";
+  public static final String DEFAULT_OUTPUT_FORMAT_CLASS = "org.apache.iceberg.mr.hive.HiveIcebergOutputFormat";
+  public static final String DEFAULT_SERDE_CLASS = "org.apache.iceberg.mr.hive.HiveIcebergSerDe";
 
-  private static final DynMethods.UnboundMethod ALTER_TABLE = DynMethods.builder("alter_table")
-      .impl(IMetaStoreClient.class, "alter_table_with_environmentContext",
-          String.class, String.class, Table.class, EnvironmentContext.class)
-      .impl(IMetaStoreClient.class, "alter_table",
-          String.class, String.class, Table.class, EnvironmentContext.class)
-      .impl(IMetaStoreClient.class, "alter_table",
-          String.class, String.class, Table.class)
+  private static final DynMethods.UnboundMethod ALTER_TABLE =
+      DynMethods.builder("alter_table")
+          .impl(
+              IMetaStoreClient.class,
+              "alter_table_with_environmentContext",
+              String.class,
+              String.class,
+              Table.class,
+              EnvironmentContext.class)
+          .impl(
+              IMetaStoreClient.class,
+              "alter_table",
+              String.class,
+              String.class,
+              Table.class,
+              EnvironmentContext.class)
+          .impl(IMetaStoreClient.class, "alter_table", String.class, String.class, Table.class)
       .build();
-
-  private static final boolean HIVE3_PRESENT_ON_CLASSPATH = detectHive3();
 
   private MetastoreUtil() {
   }
 
   /**
-   * Returns true if Hive3 dependencies are found on classpath, false otherwise.
+   * Calls alter_table method using the metastore client. If the HMS supports it, environmental
+   * context will be set in a way that turns off stats updates to avoid recursive file listing.
    */
-  public static boolean hive3PresentOnClasspath() {
-    return HIVE3_PRESENT_ON_CLASSPATH;
+  public static void alterTable(
+      IMetaStoreClient client, String databaseName, String tblName, Table table) throws TException {
+    alterTable(client, databaseName, tblName, table, ImmutableMap.of());
   }
 
   /**
-   * Calls alter_table method using the metastore client. If possible, an environmental context will be used that
-   * turns off stats updates to avoid recursive listing.
+   * Calls alter_table method using the metastore client. If the HMS supports it, environmental
+   * context will be set in a way that turns off stats updates to avoid recursive file listing.
    */
-  public static void alterTable(IMetaStoreClient client, String databaseName, String tblName, Table table) {
-    EnvironmentContext envContext = new EnvironmentContext(
-        ImmutableMap.of(StatsSetupConst.DO_NOT_UPDATE_STATS, StatsSetupConst.TRUE)
-    );
-    ALTER_TABLE.invoke(client, databaseName, tblName, table, envContext);
+  public static void alterTable(
+      IMetaStoreClient client,
+      String databaseName,
+      String tblName,
+      Table table,
+      Map<String, String> extraEnv)
+      throws TException {
+    Map<String, String> env = Maps.newHashMapWithExpectedSize(extraEnv.size() + 1);
+    env.putAll(extraEnv);
+    env.put(StatsSetupConst.DO_NOT_UPDATE_STATS, StatsSetupConst.TRUE);
+
+    try {
+      ALTER_TABLE.invoke(client, databaseName, tblName, table, new EnvironmentContext(env));
+    } catch (RuntimeException e) {
+      // TException would be wrapped into RuntimeException during reflection
+      if (e.getCause() instanceof TException) {
+        throw (TException) e.getCause();
+      } else {
+        throw e;
+      }
+    }
   }
 
-  private static boolean detectHive3() {
-    try {
-      Class.forName(HIVE3_UNIQUE_CLASS);
-      return true;
-    } catch (ClassNotFoundException e) {
-      return false;
+  public static List<FieldSchema> getPartitionKeys(org.apache.iceberg.Table table) {
+    Schema schema = table.spec().schema();
+
+    return table.spec().fields().stream()
+        .map(partField -> {
+          Types.NestedField col = schema.findField(partField.sourceId());
+          return new FieldSchema(
+              col.name().toLowerCase(),  // HMS lowercases column names
+              HiveSchemaUtil.convertToTypeString(col.type()),
+              "Transform: %s".formatted(partField.transform())
+          );
+        })
+        .toList();
+  }
+
+  public static Table toHiveTable(org.apache.iceberg.Table table, Configuration conf) {
+    var result = new Table();
+    TableName tableName = TableName.fromString(table.name(), MetaStoreUtils.getDefaultCatalog(conf),
+        Warehouse.DEFAULT_DATABASE_NAME);
+    result.setCatName(tableName.getCat());
+    result.setDbName(tableName.getDb());
+    result.setTableName(tableName.getTable());
+    result.setTableType(TableType.EXTERNAL_TABLE.toString());
+
+    // TODO: Revert after HIVE-29633 is fixed
+    // result.setPartitionKeys(getPartitionKeys(table));
+    result.setPartitionKeys(Lists.newArrayList());
+
+    TableMetadata metadata = ((BaseTable) table).operations().current();
+    long maxHiveTablePropertySize = conf.getLong(HiveOperationsBase.HIVE_TABLE_PROPERTY_MAX_SIZE,
+        HiveOperationsBase.HIVE_TABLE_PROPERTY_MAX_SIZE_DEFAULT);
+    HMSTablePropertyHelper.updateHmsTableForIcebergTable(metadata.metadataFileLocation(), result, metadata,
+        null, true, maxHiveTablePropertySize, null);
+    String catalogType = IcebergCatalogProperties.getCatalogType(conf);
+    if (!StringUtils.isEmpty(catalogType) && !IcebergCatalogProperties.NO_CATALOG_TYPE.equals(catalogType)) {
+      result.getParameters().put(CatalogUtil.ICEBERG_CATALOG_TYPE, catalogType);
     }
+    result.setSd(getHiveStorageDescriptor(table));
+    return result;
+  }
+
+  /**
+   * Builds a minimal HMS {@link Table} shell for Iceberg view (identity, view type,
+   * and Iceberg storage-handler markers only). The storage handler {@code postGetTable} hook enriches
+   * this object via {@link IcebergViewSupport#enrichHmsTableFromIcebergView} (view SQL,
+   * schema, and Iceberg parameters).
+   */
+  public static Table buildMinimalHMSView(String catName, String dbName, String tableName) {
+    Table result = new Table();
+    result.setCatName(catName);
+    result.setDbName(dbName);
+    result.setTableName(tableName);
+    result.setTableType(TableType.VIRTUAL_VIEW.toString());
+
+    Map<String, String> parameters = Maps.newHashMap();
+    parameters.put(
+        BaseMetastoreTableOperations.TABLE_TYPE_PROP, HiveOperationsBase.ICEBERG_VIEW_TYPE_VALUE);
+    parameters.put(
+        hive_metastoreConstants.META_TABLE_STORAGE, HMSTablePropertyHelper.HIVE_ICEBERG_STORAGE_HANDLER);
+    result.setParameters(parameters);
+    return result;
+  }
+
+  /**
+   * Applies Iceberg view metadata (SQL, schema, params) onto an existing HMS {@link Table}.
+   */
+  public static void applyIcebergViewToHmsTable(Table hmsTable, View view, Configuration conf) {
+    ViewMetadata metadata = ((BaseView) view).operations().current();
+    String sqlText = viewSqlText(view, metadata);
+
+    boolean hiveEngineEnabled = false;
+    hmsTable.setSd(HiveOperationsBase.storageDescriptor(metadata.schema(), metadata.location(), hiveEngineEnabled));
+    StorageDescriptor sd = hmsTable.getSd();
+
+    if (sd.getBucketCols() == null) {
+      sd.setBucketCols(Lists.newArrayList());
+    }
+
+    if (sd.getSortCols() == null) {
+      sd.setSortCols(Lists.newArrayList());
+    }
+
+    long maxHiveTablePropertySize =
+        conf.getLong(
+            HiveOperationsBase.HIVE_TABLE_PROPERTY_MAX_SIZE,
+            HiveOperationsBase.HIVE_TABLE_PROPERTY_MAX_SIZE_DEFAULT);
+    HMSTablePropertyHelper.updateHmsTableForIcebergView(
+        metadata.metadataFileLocation(),
+        hmsTable,
+        metadata,
+        Collections.emptySet(),
+        maxHiveTablePropertySize,
+        null,
+        sqlText);
+
+    hmsTable.setCreateTime((int) (metadata.version(1).timestampMillis() / 1000));
+    hmsTable.setLastAccessTime((int) (metadata.currentVersion().timestampMillis() / 1000));
+    hmsTable.setOwner(
+        PropertyUtil.propertyAsString(
+            metadata.properties(), HiveCatalog.HMS_TABLE_OWNER, HiveHadoopUtil.currentUser()));
+
+    String catalogType = IcebergCatalogProperties.getCatalogType(conf);
+    if (!StringUtils.isEmpty(catalogType) && !IcebergCatalogProperties.NO_CATALOG_TYPE.equals(catalogType)) {
+      hmsTable.getParameters().put(CatalogUtil.ICEBERG_CATALOG_TYPE, IcebergCatalogProperties.getCatalogType(conf));
+    }
+  }
+
+  private static String viewSqlText(View view, ViewMetadata metadata) {
+    SQLViewRepresentation hiveRepr = view.sqlFor("hive");
+    if (hiveRepr != null) {
+      return hiveRepr.sql();
+    }
+    return HiveViewOperations.sqlFor(metadata);
+  }
+
+  private static StorageDescriptor getHiveStorageDescriptor(org.apache.iceberg.Table table) {
+    var result = new StorageDescriptor();
+    result.setCols(HiveSchemaUtil.convert(table.schema()));
+    result.setBucketCols(Lists.newArrayList());
+    result.setNumBuckets(-1);
+    result.setSortCols(Lists.newArrayList());
+    result.setInputFormat(DEFAULT_INPUT_FORMAT_CLASS);
+    result.setOutputFormat(DEFAULT_OUTPUT_FORMAT_CLASS);
+    result.setSerdeInfo(getHiveSerdeInfo());
+    result.setLocation(table.location());
+    result.setParameters(Maps.newHashMap());
+    result.setSkewedInfo(new SkewedInfo(Collections.emptyList(), Collections.emptyList(), Collections.emptyMap()));
+    return result;
+  }
+
+  private static SerDeInfo getHiveSerdeInfo() {
+    var result = new SerDeInfo("icebergSerde", DEFAULT_SERDE_CLASS, Maps.newHashMap());
+    result.getParameters().put(serdeConstants.SERIALIZATION_FORMAT, "1"); // Default serialization format.
+    return result;
   }
 }

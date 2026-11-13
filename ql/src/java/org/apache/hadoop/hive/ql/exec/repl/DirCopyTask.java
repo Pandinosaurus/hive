@@ -9,14 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.repl;
 
+import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.AclEntry;
 import org.apache.hadoop.fs.permission.AclStatus;
@@ -156,7 +158,7 @@ public class DirCopyTask extends Task<DirCopyWork> implements Serializable {
 
   @Override
   public int execute() {
-    LOG.info("Started DirCopyTask for source: {} to target: {}", work.getFullyQualifiedSourcePath(),
+    LOG.info("Started DirCopyTask for table {} from source: {} to target: {}", work.getTableName(), work.getFullyQualifiedSourcePath(),
         work.getFullyQualifiedTargetPath());
     HiveConf clonedConf = getConf(conf);
     String distCpDoAsUser = clonedConf.getVar(HiveConf.ConfVars.HIVE_DISTCP_DOAS_USER);
@@ -165,7 +167,7 @@ public class DirCopyTask extends Task<DirCopyWork> implements Serializable {
       .withRetryOnException(IOException.class).withFailOnException(SnapshotException.class).build();
     long startTime = System.currentTimeMillis();
     AtomicInteger retries = new AtomicInteger(-1);
-     AtomicBoolean result = new AtomicBoolean(false);
+    AtomicBoolean result = new AtomicBoolean(false);
     try {
       return retryable.executeCallable(() -> {
         retries.getAndIncrement();
@@ -221,6 +223,28 @@ public class DirCopyTask extends Task<DirCopyWork> implements Serializable {
               + "Result: {}", work.getFullyQualifiedSourcePath(), work.getFullyQualifiedTargetPath(),
           ReplUtils.convertToHumanReadableTime(System.currentTimeMillis() - startTime), jobId, retries.get(),
           result.get() ? "SUCCEEDED" : "FAILED");
+
+      // if distcp succeeded then update bytes copied counter
+      if (result.get()) {
+        FileSystem srcFs = null;
+        try {
+          srcFs = work.getFullyQualifiedSourcePath().getFileSystem(clonedConf);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        ContentSummary summary = null;
+        try {
+          summary = srcFs.getContentSummary(work.getFullyQualifiedSourcePath());
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        final long totalBytesCopied = summary.getLength();
+        LOG.debug("DirCopyTask copied {} number of bytes by using distcp", totalBytesCopied);
+        // increment total bytes replicated counter
+        if (work.getMetricCollector() != null) {
+          work.getMetricCollector().incrementSizeOfDataReplicated(totalBytesCopied);
+        }
+      }
     }
   }
 

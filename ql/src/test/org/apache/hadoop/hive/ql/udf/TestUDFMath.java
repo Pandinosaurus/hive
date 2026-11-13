@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf;
@@ -141,6 +142,30 @@ public class TestUDFMath {
     input = createDecimal("49.0");
     DoubleWritable res = udf.evaluate(input);
     Assert.assertEquals(7.0, res.get(), 0.000001);
+  }
+
+  @Test
+  public void testCosh() throws HiveException {
+    UDFCosh udf = new UDFCosh();
+    input = createDecimal("0.7727408115633954");
+    DoubleWritable res = udf.evaluate(input);
+    Assert.assertEquals(1.3137198299489201, res.get(), 0.000001);
+  }
+
+  @Test
+  public void testSinh() throws HiveException {
+    UDFSinh udf = new UDFSinh();
+    input = createDecimal("0.7980555152315012");
+    DoubleWritable res = udf.evaluate(input);
+    Assert.assertEquals(0.8855070376410608, res.get(), 0.000001);
+  }
+
+  @Test
+  public void testTanh() throws HiveException {
+    UDFTanh udf = new UDFTanh();
+    input = createDecimal("0.7853981633974483");
+    DoubleWritable res = udf.evaluate(input);
+    Assert.assertEquals(0.6557942026326724, res.get(), 0.000001);
   }
 
   private HiveDecimalWritable createDecimal(String input) {

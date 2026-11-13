@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.daemon.impl;
 
@@ -25,8 +26,9 @@ import org.apache.hadoop.security.Credentials;
 import org.apache.hadoop.security.token.Token;
 import org.apache.hive.testutils.junit.extensions.DoNothingTCPServer;
 import org.apache.hive.testutils.junit.extensions.DoNothingTCPServerExtension;
-import org.apache.hive.testutils.junit.extensions.Log4jConfig;
+import org.apache.logging.log4j.core.test.junit.LoggerContextSource;
 import org.apache.tez.common.security.TokenCache;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -44,10 +46,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Tests for the log4j configuration of the LLAP daemons.
  */
+@LoggerContextSource("llap-daemon-routing-log4j2.properties")
 public class TestLlapDaemonLogging {
 
   @Test
-  @Log4jConfig("llap-daemon-routing-log4j2.properties")
   @ExtendWith(LlapDaemonExtension.class)
   @ExtendWith(DoNothingTCPServerExtension.class)
   void testQueryRoutingNoLeakFileDescriptors(LlapDaemon daemon, DoNothingTCPServer amMockServer)
@@ -74,7 +76,6 @@ public class TestLlapDaemonLogging {
   }
 
   @Test
-  @Log4jConfig("llap-daemon-routing-log4j2.properties")
   @ExtendWith(LlapDaemonExtension.class)
   @ExtendWith(DoNothingTCPServerExtension.class)
   void testQueryRoutingLogFileNameOnIncompleteQuery(LlapDaemon daemon, DoNothingTCPServer amMockServer)
@@ -97,7 +98,6 @@ public class TestLlapDaemonLogging {
   }
 
   @Test
-  @Log4jConfig("llap-daemon-routing-log4j2.properties")
   @ExtendWith(LlapDaemonExtension.class)
   @ExtendWith(DoNothingTCPServerExtension.class)
   void testQueryRoutingLogFileNameOnCompleteQuery(LlapDaemon daemon, DoNothingTCPServer amMockServer)

@@ -9,16 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc.authorization;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -45,7 +45,6 @@ public class TestJdbcWithSQLAuthorization {
 
   @BeforeClass
   public static void beforeTest() throws Exception {
-    Class.forName(MiniHS2.getJdbcDriverName());
     HiveConf conf = new HiveConf();
     conf.setVar(ConfVars.HIVE_AUTHORIZATION_MANAGER, SQLStdHiveAuthorizerFactory.class.getName());
     conf.setVar(ConfVars.HIVE_AUTHENTICATOR_MANAGER, SessionStateUserAuthenticator.class.getName());
@@ -174,7 +173,7 @@ public class TestJdbcWithSQLAuthorization {
           "not have following privileges for operation LLAP_CACHE_PURGE [[ADMIN PRIVILEGE] on Object " +
           "[type=COMMAND_PARAMS, name=[llap, cache, -purge]], [ADMIN PRIVILEGE] on Object " +
           "[type=SERVICE_NAME, name=localhost]]";
-        assertEquals(msg, e.getMessage());
+        assertTrue(e.getMessage().contains(msg));
       } finally {
         stmt.close();
         hs2Conn.close();

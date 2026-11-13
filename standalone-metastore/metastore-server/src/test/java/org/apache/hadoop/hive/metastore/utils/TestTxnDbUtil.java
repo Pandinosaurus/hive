@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.utils;
 
@@ -21,7 +22,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.sql.Connection;
-import java.sql.Driver;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -30,6 +31,7 @@ import java.sql.SQLTransactionRollbackException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
 import java.util.Set;
@@ -39,9 +41,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.DatabaseProduct;
 import org.apache.hadoop.hive.metastore.IMetaStoreSchemaInfo;
 import org.apache.hadoop.hive.metastore.MetaStoreSchemaInfoFactory;
+import org.apache.hadoop.hive.metastore.api.LockState;
+import org.apache.hadoop.hive.metastore.api.LockType;
+import org.apache.hadoop.hive.metastore.api.ShowLocksResponseElement;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
-
+import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -216,6 +221,7 @@ public final class TestTxnDbUtil {
       // We want to try these, whether they succeed or fail.
       success &= truncateTable(conn, conf, stmt, "TXN_COMPONENTS");
       success &= truncateTable(conn, conf, stmt, "COMPLETED_TXN_COMPONENTS");
+      success &= truncateTable(conn, conf, stmt, "MIN_HISTORY_WRITE_ID");
       success &= truncateTable(conn, conf, stmt, "TXNS");
       success &= truncateTable(conn, conf, stmt, "TXN_TO_WRITE_ID");
       success &= truncateTable(conn, conf, stmt, "NEXT_WRITE_ID");
@@ -240,12 +246,12 @@ public final class TestTxnDbUtil {
         } catch (SQLException e) {
           if (!databaseProduct.isTableNotExistsError(e)) {
             LOG.error("Error initializing sequence values", e);
-            success = false;
+            throw e;
           }
         }
       } catch (SQLException e) {
         LOG.error("Unable determine database product ", e);
-        success = false;
+        throw e;
       }
       /*
        * Don't drop NOTIFICATION_LOG, SEQUENCE_TABLE and NOTIFICATION_SEQUENCE as its used by other
@@ -268,27 +274,23 @@ public final class TestTxnDbUtil {
     }
   }
 
-  private static boolean truncateTable(Connection conn, Configuration conf, Statement stmt, String name) {
+  private static boolean truncateTable(Connection conn, Configuration conf, Statement stmt, String name) throws SQLException {
+    String dbProduct = conn.getMetaData().getDatabaseProductName();
+    DatabaseProduct databaseProduct = determineDatabaseProduct(dbProduct, conf);
     try {
-      String dbProduct = conn.getMetaData().getDatabaseProductName();
-      DatabaseProduct databaseProduct = determineDatabaseProduct(dbProduct, conf);
-      try {
-        // We can not use actual truncate due to some foreign keys, but we don't expect much data during tests
+      // We can not use actual truncate due to some foreign keys, but we don't expect much data during tests
 
-        String s = databaseProduct.getTruncateStatement(name);
-        stmt.execute(s);
+      String s = databaseProduct.getTruncateStatement(name);
+      stmt.execute(s);
 
-        LOG.debug("Successfully truncated table " + name);
-        return true;
-      } catch (SQLException e) {
-        if (databaseProduct.isTableNotExistsError(e)) {
-          LOG.debug("Not truncating " + name + " because it doesn't exist");
-          return true;
-        }
-        LOG.error("Unable to truncate table " + name, e);
-      }
+      LOG.debug("Successfully truncated table " + name);
+      return true;
     } catch (SQLException e) {
-      LOG.error("Unable determine database product ", e);
+      if (databaseProduct.isTableNotExistsError(e)) {
+        LOG.debug("Not truncating " + name + " because it doesn't exist");
+        return true;
+      }
+      LOG.error("Unable to truncate table " + name, e);
     }
     return false;
   }
@@ -341,10 +343,24 @@ public final class TestTxnDbUtil {
       closeResources(conn, stmt, rs);
     }
   }
+
   public static String queryToString(Configuration conf, String query) throws Exception {
     return queryToString(conf, query, true);
   }
-  public static String queryToString(Configuration conf, String query, boolean includeHeader)
+
+  public static String queryToString(Configuration conf, String query, boolean includeHeader) throws Exception {
+    return queryToString(conf, query, includeHeader, "   ");
+  }
+
+  public static String queryToCsv(Configuration conf, String query) throws Exception {
+    return queryToString(conf, query, true, ",");
+  }
+
+  public static String queryToCsv(Configuration conf, String query, boolean includeHeader) throws Exception {
+    return queryToString(conf, query, includeHeader, ",");
+  }
+
+  public static String queryToString(Configuration conf, String query, boolean includeHeader, String columnSeparator)
       throws Exception {
     Connection conn = null;
     Statement stmt = null;
@@ -357,13 +373,13 @@ public final class TestTxnDbUtil {
       ResultSetMetaData rsmd = rs.getMetaData();
       if(includeHeader) {
         for (int colPos = 1; colPos <= rsmd.getColumnCount(); colPos++) {
-          sb.append(rsmd.getColumnName(colPos)).append("   ");
+          sb.append(rsmd.getColumnName(colPos)).append(columnSeparator);
         }
         sb.append('\n');
       }
       while(rs.next()) {
         for (int colPos = 1; colPos <= rsmd.getColumnCount(); colPos++) {
-          sb.append(rs.getObject(colPos)).append("   ");
+          sb.append(rs.getObject(colPos)).append(columnSeparator);
         }
         sb.append('\n');
       }
@@ -372,7 +388,7 @@ public final class TestTxnDbUtil {
     }
     return sb.toString();
   }
-
+  
   /**
    * This is only for testing, it does not use the connectionPool from TxnHandler!
    * @param conf
@@ -393,15 +409,13 @@ public final class TestTxnDbUtil {
   }
 
   public static Connection getConnection(Configuration conf) throws Exception {
-    String jdbcDriver = MetastoreConf.getVar(conf, ConfVars.CONNECTION_DRIVER);
-    Driver driver = (Driver) Class.forName(jdbcDriver).newInstance();
     Properties prop = new Properties();
     String driverUrl = MetastoreConf.getVar(conf, ConfVars.CONNECT_URL_KEY);
     String user = MetastoreConf.getVar(conf, ConfVars.CONNECTION_USER_NAME);
     String passwd = MetastoreConf.getPassword(conf, MetastoreConf.ConfVars.PWD);
     prop.setProperty("user", user);
     prop.setProperty("password", passwd);
-    Connection conn = driver.connect(driverUrl, prop);
+    Connection conn = DriverManager.getConnection(driverUrl, prop);
     conn.setAutoCommit(true);
 
     DatabaseProduct dbProduct = determineDatabaseProduct(conn.getMetaData().getDatabaseProductName(), conf);
@@ -445,5 +459,35 @@ public final class TestTxnDbUtil {
     }
   }
 
+
+  /** The list is small, and the object is generated, so we don't use sets/equals/etc. */
+  public static ShowLocksResponseElement checkLock(LockType expectedType, LockState expectedState, String expectedDb,
+      String expectedTable, String expectedPartition, List<ShowLocksResponseElement> actuals) {
+    return checkLock(expectedType, expectedState, expectedDb, expectedTable, expectedPartition, actuals, false);
+  }
+
+  public static ShowLocksResponseElement checkLock(LockType expectedType, LockState expectedState, String expectedDb,
+      String expectedTable, String expectedPartition, List<ShowLocksResponseElement> actuals, boolean skipFirst) {
+    boolean skip = skipFirst;
+    for (ShowLocksResponseElement actual : actuals) {
+      if (expectedType == actual.getType() && expectedState == actual.getState()
+          && StringUtils.equals(normalizeCase(expectedDb), normalizeCase(actual.getDbname()))
+          && StringUtils.equals(normalizeCase(expectedTable), normalizeCase(actual.getTablename()))
+          && StringUtils.equals(
+              normalizeCase(expectedPartition), normalizeCase(actual.getPartname()))) {
+        if(!skip){
+          return actual;
+        }
+        skip = false;
+      }
+    }
+    Assert.fail("Could't find {" + expectedType + ", " + expectedState + ", " + expectedDb
+       + ", " + expectedTable  + ", " + expectedPartition + "} in " + actuals);
+    throw new IllegalStateException("How did it get here?!");
+  }
+
+  private static String normalizeCase(String s) {
+    return s == null ? null : s.toLowerCase();
+  }
 
 }

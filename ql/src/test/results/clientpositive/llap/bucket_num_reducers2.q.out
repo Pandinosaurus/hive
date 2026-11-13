@@ -16,7 +16,7 @@ POSTHOOK: query: explain extended insert overwrite table test_table_n4
 POSTHOOK: type: QUERY
 POSTHOOK: Input: default@src
 POSTHOOK: Output: default@test_table_n4
-OPTIMIZED SQL: SELECT `key`, `value`
+OPTIMIZED SQL: SELECT `key` AS `src.key`, `value` AS `src.value`
 FROM `default`.`src`
 STAGE DEPENDENCIES:
   Stage-1 is a root stage
@@ -217,8 +217,10 @@ POSTHOOK: Lineage: test_table_n4.value SIMPLE [(src)src.FieldSchema(name:value, 
 PREHOOK: query: drop table test_table_n4
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@test_table_n4
+PREHOOK: Output: database:default
 PREHOOK: Output: default@test_table_n4
 POSTHOOK: query: drop table test_table_n4
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@test_table_n4
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@test_table_n4

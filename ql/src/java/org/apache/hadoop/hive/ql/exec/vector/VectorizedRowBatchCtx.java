@@ -9,17 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.vector;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
@@ -287,7 +287,7 @@ public class VectorizedRowBatchCtx {
   public static void getPartitionValues(VectorizedRowBatchCtx vrbCtx, PartitionDesc partDesc,
       Object[] partitionValues) {
 
-    LinkedHashMap<String, String> partSpec = partDesc.getPartSpec();
+    Map<String, String> partSpec = partDesc.getPartSpec();
 
     for (int i = 0; i < vrbCtx.partitionColumnCount; i++) {
       Object objectValue;
@@ -576,7 +576,7 @@ public class VectorizedRowBatchCtx {
           dv.isNull[0] = true;
           dv.isRepeating = true;
         } else {
-          dv.fill(((HiveDecimal) value).longValue());
+          dv.fill((HiveDecimal) value);
         }
       } else {
         DecimalColumnVector dv = (DecimalColumnVector) col;

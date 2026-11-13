@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io;
@@ -70,6 +71,7 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.util.ExitUtil;
 import org.apache.hive.common.util.HiveTestUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -431,7 +433,7 @@ public class TestRCFile {
     String usage = "Usage: RCFile " + "[-count N]" + " file";
     if (args.length == 0) {
       System.err.println(usage);
-      System.exit(-1);
+      ExitUtil.terminate(-1);
     }
 
     try {
@@ -448,7 +450,7 @@ public class TestRCFile {
 
       if (file == null) {
         System.err.println(usage);
-        System.exit(-1);
+        ExitUtil.terminate(-1);
       }
 
       LOG.info("count = " + count);
@@ -643,7 +645,7 @@ public class TestRCFile {
     RCFileInputFormat inputFormat = new RCFileInputFormat();
     JobConf jobconf = new JobConf(cloneConf);
     jobconf.set("mapred.input.dir", testDir.toString());
-    HiveConf.setLongVar(jobconf, HiveConf.ConfVars.MAPREDMINSPLITSIZE, fileLen);
+    HiveConf.setLongVar(jobconf, HiveConf.ConfVars.MAPRED_MIN_SPLIT_SIZE, fileLen);
     InputSplit[] splits = inputFormat.getSplits(jobconf, 1);
     RCFileRecordReader rr = new RCFileRecordReader(jobconf, (FileSplit)splits[0]);
     long lastSync = 0;
@@ -710,7 +712,7 @@ public class TestRCFile {
     RCFileInputFormat inputFormat = new RCFileInputFormat();
     JobConf jonconf = new JobConf(cloneConf);
     jonconf.set("mapred.input.dir", testDir.toString());
-    HiveConf.setLongVar(jonconf, HiveConf.ConfVars.MAPREDMINSPLITSIZE, minSplitSize);
+    HiveConf.setLongVar(jonconf, HiveConf.ConfVars.MAPRED_MIN_SPLIT_SIZE, minSplitSize);
     InputSplit[] splits = inputFormat.getSplits(jonconf, splitNumber);
     assertEquals("splits length should be " + splitNumber, splitNumber, splits.length);
     int readCount = 0;
@@ -796,7 +798,7 @@ public class TestRCFile {
   @Test
   public void testNonExplicitRCFileHeader() throws IOException, SerDeException {
     Configuration conf = new Configuration();
-    conf.setBoolean(HiveConf.ConfVars.HIVEUSEEXPLICITRCFILEHEADER.varname, false);
+    conf.setBoolean(HiveConf.ConfVars.HIVE_USE_EXPLICIT_RCFILE_HEADER.varname, false);
     char[] expected = new char[] {'S', 'E', 'Q'};
     testRCFileHeader(expected, conf);
   }
@@ -804,7 +806,7 @@ public class TestRCFile {
   @Test
   public void testExplicitRCFileHeader() throws IOException, SerDeException {
     Configuration conf = new Configuration();
-    conf.setBoolean(HiveConf.ConfVars.HIVEUSEEXPLICITRCFILEHEADER.varname, true);
+    conf.setBoolean(HiveConf.ConfVars.HIVE_USE_EXPLICIT_RCFILE_HEADER.varname, true);
     char[] expected = new char[] {'R', 'C', 'F'};
     testRCFileHeader(expected, conf);
   }

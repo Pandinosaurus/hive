@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service.auth.jwt;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.security.sasl.AuthenticationException;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.security.Key;
 import java.text.ParseException;
 import java.util.Date;
@@ -51,7 +53,7 @@ public class JWTValidator {
 
   private final URLBasedJWKSProvider jwksProvider;
 
-  public JWTValidator(HiveConf conf) throws IOException, ParseException {
+  public JWTValidator(HiveConf conf) throws IOException, ParseException, GeneralSecurityException {
     this.jwksProvider = new URLBasedJWKSProvider(conf);
   }
 

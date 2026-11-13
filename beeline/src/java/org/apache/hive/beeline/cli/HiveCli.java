@@ -9,14 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.beeline.cli;
 
+import org.apache.hadoop.util.ExitUtil;
 import org.apache.hive.beeline.BeeLine;
 
 import java.io.IOException;
@@ -27,15 +29,19 @@ public class HiveCli {
 
   public static void main(String[] args) throws IOException {
     int status = new HiveCli().runWithArgs(args, null);
-    System.exit(status);
+    ExitUtil.terminate(status);
   }
 
   public int runWithArgs(String[] cmd, InputStream inputStream) throws IOException {
-    beeLine = new BeeLine(false);
+    beeLine = createBeeline();
     try {
       return beeLine.begin(cmd, inputStream);
     } finally {
       beeLine.close();
     }
+  }
+
+  BeeLine createBeeline() {
+    return new BeeLine(false);
   }
 }

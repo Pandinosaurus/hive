@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.hadoop.hive.common.StatsSetupConst;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.NotificationEvent;
@@ -34,7 +36,6 @@ import org.apache.hadoop.hive.metastore.InjectableBehaviourObjectStore.Behaviour
 import org.apache.hadoop.hive.metastore.InjectableBehaviourObjectStore.CallerArguments;
 import org.apache.hadoop.hive.ql.metadata.HiveMetaStoreClientWithLocalCache;
 import org.apache.hadoop.hive.shims.Utils;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.junit.After;
@@ -46,7 +47,6 @@ import org.junit.Test;
 import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.junit.Ignore;
 import org.junit.Assert;
 
 import java.io.IOException;
@@ -94,7 +94,7 @@ public class TestStatsReplicationScenarios {
                                        Map<String, String> replicaOverrides, Class clazz,
                                        boolean autogather, AcidTableKind acidTableKind)
       throws Exception {
-    conf = new HiveConf(clazz);
+    conf = new HiveConfForTest(TestStatsReplicationScenarios.class);
     conf.set("dfs.client.use.datanode.hostname", "true");
     conf.set("hadoop.proxyuser." + Utils.getUGI().getShortUserName() + ".hosts", "*");
     MiniDFSCluster miniDFSCluster =
@@ -114,7 +114,7 @@ public class TestStatsReplicationScenarios {
     // Run with autogather false on primary if requested
     Map<String, String> sourceOverrides = new HashMap<>();
     hasAutogather = autogather;
-    additionalOverrides.put(HiveConf.ConfVars.HIVESTATSAUTOGATHER.varname,
+    additionalOverrides.put(HiveConf.ConfVars.HIVE_STATS_AUTOGATHER.varname,
             autogather ? "true" : "false");
     sourceOverrides.putAll(additionalOverrides);
     sourceOverrides.putAll(primaryOverrides);
@@ -337,7 +337,7 @@ public class TestStatsReplicationScenarios {
 
     // Load, if necessary changing configuration.
     if (parallelLoad) {
-      replica.hiveConf.setBoolVar(HiveConf.ConfVars.EXECPARALLEL, true);
+      replica.hiveConf.setBoolVar(HiveConf.ConfVars.EXEC_PARALLEL, true);
     }
 
     // Fail load if for testing failure and retry scenario. Fail the load while setting
@@ -350,7 +350,7 @@ public class TestStatsReplicationScenarios {
       }
     }
     
-    Path baseDumpDir = new Path(primary.hiveConf.getVar(HiveConf.ConfVars.REPLDIR));
+    Path baseDumpDir = new Path(primary.hiveConf.getVar(HiveConf.ConfVars.REPL_DIR));
     Path nonRecoverablePath = TestReplicationScenarios.getNonRecoverablePath(baseDumpDir, primaryDbName, primary.hiveConf);
     if(nonRecoverablePath != null){
       baseDumpDir.getFileSystem(primary.hiveConf).delete(nonRecoverablePath, true);
@@ -366,7 +366,7 @@ public class TestStatsReplicationScenarios {
     }
 
     if (parallelLoad) {
-      replica.hiveConf.setBoolVar(HiveConf.ConfVars.EXECPARALLEL, false);
+      replica.hiveConf.setBoolVar(HiveConf.ConfVars.EXEC_PARALLEL, false);
     }
 
     // Test statistics

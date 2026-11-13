@@ -9,16 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.ptf;
 
-import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector.Type;
 import org.apache.hadoop.hive.ql.exec.vector.DecimalColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
@@ -44,7 +44,6 @@ public class VectorPTFEvaluatorDecimalFirstValue extends VectorPTFEvaluatorBase 
   public VectorPTFEvaluatorDecimalFirstValue(WindowFrameDef windowFrameDef,
       VectorExpression inputVecExpr, int outputColumnNum) {
     super(windowFrameDef, inputVecExpr, outputColumnNum);
-    firstValue = new HiveDecimalWritable();
     resetEvaluator();
   }
 
@@ -52,7 +51,6 @@ public class VectorPTFEvaluatorDecimalFirstValue extends VectorPTFEvaluatorBase 
   public void evaluateGroupBatch(VectorizedRowBatch batch)
       throws HiveException {
 
-    evaluateInputExpr(batch);
 
     // First row determines isGroupResultNull and decimal firstValue; stream fill result as repeated.
 
@@ -66,7 +64,6 @@ public class VectorPTFEvaluatorDecimalFirstValue extends VectorPTFEvaluatorBase 
       }
       DecimalColumnVector decimalColVector = ((DecimalColumnVector) batch.cols[inputColumnNum]);
       if (decimalColVector.isRepeating) {
-
         if (decimalColVector.noNulls || !decimalColVector.isNull[0]) {
           firstValue.set(decimalColVector.vector[0]);
           isGroupResultNull = false;
@@ -74,13 +71,25 @@ public class VectorPTFEvaluatorDecimalFirstValue extends VectorPTFEvaluatorBase 
       } else if (decimalColVector.noNulls) {
         firstValue.set(decimalColVector.vector[0]);
         isGroupResultNull = false;
-      } else {
+      } else if (doesRespectNulls()) {
         if (!decimalColVector.isNull[0]) {
           firstValue.set(decimalColVector.vector[0]);
           isGroupResultNull = false;
         }
+      } else {
+        // If we do not respect nulls, we just take the first value and ignore nulls.
+        for (int i = 0; i < size; i++) {
+          if (!decimalColVector.isNull[i]) {
+            firstValue.set(decimalColVector.vector[i]);
+            isGroupResultNull = false;
+            break;
+          }
+        }
       }
-      haveFirstValue = true;
+      // If nulls are respected, we set haveFirstValue to true as we don't need to look for a non-null value
+      // Otherwise, we should keep looking for a non-null value in the next batches, i.e.,
+      // until group result is not null.
+      haveFirstValue = doesRespectNulls() || !isGroupResultNull;
     }
 
     /*
@@ -122,7 +131,7 @@ public class VectorPTFEvaluatorDecimalFirstValue extends VectorPTFEvaluatorBase 
   public void resetEvaluator() {
     haveFirstValue = false;
     isGroupResultNull = true;
-    firstValue.set(HiveDecimal.ZERO);
+    firstValue = new HiveDecimalWritable();
   }
 
   // this is not necessarily needed, because first_value is evaluated in a streaming way, therefore

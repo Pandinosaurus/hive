@@ -3246,16 +3246,28 @@ STAGE PLANS:
                     partitionColumnCount: 0
                     scratchColumnTypeNames: []
         Reducer 2 
-            Execution mode: llap
+            Execution mode: vectorized, llap
             Reduce Vectorization:
                 enabled: true
                 enableConditionsMet: hive.vectorized.execution.reduce.enabled IS true, hive.execution.engine tez IN [tez] IS true
-                notVectorizedReason: PTF operator: cume_dist not in supported functions [avg, count, dense_rank, first_value, lag, last_value, lead, max, min, rank, row_number, sum]
-                vectorized: false
+                reduceColumnNullOrder: az
+                reduceColumnSortOrder: ++
+                allNative: true
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 3
+                    dataColumns: KEY.reducesinkkey0:string, KEY.reducesinkkey1:string, VALUE._col3:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: [bigint, bigint, double, double, bigint, bigint, double, double, bigint, bigint, bigint, bigint]
             Reduce Operator Tree:
               Select Operator
                 expressions: KEY.reducesinkkey1 (type: string), KEY.reducesinkkey0 (type: string), VALUE._col3 (type: int)
                 outputColumnNames: _col1, _col2, _col5
+                Select Vectorization:
+                    className: VectorSelectOperator
+                    native: true
+                    projectedOutputColumnNums: [1, 0, 2]
                 Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                 PTF Operator
                   Function definitions:
@@ -3335,16 +3347,41 @@ STAGE PLANS:
                               name: last_value
                               window function: GenericUDAFLastValueEvaluator
                               window frame: RANGE PRECEDING(MAX)~CURRENT
+                  PTF Vectorization:
+                      allEvaluatorsAreStreaming: false
+                      className: VectorPTFOperator
+                      evaluatorClasses: [VectorPTFEvaluatorRank, VectorPTFEvaluatorDenseRank, VectorPTFEvaluatorCumeDist, VectorPTFEvaluatorPercentRank, VectorPTFEvaluatorNTile, VectorPTFEvaluatorCount, VectorPTFEvaluatorLongAvg, VectorPTFEvaluatorVariance, VectorPTFEvaluatorLongFirstValue, VectorPTFEvaluatorLongLastValue]
+                      functionInputExpressions: [col 1:string, col 1:string, col 1:string, col 1:string, ConstantVectorExpression(val 3) -> 13:int, col 2:int, col 2:int, col 2:int, LongColModuloLongScalar(col 2:int, val 5) -> 14:int, col 2:int]
+                      functionNames: [rank, dense_rank, cume_dist, percent_rank, ntile, count, avg, stddev_pop, first_value, last_value]
+                      keyInputColumns: [1, 0]
+                      native: true
+                      nonKeyInputColumns: [2]
+                      orderExpressions: [col 1:string]
+                      outputColumns: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 0, 2]
+                      outputTypes: [int, int, double, double, int, bigint, double, double, int, int, string, string, int]
+                      partitionExpressions: [col 0:string]
+                      streamingColumns: [3, 4, 5, 6, 7, 11]
                   Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                   Select Operator
                     expressions: rank_window_0 (type: int), dense_rank_window_1 (type: int), cume_dist_window_2 (type: double), percent_rank_window_3 (type: double), ntile_window_4 (type: int), count_window_5 (type: bigint), avg_window_6 (type: double), stddev_pop_window_7 (type: double), first_value_window_8 (type: int), last_value_window_9 (type: int), _col1 (type: string), _col2 (type: string), _col5 (type: int)
                     outputColumnNames: rank_window_0, dense_rank_window_1, cume_dist_window_2, percent_rank_window_3, ntile_window_4, count_window_5, avg_window_6, stddev_pop_window_7, first_value_window_8, last_value_window_9, _col1, _col2, _col5
+                    Select Vectorization:
+                        className: VectorSelectOperator
+                        native: true
+                        projectedOutputColumnNums: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 0, 2]
                     Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                     Reduce Output Operator
                       key expressions: _col2 (type: string), _col1 (type: string)
                       null sort order: zz
                       sort order: ++
                       Map-reduce partition columns: _col2 (type: string)
+                      Reduce Sink Vectorization:
+                          className: VectorReduceSinkObjectHashOperator
+                          keyColumns: 0:string, 1:string
+                          native: true
+                          nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                          partitionColumns: 0:string
+                          valueColumns: 3:int, 4:int, 5:double, 6:double, 7:int, 8:bigint, 9:double, 10:double, 11:int, 12:int, 2:int
                       Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                       value expressions: rank_window_0 (type: int), dense_rank_window_1 (type: int), cume_dist_window_2 (type: double), percent_rank_window_3 (type: double), ntile_window_4 (type: int), count_window_5 (type: bigint), avg_window_6 (type: double), stddev_pop_window_7 (type: double), first_value_window_8 (type: int), last_value_window_9 (type: int), _col5 (type: int)
         Reducer 3 
@@ -3543,16 +3580,28 @@ STAGE PLANS:
                     partitionColumnCount: 0
                     scratchColumnTypeNames: []
         Reducer 2 
-            Execution mode: llap
+            Execution mode: vectorized, llap
             Reduce Vectorization:
                 enabled: true
                 enableConditionsMet: hive.vectorized.execution.reduce.enabled IS true, hive.execution.engine tez IN [tez] IS true
-                notVectorizedReason: PTF operator: cume_dist not in supported functions [avg, count, dense_rank, first_value, lag, last_value, lead, max, min, rank, row_number, sum]
-                vectorized: false
+                reduceColumnNullOrder: az
+                reduceColumnSortOrder: ++
+                allNative: true
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 3
+                    dataColumns: KEY.reducesinkkey0:string, KEY.reducesinkkey1:string, VALUE._col3:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: [bigint, bigint, double, bigint]
             Reduce Operator Tree:
               Select Operator
                 expressions: KEY.reducesinkkey1 (type: string), KEY.reducesinkkey0 (type: string), VALUE._col3 (type: int)
                 outputColumnNames: _col1, _col2, _col5
+                Select Vectorization:
+                    className: VectorSelectOperator
+                    native: true
+                    projectedOutputColumnNums: [1, 0, 2]
                 Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                 PTF Operator
                   Function definitions:
@@ -3594,16 +3643,41 @@ STAGE PLANS:
                               name: sum
                               window function: GenericUDAFSumLong
                               window frame: RANGE PRECEDING(MAX)~CURRENT
+                  PTF Vectorization:
+                      allEvaluatorsAreStreaming: false
+                      className: VectorPTFOperator
+                      evaluatorClasses: [VectorPTFEvaluatorRank, VectorPTFEvaluatorDenseRank, VectorPTFEvaluatorCumeDist, VectorPTFEvaluatorLongSum]
+                      functionInputExpressions: [col 1:string, col 1:string, col 1:string, col 2:int]
+                      functionNames: [rank, dense_rank, cume_dist, sum]
+                      keyInputColumns: [1, 0]
+                      native: true
+                      nonKeyInputColumns: [2]
+                      orderExpressions: [col 1:string]
+                      outputColumns: [3, 4, 5, 6, 1, 0, 2]
+                      outputTypes: [int, int, double, bigint, string, string, int]
+                      partitionExpressions: [col 0:string]
+                      streamingColumns: [3, 4, 5]
                   Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                   Select Operator
                     expressions: rank_window_0 (type: int), dense_rank_window_1 (type: int), cume_dist_window_2 (type: double), sum_window_3 (type: bigint), _col1 (type: string), _col2 (type: string), _col5 (type: int)
                     outputColumnNames: rank_window_0, dense_rank_window_1, cume_dist_window_2, sum_window_3, _col1, _col2, _col5
+                    Select Vectorization:
+                        className: VectorSelectOperator
+                        native: true
+                        projectedOutputColumnNums: [3, 4, 5, 6, 1, 0, 2]
                     Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                     Reduce Output Operator
                       key expressions: _col2 (type: string), _col5 (type: int)
                       null sort order: az
                       sort order: ++
                       Map-reduce partition columns: _col2 (type: string)
+                      Reduce Sink Vectorization:
+                          className: VectorReduceSinkObjectHashOperator
+                          keyColumns: 0:string, 2:int
+                          native: true
+                          nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                          partitionColumns: 0:string
+                          valueColumns: 3:int, 4:int, 5:double, 6:bigint, 1:string
                       Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                       value expressions: rank_window_0 (type: int), dense_rank_window_1 (type: int), cume_dist_window_2 (type: double), sum_window_3 (type: bigint), _col1 (type: string)
         Reducer 3 
@@ -5278,7 +5352,7 @@ POSTHOOK: Output: database:default
 POSTHOOK: Output: default@mfgr_brand_price_view_n0
 POSTHOOK: Lineage: mfgr_brand_price_view_n0.p_brand SIMPLE [(part)part.FieldSchema(name:p_brand, type:string, comment:null), ]
 POSTHOOK: Lineage: mfgr_brand_price_view_n0.p_mfgr SIMPLE [(part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
-POSTHOOK: Lineage: mfgr_brand_price_view_n0.s SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
+POSTHOOK: Lineage: mfgr_brand_price_view_n0.s EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), ]
 p_mfgr	p_brand	s
 PREHOOK: query: explain vectorization detail
 select * from mfgr_brand_price_view_n0
@@ -6166,16 +6240,28 @@ STAGE PLANS:
                         output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
                         serde: org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe
         Reducer 4 
-            Execution mode: llap
+            Execution mode: vectorized, llap
             Reduce Vectorization:
                 enabled: true
                 enableConditionsMet: hive.vectorized.execution.reduce.enabled IS true, hive.execution.engine tez IN [tez] IS true
-                notVectorizedReason: PTF operator: cume_dist not in supported functions [avg, count, dense_rank, first_value, lag, last_value, lead, max, min, rank, row_number, sum]
-                vectorized: false
+                reduceColumnNullOrder: az
+                reduceColumnSortOrder: ++
+                allNative: true
+                usesVectorUDFAdaptor: false
+                vectorized: true
+                rowBatchContext:
+                    dataColumnCount: 3
+                    dataColumns: KEY.reducesinkkey0:string, KEY.reducesinkkey1:string, VALUE._col3:int
+                    partitionColumnCount: 0
+                    scratchColumnTypeNames: [bigint, bigint, double]
             Reduce Operator Tree:
               Select Operator
                 expressions: KEY.reducesinkkey1 (type: string), KEY.reducesinkkey0 (type: string), VALUE._col3 (type: int)
                 outputColumnNames: _col1, _col2, _col5
+                Select Vectorization:
+                    className: VectorSelectOperator
+                    native: true
+                    projectedOutputColumnNums: [1, 0, 2]
                 Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                 PTF Operator
                   Function definitions:
@@ -6211,16 +6297,41 @@ STAGE PLANS:
                               window function: GenericUDAFCumeDistEvaluator
                               window frame: ROWS PRECEDING(MAX)~FOLLOWING(MAX)
                               isPivotResult: true
+                  PTF Vectorization:
+                      allEvaluatorsAreStreaming: false
+                      className: VectorPTFOperator
+                      evaluatorClasses: [VectorPTFEvaluatorRank, VectorPTFEvaluatorDenseRank, VectorPTFEvaluatorCumeDist]
+                      functionInputExpressions: [col 1:string, col 1:string, col 1:string]
+                      functionNames: [rank, dense_rank, cume_dist]
+                      keyInputColumns: [1, 0]
+                      native: true
+                      nonKeyInputColumns: [2]
+                      orderExpressions: [col 1:string]
+                      outputColumns: [3, 4, 5, 1, 0, 2]
+                      outputTypes: [int, int, double, string, string, int]
+                      partitionExpressions: [col 0:string]
+                      streamingColumns: [3, 4, 5]
                   Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                   Select Operator
                     expressions: rank_window_0 (type: int), dense_rank_window_1 (type: int), cume_dist_window_2 (type: double), _col1 (type: string), _col2 (type: string), _col5 (type: int)
                     outputColumnNames: rank_window_0, dense_rank_window_1, cume_dist_window_2, _col1, _col2, _col5
+                    Select Vectorization:
+                        className: VectorSelectOperator
+                        native: true
+                        projectedOutputColumnNums: [3, 4, 5, 1, 0, 2]
                     Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                     Reduce Output Operator
                       key expressions: _col2 (type: string), _col5 (type: int)
                       null sort order: az
                       sort order: ++
                       Map-reduce partition columns: _col2 (type: string)
+                      Reduce Sink Vectorization:
+                          className: VectorReduceSinkObjectHashOperator
+                          keyColumns: 0:string, 2:int
+                          native: true
+                          nativeConditionsMet: hive.vectorized.execution.reducesink.new.enabled IS true, hive.execution.engine tez IN [tez] IS true, No PTF TopN IS true, No DISTINCT columns IS true, BinarySortableSerDe for keys IS true, LazyBinarySerDe for values IS true
+                          partitionColumns: 0:string
+                          valueColumns: 3:int, 4:int, 5:double, 1:string
                       Statistics: Num rows: 26 Data size: 5798 Basic stats: COMPLETE Column stats: COMPLETE
                       value expressions: rank_window_0 (type: int), dense_rank_window_1 (type: int), cume_dist_window_2 (type: double), _col1 (type: string)
         Reducer 5 
@@ -6662,23 +6773,23 @@ POSTHOOK: Input: default@part
 POSTHOOK: Output: default@part_1_n0
 POSTHOOK: Output: default@part_2_n0
 POSTHOOK: Output: default@part_3_n0
-POSTHOOK: Lineage: part_1_n0.dr SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
+POSTHOOK: Lineage: part_1_n0.dr EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
 POSTHOOK: Lineage: part_1_n0.p_mfgr SIMPLE [(part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
 POSTHOOK: Lineage: part_1_n0.p_name SIMPLE [(part)part.FieldSchema(name:p_name, type:string, comment:null), ]
 POSTHOOK: Lineage: part_1_n0.p_size SIMPLE [(part)part.FieldSchema(name:p_size, type:int, comment:null), ]
-POSTHOOK: Lineage: part_1_n0.r SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_1_n0.s SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_2_n0.cud SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_2_n0.dr SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_2_n0.fv1 SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
+POSTHOOK: Lineage: part_1_n0.r EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
+POSTHOOK: Lineage: part_1_n0.s EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
+POSTHOOK: Lineage: part_2_n0.cud EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
+POSTHOOK: Lineage: part_2_n0.dr EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
+POSTHOOK: Lineage: part_2_n0.fv1 EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), ]
 POSTHOOK: Lineage: part_2_n0.p_mfgr SIMPLE [(part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
 POSTHOOK: Lineage: part_2_n0.p_name SIMPLE [(part)part.FieldSchema(name:p_name, type:string, comment:null), ]
 POSTHOOK: Lineage: part_2_n0.p_size SIMPLE [(part)part.FieldSchema(name:p_size, type:int, comment:null), ]
-POSTHOOK: Lineage: part_2_n0.r SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_2_n0.s2 SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_3_n0.c SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_3_n0.ca SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
-POSTHOOK: Lineage: part_3_n0.fv SCRIPT [(part)part.FieldSchema(name:p_partkey, type:int, comment:null), (part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_brand, type:string, comment:null), (part)part.FieldSchema(name:p_type, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), (part)part.FieldSchema(name:p_container, type:string, comment:null), (part)part.FieldSchema(name:p_retailprice, type:double, comment:null), (part)part.FieldSchema(name:p_comment, type:string, comment:null), ]
+POSTHOOK: Lineage: part_2_n0.r EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
+POSTHOOK: Lineage: part_2_n0.s2 EXPRESSION [(part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), ]
+POSTHOOK: Lineage: part_3_n0.c EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
+POSTHOOK: Lineage: part_3_n0.ca EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
+POSTHOOK: Lineage: part_3_n0.fv EXPRESSION [(part)part.FieldSchema(name:p_name, type:string, comment:null), (part)part.FieldSchema(name:p_mfgr, type:string, comment:null), (part)part.FieldSchema(name:p_size, type:int, comment:null), ]
 POSTHOOK: Lineage: part_3_n0.p_mfgr SIMPLE [(part)part.FieldSchema(name:p_mfgr, type:string, comment:null), ]
 POSTHOOK: Lineage: part_3_n0.p_name SIMPLE [(part)part.FieldSchema(name:p_name, type:string, comment:null), ]
 POSTHOOK: Lineage: part_3_n0.p_size SIMPLE [(part)part.FieldSchema(name:p_size, type:int, comment:null), ]

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common.jsonexplain;
@@ -171,15 +172,14 @@ public final class Vertex implements Comparable<Vertex>{
         for (String attrName : JSONObject.getNames(attrObj)) {
           if (attrName.equals("children")) {
             Object childrenObj = attrObj.get(attrName);
-            if (childrenObj instanceof JSONObject) {
-              if (((JSONObject) childrenObj).length() != 0) {
-                children.add(extractOp((JSONObject) childrenObj, op));
+            if (childrenObj instanceof JSONObject nObject) {
+              if (nObject.length() != 0) {
+                children.add(extractOp(nObject, op));
               }
-            } else if (childrenObj instanceof JSONArray) {
-              if (((JSONArray) childrenObj).length() != 0) {
-                JSONArray array = ((JSONArray) childrenObj);
-                for (int index = 0; index < array.length(); index++) {
-                  children.add(extractOp(array.getJSONObject(index), op));
+            } else if (childrenObj instanceof JSONArray nArray) {
+              if (nArray.length() != 0) {
+                for (int index = 0; index < nArray.length(); index++) {
+                  children.add(extractOp(nArray.getJSONObject(index), op));
                 }
               }
             } else {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -33,6 +34,7 @@ import org.apache.hadoop.hive.metastore.client.builder.DatabaseBuilder;
 import org.apache.hadoop.hive.metastore.client.builder.PartitionBuilder;
 import org.apache.hadoop.hive.metastore.client.builder.TableBuilder;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.hive.metastore.events.EventCleanerTask;
 import org.apache.thrift.TException;
 import org.junit.Assert;
 import org.junit.Before;
@@ -57,6 +59,8 @@ public class TestMarkPartition {
 
   @Test
   public void testMarkingPartitionSet() throws TException, InterruptedException {
+    EventCleanerTask cleanerTask = new EventCleanerTask();
+    cleanerTask.setConf(conf);
     HiveMetaStoreClient msc = new HiveMetaStoreClient(conf);
 
     final String dbName = "hive2215";
@@ -83,7 +87,8 @@ public class TestMarkPartition {
     kvs.put("b", "'2011'");
     msc.markPartitionForEvent(dbName, tableName, kvs, PartitionEventType.LOAD_DONE);
     Assert.assertTrue(msc.isPartitionMarkedForEvent(dbName, tableName, kvs, PartitionEventType.LOAD_DONE));
-    Thread.sleep(10000);
+    Thread.sleep(3000);
+    cleanerTask.run();
     Assert.assertFalse(msc.isPartitionMarkedForEvent(dbName, tableName, kvs, PartitionEventType.LOAD_DONE));
 
     kvs.put("b", "'2012'");

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.calcite;
@@ -30,12 +31,12 @@ public class CalciteSemanticException extends SemanticException {
   private static final long serialVersionUID = 1L;
 
   public enum UnsupportedFeature {
-    Distinct_without_an_aggregation, Duplicates_in_RR, Filter_expression_with_non_boolean_return_type,
+    Distinct_without_an_aggregation, Duplicates_in_RR,
     Having_clause_without_any_groupby, Invalid_column_reference, Invalid_decimal,
     Less_than_equal_greater_than, Others, Same_name_in_multiple_expressions,
-    Schema_less_table, Select_alias_in_having_clause, Select_transform, Subquery,
-    Table_sample_clauses, UDTF, Union_type, Unique_join,
-    HighPrecissionTimestamp // CALCITE-1690
+    Select_alias_in_having_clause, Select_transform, Subquery,
+    Table_sample_clauses, UDTF, Unique_join,
+    HighPrecisionTimestamp // CALCITE-1690
   };
 
   private UnsupportedFeature unsupportedFeature;

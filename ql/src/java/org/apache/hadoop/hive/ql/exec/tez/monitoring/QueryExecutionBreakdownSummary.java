@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.tez.monitoring;
 
@@ -68,7 +69,7 @@ class QueryExecutionBreakdownSummary implements PrintSummary {
     console.printInfo(format("Compile Query", compile));
 
     // prepare plan for submission (building DAG, adding resources, creating scratch dirs etc.)
-    long totalDAGPrep = dagSubmitStartTime - compileEndTime - getSessionDuration;
+    long totalDAGPrep = perfLogger.getPreparePlanDuration();
     console.printInfo(format("Prepare Plan", totalDAGPrep));
     console.printInfo(format("Get Query Coordinator (AM)", getSessionDuration));
 
@@ -80,14 +81,7 @@ class QueryExecutionBreakdownSummary implements PrintSummary {
     // accept to start dag (schedule wait time, resource wait time etc.)
     console.printInfo(format("Start DAG", submitToRunningDuration));
 
-    // time to actually run the dag (actual dag runtime)
-    final long startToEnd;
-    if (submitToRunningDuration == 0) {
-      startToEnd = perfLogger.getDuration(PerfLogger.TEZ_RUN_DAG);
-    } else {
-      startToEnd = perfLogger.getEndTime(PerfLogger.TEZ_RUN_DAG) -
-          perfLogger.getEndTime(PerfLogger.TEZ_SUBMIT_TO_RUNNING);
-    }
+    final long startToEnd = perfLogger.getRunDagDuration();
     console.printInfo(format("Run DAG", startToEnd));
     console.printInfo(SEPARATOR);
     console.printInfo("");

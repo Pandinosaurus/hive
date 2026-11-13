@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service.cli.session;
@@ -26,7 +27,6 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.hadoop.hive.common.metrics.MetricsTestUtils;
 import org.apache.hadoop.hive.common.metrics.common.MetricsConstant;
 import org.apache.hadoop.hive.common.metrics.common.MetricsFactory;
@@ -34,6 +34,7 @@ import org.apache.hadoop.hive.common.metrics.metrics2.CodahaleMetrics;
 import org.apache.hadoop.hive.common.metrics.metrics2.MetricsReporting;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.metadata.Hive;
+import org.apache.hadoop.hive.common.IPStackUtils;
 import org.apache.hive.service.cli.FetchOrientation;
 import org.apache.hive.service.cli.HiveSQLException;
 import org.apache.hive.service.cli.OperationHandle;
@@ -44,7 +45,6 @@ import org.apache.hive.service.cli.TableSchema;
 import org.apache.hive.service.cli.operation.MetadataOperation;
 import org.apache.hive.service.cli.operation.OperationManager;
 import org.apache.hive.service.rpc.thrift.TProtocolVersion;
-import org.apache.hive.service.server.HiveServer2;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,11 +76,12 @@ public class TestSessionManagerMetrics {
     conf.setBoolVar(HiveConf.ConfVars.HIVE_SERVER2_METRICS_ENABLED, true);
     conf.setBoolVar(HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY, false);
     conf.setVar(HiveConf.ConfVars.HIVE_METRICS_REPORTER, MetricsReporting.JSON_FILE.name() + "," + MetricsReporting.JMX.name());
-    conf.setBoolVar(HiveConf.ConfVars.HIVEOPTIMIZEMETADATAQUERIES, false);
+    conf.setBoolVar(HiveConf.ConfVars.HIVE_OPTIMIZE_METADATA_QUERIES, false);
     //NOTES: If we enable operation log, SessionManager will delete operation logs directory on exit,
     //it maybe impact TestSessionCleanup, because they use the same location ConfVars.HIVE_SERVER2_LOGGING_OPERATION_LOG_LOCATION,
     // when we run testing in parallel on local machine with -DforkCount=x, it happen.
     conf.setBoolVar(HiveConf.ConfVars.HIVE_SERVER2_LOGGING_OPERATION_ENABLED, false);
+    conf.setIntVar(HiveConf.ConfVars.HIVE_SERVER2_LIMIT_CONNECTIONS_PER_USER, 2);
     MetricsFactory.init(conf);
 
     sm = new SessionManager(null, true);
@@ -209,13 +210,13 @@ public class TestSessionManagerMetrics {
     MetricsTestUtils.verifyMetricsJson(json, MetricsTestUtils.GAUGE, MetricsConstant.HS2_OPEN_SESSIONS, 0);
 
     SessionHandle handle =
-        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", IPStackUtils.resolveLoopbackAddress(),
             new HashMap<String, String>());
 
     json = metrics.dumpJson();
     MetricsTestUtils.verifyMetricsJson(json, MetricsTestUtils.GAUGE, MetricsConstant.HS2_OPEN_SESSIONS, 1);
 
-    sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+    sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", IPStackUtils.resolveLoopbackAddress(),
         new HashMap<String, String>());
 
     json = metrics.dumpJson();
@@ -236,7 +237,7 @@ public class TestSessionManagerMetrics {
 
     long firstSessionOpen = System.currentTimeMillis();
     SessionHandle handle =
-        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", IPStackUtils.resolveLoopbackAddress(),
             new HashMap<String, String>());
 
     json = metrics.dumpJson();
@@ -244,7 +245,7 @@ public class TestSessionManagerMetrics {
         (double)(System.currentTimeMillis() - firstSessionOpen), 100d);
 
     long secondSessionOpen = System.currentTimeMillis();
-    sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+    sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", IPStackUtils.resolveLoopbackAddress(),
         new HashMap<String, String>());
 
     json = metrics.dumpJson();
@@ -270,7 +271,7 @@ public class TestSessionManagerMetrics {
     MetricsTestUtils.verifyMetricsJson(json, MetricsTestUtils.GAUGE, MetricsConstant.HS2_ACTIVE_SESSIONS, 0);
 
     SessionHandle handle =
-        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", IPStackUtils.resolveLoopbackAddress(),
             new HashMap<String, String>());
 
     final HiveSession session = sm.getSession(handle);
@@ -324,7 +325,7 @@ public class TestSessionManagerMetrics {
         MetricsConstant.HS2_AVG_ACTIVE_SESSION_TIME, "NaN");
 
     SessionHandle handle =
-        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", IPStackUtils.resolveLoopbackAddress(),
             new HashMap<String, String>());
 
     final HiveSession session = sm.getSession(handle);
@@ -378,7 +379,7 @@ public class TestSessionManagerMetrics {
     String json = metrics.dumpJson();
     MetricsTestUtils.verifyMetricsJson(json, MetricsTestUtils.COUNTER, MetricsConstant.HS2_ABANDONED_SESSIONS, "");
 
-    sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+    sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", IPStackUtils.resolveLoopbackAddress(),
                     new HashMap<String, String>());
 
     // We're going to wait for the session to be abandoned.
@@ -396,5 +397,34 @@ public class TestSessionManagerMetrics {
       // loop until the value is correct or we run out of tries
     } while (!expectedValue.equals(currentValue) && --count > 0);
     Assert.assertEquals(expectedValue, currentValue);
+  }
+
+  @Test
+  public void testSessionLimitsPerUserWhenSessionCreationFails() throws Exception {
+    sm.start();
+    HashMap<String, String> sessionConf = new HashMap<>(1);
+    // modifying this property at runtime is not allowed, it will throw exception and session will not be created
+    sessionConf.put("hive.conf.locked.list", "test");
+    for (int i = 0; i < 3; i++) {
+      try {
+        sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1", sessionConf);
+      } catch (HiveSQLException e) {
+        // Here 'hive.server2.limit.connections.per.user' property value set as 2 so when we create 3 sessions, for all 3 sessions it should throw exception with failure reason
+        // It should not throw exception with 'Connection limit per user reached (user: user limit: 2)' message
+        Assert.assertEquals(
+            "Failed to open new session: Cannot modify hive.conf.locked.list at runtime. It is in the list of parameters that can't be modified at runtime or is prefixed by a restricted variable",
+            e.getMessage());
+      }
+    }
+    SessionHandle handle = null;
+    // After 3 unsuccessful session creations now session creation with proper details should be able to create the session
+    try {
+      handle = sm.openSession(TProtocolVersion.HIVE_CLI_SERVICE_PROTOCOL_V9, "user", "passw", "127.0.0.1",
+          new HashMap<String, String>());
+    } finally {
+      if (null != handle) {
+        sm.closeSession(handle);
+      }
+    }
   }
 }

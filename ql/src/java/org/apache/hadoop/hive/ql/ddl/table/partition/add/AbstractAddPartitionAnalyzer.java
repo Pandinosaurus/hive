@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.partition.add;
@@ -29,7 +30,6 @@ import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.ddl.DDLWork;
-import org.apache.hadoop.hive.ql.ddl.DDLDesc.DDLDescWithWriteId;
 import org.apache.hadoop.hive.ql.ddl.table.AbstractAlterTableAnalyzer;
 import org.apache.hadoop.hive.ql.ddl.table.AlterTableType;
 import org.apache.hadoop.hive.ql.ddl.table.partition.PartitionUtils;
@@ -119,7 +119,7 @@ abstract class AbstractAddPartitionAnalyzer extends AbstractAlterTableAnalyzer {
   private AlterTableAddPartitionDesc.PartitionDesc createPartitionDesc(Table table, String location,
       Map<String, String> partitionSpec) {
     Map<String, String> params = null;
-    if (conf.getBoolVar(HiveConf.ConfVars.HIVESTATSAUTOGATHER) && location == null) {
+    if (conf.getBoolVar(HiveConf.ConfVars.HIVE_STATS_AUTOGATHER) && location == null) {
       params = new HashMap<String, String>();
       StatsSetupConst.setStatsStateForCreateTable(params,
           MetaStoreUtils.getColumnNames(table.getCols()), StatsSetupConst.TRUE);

@@ -9,38 +9,42 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.reloperators;
 
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelCollation;
+import org.apache.calcite.rel.RelInput;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelShuttle;
-import org.apache.calcite.rel.RelWriter;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexUtil;
-import org.apache.calcite.sql.SqlExplainLevel;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
 import org.apache.calcite.util.Util;
 import org.apache.hadoop.hive.ql.optimizer.calcite.CalciteSemanticException;
 import org.apache.hadoop.hive.ql.optimizer.calcite.CalciteSemanticException.UnsupportedFeature;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelShuttle;
 import org.apache.hadoop.hive.ql.optimizer.calcite.TraitsUtil;
+import org.apache.hadoop.hive.ql.optimizer.calcite.correlation.CorrelationInfoVisitor;
+import org.apache.hadoop.hive.ql.optimizer.calcite.correlation.HiveCorrelationInfo;
 
 public class HiveProject extends Project implements HiveRelNode {
 
-  private boolean isSysnthetic;
+  // Information about correlations within a subquery.
+  private final CorrelationInfoSupplier correlationInfos;
 
   /**
    * Creates a HiveProject.
@@ -56,7 +60,16 @@ public class HiveProject extends Project implements HiveRelNode {
   public HiveProject(RelOptCluster cluster, RelTraitSet traitSet, RelNode child, List<? extends RexNode> exps,
       RelDataType rowType) {
     super(cluster, traitSet, child, exps, rowType);
+    this.correlationInfos = new CorrelationInfoSupplier(getProjects());
     assert traitSet.containsIfApplicable(HiveRelNode.CONVENTION);
+  }
+
+  public HiveProject(RelInput input) {
+    this(input.getCluster(),
+        TraitsUtil.getDefaultTraitSet(input.getCluster()),
+        input.getInput(),
+        input.getExpressionList("exprs"),
+        input.getRowType("exprs", "fields"));
   }
 
   /**
@@ -103,26 +116,7 @@ public class HiveProject extends Project implements HiveRelNode {
   @Override
   public Project copy(RelTraitSet traitSet, RelNode input, List<RexNode> exps, RelDataType rowType) {
     assert traitSet.containsIfApplicable(HiveRelNode.CONVENTION);
-    HiveProject hp = new HiveProject(getCluster(), traitSet, input, exps, rowType);
-    if (this.isSynthetic()) {
-      hp.setSynthetic();
-    }
-
-    return hp;
-  }
-
-  @Override
-  public void implement(Implementor implementor) {
-  }
-
-  // TODO: this should come through RelBuilder to the constructor as opposed to
-  // set method. This requires calcite change
-  public void setSynthetic() {
-    this.isSysnthetic = true;
-  }
-
-  public boolean isSynthetic() {
-    return isSysnthetic;
+    return new HiveProject(getCluster(), traitSet, input, exps, rowType);
   }
 
   //required for HiveRelDecorrelator
@@ -133,9 +127,30 @@ public class HiveProject extends Project implements HiveRelNode {
     return shuttle.visit(this);
   }
 
-  @Override
-  public RelWriter explainTerms(RelWriter pw) {
-    return super.explainTerms(pw)
-        .itemIf("synthetic", this.isSysnthetic, pw.getDetailLevel() == SqlExplainLevel.DIGEST_ATTRIBUTES);
+  public List<HiveCorrelationInfo> getCorrelationInfos() {
+    return correlationInfos.get();
+  }
+
+  /**
+   * CorrelationInfoSupplier allows for a lazy fetch so that the HiveCorrelationInfo
+   * only gets retrieved on demand.
+   */
+  private static class CorrelationInfoSupplier {
+    public final List<RexNode> projects;
+    private List<HiveCorrelationInfo> correlationInfos;
+
+    public CorrelationInfoSupplier(List<RexNode> projects) {
+      this.projects = projects;
+    }
+
+    public List<HiveCorrelationInfo> get() {
+      if (correlationInfos == null) {
+        correlationInfos = new ArrayList<>();
+        for (RexNode r : projects) {
+          correlationInfos.addAll(CorrelationInfoVisitor.getCorrelationInfos(r));
+        }
+      }
+      return correlationInfos;
+    }
   }
 }

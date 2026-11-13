@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -27,6 +28,9 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.apache.hadoop.hive.ql.exec.tez.ReduceRecordSource;
+import org.apache.hadoop.hive.ql.exec.tez.monitoring.SkewedJoinMonitor;
+import org.apache.hadoop.hive.ql.exec.tez.monitoring.SkewedMergeJoinMonitor;
+import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.util.NullOrdering;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.slf4j.Logger;
@@ -40,7 +44,6 @@ import org.apache.hadoop.hive.ql.exec.tez.RecordSource;
 import org.apache.hadoop.hive.ql.exec.tez.TezContext;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.plan.CommonMergeJoinDesc;
-import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.JoinCondDesc;
 import org.apache.hadoop.hive.ql.plan.JoinDesc;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
@@ -97,6 +100,10 @@ public class CommonMergeJoinOperator extends AbstractMapJoinOperator<CommonMerge
   transient NullOrdering nullOrdering;
   transient private boolean shortcutUnmatchedRows;
 
+  transient SkewedJoinMonitor skewedMergeJoinMonitor;
+  transient String[] joinSkewKeyColumns;
+  transient String[] joinSkewTableAliases;
+
   /** Kryo ctor. */
   protected CommonMergeJoinOperator() {
     super();
@@ -136,13 +143,20 @@ public class CommonMergeJoinOperator extends AbstractMapJoinOperator<CommonMerge
 
     int bucketSize;
 
-    int oldVar = HiveConf.getIntVar(hconf, HiveConf.ConfVars.HIVEMAPJOINBUCKETCACHESIZE);
+    int oldVar = HiveConf.getIntVar(hconf, HiveConf.ConfVars.HIVE_MAPJOIN_BUCKET_CACHE_SIZE);
     shortcutUnmatchedRows = HiveConf.getBoolVar(hconf, HiveConf.ConfVars.HIVE_JOIN_SHORTCUT_UNMATCHED_ROWS);
+
+    skewedMergeJoinMonitor = SkewedMergeJoinMonitor.createSkewedJoinMonitor(
+        HiveConf.getLongVar(hconf, HiveConf.ConfVars.HIVE_MERGE_JOIN_SKEW_THRESHOLD),
+        HiveConf.getBoolVar(hconf, HiveConf.ConfVars.HIVE_MERGE_JOIN_SKEW_ABORT),
+        HiveConf.getLongVar(hconf, HiveConf.ConfVars.HIVE_MERGE_JOIN_SKEW_CHECK_INTERVAL), maxAlias);
+
+    initSkewJoinNames(maxAlias);
 
     if (oldVar != 100) {
       bucketSize = oldVar;
     } else {
-      bucketSize = HiveConf.getIntVar(hconf, HiveConf.ConfVars.HIVESMBJOINCACHEROWS);
+      bucketSize = HiveConf.getIntVar(hconf, HiveConf.ConfVars.HIVE_SMBJOIN_CACHE_ROWS);
     }
 
     for (byte pos = 0; pos < order.length; pos++) {
@@ -220,6 +234,23 @@ public class CommonMergeJoinOperator extends AbstractMapJoinOperator<CommonMerge
     }
 
     return retval;
+  }
+
+  private void initSkewJoinNames(int maxAlias) {
+    joinSkewKeyColumns = new String[maxAlias];
+    joinSkewTableAliases = new String[maxAlias];
+
+    String[] descKeyNames = conf.getSkewJoinKeyNames();
+    String[] descTableAliases = conf.getSkewJoinTableAliases();
+
+    for (int pos = 0; pos < maxAlias; pos++) {
+      joinSkewKeyColumns[pos] =
+          (descKeyNames != null && pos < descKeyNames.length && descKeyNames[pos] != null) ? descKeyNames[pos]
+              : "unknown";
+      joinSkewTableAliases[pos] =
+          (descTableAliases != null && pos < descTableAliases.length && descTableAliases[pos] != null)
+              ? descTableAliases[pos] : "unknown";
+    }
   }
 
   @Override
@@ -322,6 +353,9 @@ public class CommonMergeJoinOperator extends AbstractMapJoinOperator<CommonMerge
 
     assert !nextKeyGroup;
     candidateStorage[tag].addRow(value);
+
+    skewedMergeJoinMonitor.checkMergeJoinSkew(alias, candidateStorage[tag].rowCount(),
+        joinSkewKeyColumns[alias], joinSkewTableAliases[alias]);
   }
 
   private void emitUnmatchedRows(int tag, boolean force) throws HiveException {
@@ -428,7 +462,8 @@ public class CommonMergeJoinOperator extends AbstractMapJoinOperator<CommonMerge
 
   private void putDummyOrEmpty(Byte i) {
     // put a empty list or null
-    if (noOuterJoin) {
+    boolean isRightOfAntiJoin = (i != 0 && condn[i-1].getType() == JoinDesc.ANTI_JOIN);
+    if (noOuterJoin || isRightOfAntiJoin) {
       storage[i] = emptyList;
     } else {
       storage[i] = dummyObjVectors[i];

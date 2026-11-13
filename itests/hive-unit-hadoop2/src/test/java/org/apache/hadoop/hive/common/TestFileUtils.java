@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
  
 package org.apache.hadoop.hive.common;
@@ -31,6 +32,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.hive.common.DataCopyStatistics;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -62,8 +64,9 @@ public class TestFileUtils {
     Path copyDst = new Path(basePath, "copyDst");
     try {
       fs.create(new Path(basePath, new Path(copySrc, file1Name))).close();
+      DataCopyStatistics copyStatistics = new DataCopyStatistics();
       Assert.assertTrue("FileUtils.copy failed to copy data",
-              FileUtils.copy(fs, copySrc, fs, copyDst, false, false, conf));
+              FileUtils.copy(fs, copySrc, fs, copyDst, false, false, conf, copyStatistics));
 
       Path dstFileName1 = new Path(copyDst, file1Name);
       Assert.assertTrue(fs.exists(new Path(copyDst, file1Name)));
@@ -86,13 +89,15 @@ public class TestFileUtils {
     setXAttrsRecursive(src);
     Path dst = new Path(basePath, "dst.txt");
     Assert.assertFalse(fs.exists(dst));
-    Assert.assertTrue(FileUtils.copy(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf));
+    DataCopyStatistics copyStatistics = new DataCopyStatistics();
+    Assert.assertTrue(FileUtils.doIOUtilsCopyBytes(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf, copyStatistics));
     Assert.assertTrue(fs.exists(dst));
     verifyXAttrsPreserved(src, dst);
     //Case 2) src is file and dst directory does not exist.
     dst = new Path(basePath, "dummyDstDir");
     Assert.assertFalse(fs.exists(dst));
-    Assert.assertTrue(FileUtils.copy(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf));
+    copyStatistics = new DataCopyStatistics();
+    Assert.assertTrue(FileUtils.doIOUtilsCopyBytes(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf, copyStatistics));
     Assert.assertTrue(fs.exists(dst));
     Assert.assertTrue(fs.exists(new Path(dst, new Path(basePath, "src.txt"))));
     verifyXAttrsPreserved(src, dst);
@@ -100,7 +105,8 @@ public class TestFileUtils {
     dst = new Path(basePath, "dummyDstDir1");
     fs.mkdirs(dst);
     Assert.assertTrue(fs.exists(dst));
-    Assert.assertTrue(FileUtils.copy(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf));
+    copyStatistics = new DataCopyStatistics();
+    Assert.assertTrue(FileUtils.doIOUtilsCopyBytes(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf, copyStatistics));
     Assert.assertTrue(fs.exists(dst));
     Assert.assertTrue(fs.exists(new Path(dst, "src.txt")));
     verifyXAttrsPreserved(src, new Path(dst, "src.txt"));
@@ -110,7 +116,8 @@ public class TestFileUtils {
     fs.create(new Path(src, "src.txt"));
     setXAttrsRecursive(src);
     Assert.assertFalse(fs.exists(dst));
-    Assert.assertTrue(FileUtils.copy(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf));
+    copyStatistics = new DataCopyStatistics();
+    Assert.assertTrue(FileUtils.doIOUtilsCopyBytes(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf, copyStatistics));
     Assert.assertTrue(fs.exists(dst));
     Assert.assertTrue(fs.exists(new Path(dst, "src.txt")));
     verifyXAttrsPreserved(src, dst);
@@ -121,9 +128,25 @@ public class TestFileUtils {
     fs.mkdirs(dst);
     setXAttrsRecursive(src);
     Assert.assertTrue(fs.exists(dst));
-    Assert.assertTrue(FileUtils.copy(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf));
+    copyStatistics = new DataCopyStatistics();
+    Assert.assertTrue(FileUtils.doIOUtilsCopyBytes(fs, fs.getFileStatus(src), fs, dst, false, true, true, conf, copyStatistics));
     Assert.assertTrue(fs.exists(new Path(dst, "dummySrcDir3/src.txt")));
     verifyXAttrsPreserved(src, new Path(dst, src.getName()));
+  }
+
+  @Test
+  public void testShouldPreserveXAttrs() throws Exception {
+    conf.setBoolean(HiveConf.ConfVars.DFS_XATTR_ONLY_SUPPORTED_ON_RESERVED_NAMESPACE.varname, true);
+    Path filePath = new Path(basePath, "src.txt");
+    fs.create(filePath).close();
+    Assert.assertFalse(FileUtils.shouldPreserveXAttrs(conf, fs, fs, filePath));
+    Path reservedRawPath = new Path("/.reserved/raw/", "src1.txt");
+    fs.create(reservedRawPath).close();
+    Assert.assertTrue(FileUtils.shouldPreserveXAttrs(conf, fs, fs, reservedRawPath));
+
+    conf.setBoolean(HiveConf.ConfVars.DFS_XATTR_ONLY_SUPPORTED_ON_RESERVED_NAMESPACE.varname, false);
+    Assert.assertTrue(FileUtils.shouldPreserveXAttrs(conf, fs, fs, filePath));
+    Assert.assertTrue(FileUtils.shouldPreserveXAttrs(conf, fs, fs, reservedRawPath));
   }
 
   private void verifyXAttrsPreserved(Path src, Path dst) throws Exception {
@@ -174,8 +197,10 @@ public class TestFileUtils {
 
       conf.set(HiveConf.ConfVars.HIVE_EXEC_COPYFILE_MAXNUMFILES.varname, "1");
       conf.set(HiveConf.ConfVars.HIVE_EXEC_COPYFILE_MAXSIZE.varname, "1");
+      DataCopyStatistics copyStatistics = new DataCopyStatistics();
       Assert.assertTrue("FileUtils.copy failed to copy data",
-              FileUtils.copy(fs, copySrc, fs, copyDst, false, false, conf));
+              FileUtils.copy(fs, copySrc, fs, copyDst, false, false, conf, copyStatistics));
+      Assert.assertEquals(6, copyStatistics.getBytesCopied());
 
       Path dstFileName1 = new Path(copyDst, file1Name);
       Assert.assertTrue(fs.exists(new Path(copyDst, file1Name)));

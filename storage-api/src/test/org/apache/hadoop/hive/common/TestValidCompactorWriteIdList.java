@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common;
 
@@ -106,12 +107,12 @@ public class TestValidCompactorWriteIdList {
   @Test
   public void readFromString() {
     ValidCompactorWriteIdList writeIds
-            = new ValidCompactorWriteIdList(tableName + ":37:" + Long.MAX_VALUE + "::7,9,10");
+            = ValidCompactorWriteIdList.fromValue(tableName + ":37:" + Long.MAX_VALUE + "::7,9,10");
     Assert.assertEquals(tableName, writeIds.getTableName());
     Assert.assertEquals(37L, writeIds.getHighWatermark());
     Assert.assertNull(writeIds.getMinOpenWriteId());
     Assert.assertArrayEquals(new long[]{7L, 9L, 10L}, writeIds.getInvalidWriteIds());
-    writeIds = new ValidCompactorWriteIdList(tableName + ":21:" + Long.MAX_VALUE + ":");
+    writeIds = ValidCompactorWriteIdList.fromValue(tableName + ":21:" + Long.MAX_VALUE + ":");
     Assert.assertEquals(21L, writeIds.getHighWatermark());
     Assert.assertNull(writeIds.getMinOpenWriteId());
     Assert.assertEquals(0, writeIds.getInvalidWriteIds().length);
@@ -119,7 +120,7 @@ public class TestValidCompactorWriteIdList {
 
   @Test
   public void testAbortedTxn() throws Exception {
-    ValidCompactorWriteIdList writeIdList = new ValidCompactorWriteIdList(tableName + ":5:4::1,2,3");
+    ValidCompactorWriteIdList writeIdList = ValidCompactorWriteIdList.fromValue(tableName + ":5:4::1,2,3");
     Assert.assertEquals(5L, writeIdList.getHighWatermark());
     Assert.assertEquals(4, writeIdList.getMinOpenWriteId().longValue());
     Assert.assertArrayEquals(new long[]{1L, 2L, 3L}, writeIdList.getInvalidWriteIds());
@@ -127,7 +128,7 @@ public class TestValidCompactorWriteIdList {
 
   @Test
   public void testAbortedRange() throws Exception {
-    ValidCompactorWriteIdList writeIdList = new ValidCompactorWriteIdList(tableName + ":11:4::5,6,7,8");
+    ValidCompactorWriteIdList writeIdList = ValidCompactorWriteIdList.fromValue(tableName + ":11:4::5,6,7,8");
     ValidWriteIdList.RangeResponse rsp = writeIdList.isWriteIdRangeAborted(1L, 3L);
     Assert.assertEquals(ValidWriteIdList.RangeResponse.NONE, rsp);
     rsp = writeIdList.isWriteIdRangeAborted(9L, 10L);

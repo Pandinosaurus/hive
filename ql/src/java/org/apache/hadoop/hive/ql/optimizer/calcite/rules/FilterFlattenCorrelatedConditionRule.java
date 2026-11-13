@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.rules;
 
@@ -39,7 +40,7 @@ import java.util.List;
  * computation in a {@link org.apache.calcite.rel.core.Project} expression. An additional projection
  * may be added on top of the new filter to retain expression equivalence.
  *
- * <h3>Sub-plan before</h3>
+ * <h2>Sub-plan before</h2>
  * <pre>
  * LogicalProject($f0=[true])
  *   LogicalFilter(condition=[=($cor0.DEPTNO, +($7, 30))])

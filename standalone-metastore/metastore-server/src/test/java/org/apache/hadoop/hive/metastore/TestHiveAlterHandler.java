@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -22,7 +23,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.annotation.MetastoreUnitTest;
 import org.apache.hadoop.hive.metastore.api.*;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
-import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.mockito.Mockito;
@@ -37,7 +37,7 @@ public class TestHiveAlterHandler {
   private Configuration conf = MetastoreConf.newMetastoreConf();
 
   @Test
-  public void testAlterTableAddColNotUpdateStats() throws MetaException, InvalidObjectException, NoSuchObjectException {
+  public void testAlterTableAddColNotUpdateStats() throws MetaException, InvalidObjectException, NoSuchObjectException, InvalidInputException {
     FieldSchema col1 = new FieldSchema("col1", "string", "col1 comment");
     FieldSchema col2 = new FieldSchema("col2", "string", "col2 comment");
     FieldSchema col3 = new FieldSchema("col3", "string", "col3 comment");
@@ -56,13 +56,13 @@ public class TestHiveAlterHandler {
     newTable.setSd(newSd);
 
     RawStore msdb = Mockito.mock(RawStore.class);
-    Mockito.doThrow(new RuntimeException("shouldn't be called")).when(msdb).getTableColumnStatistics(
-        getDefaultCatalog(conf), oldTable.getDbName(), oldTable.getTableName(), Arrays.asList("col1", "col2", "col3"));
+    Mockito.doThrow(new RuntimeException("shouldn't be called")).when(msdb).deleteTableColumnStatistics(
+        Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyList(), Mockito.anyString());
     HiveAlterHandler handler = new HiveAlterHandler();
     handler.setConf(conf);
     Deadline.registerIfNot(100_000);
-    Deadline.startTimer("alterTableUpdateTableColumnStats");
-    handler.alterTableUpdateTableColumnStats(msdb, oldTable, newTable, null, null, conf, null);
+    Deadline.startTimer("updateTableColumnStats");
+    handler.deleteTableColumnStats(msdb, oldTable, newTable);
   }
 
   @Test
@@ -88,21 +88,14 @@ public class TestHiveAlterHandler {
     HiveAlterHandler handler = new HiveAlterHandler();
     handler.setConf(conf);
     Deadline.registerIfNot(100_000);
-    Deadline.startTimer("alterTableUpdateTableColumnStats");
-    try {
-      handler.alterTableUpdateTableColumnStats(msdb, oldTable, newTable, null, null, conf, null);
-    } catch (Throwable t) {
-      System.err.println(t);
-      t.printStackTrace(System.err);
-      throw t;
-    }
-    Mockito.verify(msdb, Mockito.times(1)).getTableColumnStatistics(
-        getDefaultCatalog(conf), oldTable.getDbName(), oldTable.getTableName(), Arrays.asList("col1", "col2", "col3", "col4")
-    );
+    Deadline.startTimer("updateTableColumnStats");
+    handler.deleteTableColumnStats(msdb, oldTable, newTable);
+    Mockito.verify(msdb, Mockito.times(1)).deleteTableColumnStatistics(
+        getDefaultCatalog(conf), oldTable.getDbName(), oldTable.getTableName(), Arrays.asList("col4"), null);
   }
 
   @Test
-  public void testAlterTableChangePosNotUpdateStats() throws MetaException, InvalidObjectException, NoSuchObjectException {
+  public void testAlterTableChangePosNotUpdateStats() throws MetaException, InvalidObjectException, NoSuchObjectException, InvalidInputException {
     FieldSchema col1 = new FieldSchema("col1", "string", "col1 comment");
     FieldSchema col2 = new FieldSchema("col2", "string", "col2 comment");
     FieldSchema col3 = new FieldSchema("col3", "string", "col3 comment");
@@ -121,13 +114,48 @@ public class TestHiveAlterHandler {
     newTable.setSd(newSd);
 
     RawStore msdb = Mockito.mock(RawStore.class);
-    Mockito.doThrow(new RuntimeException("shouldn't be called")).when(msdb).getTableColumnStatistics(
-        getDefaultCatalog(conf), oldTable.getDbName(), oldTable.getTableName(), Arrays.asList("col1", "col2", "col3", "col4"));
+    Mockito.doThrow(new RuntimeException("shouldn't be called")).when(msdb).deleteTableColumnStatistics(
+        Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyList(), Mockito.anyString());
     HiveAlterHandler handler = new HiveAlterHandler();
     handler.setConf(conf);
     Deadline.registerIfNot(100_000);
-    Deadline.startTimer("alterTableUpdateTableColumnStats");
-    handler.alterTableUpdateTableColumnStats(msdb, oldTable, newTable, null, null, conf, null);
+    Deadline.startTimer("updateTableColumnStats");
+    handler.deleteTableColumnStats(msdb, oldTable, newTable);
+  }
+
+  /**
+   * HIVE-30096: a table level alter forces a stats recompute, which lists every file under the
+   * table location, only when the alter changed the location. A metadata-only alter must reuse
+   * the fast stats already present on the table instead of relisting a potentially huge
+   * directory (formats like Delta/Iceberg/Hudi register as unpartitioned tables with millions
+   * of files).
+   */
+  @Test
+  public void testTableLocationChangeDetection() {
+    StorageDescriptor oldSd = new StorageDescriptor();
+    oldSd.setLocation("gs://bucket/warehouse/t1");
+    Table oldTable = new Table();
+    oldTable.setDbName("default");
+    oldTable.setTableName("test_table");
+    oldTable.setSd(oldSd);
+
+    // same location: metadata-only alter, no recompute
+    StorageDescriptor newSd = new StorageDescriptor(oldSd);
+    Table newTable = new Table(oldTable);
+    newTable.setSd(newSd);
+    org.junit.Assert.assertFalse(HiveAlterHandler.isTableLocationChanged(oldTable, newTable));
+
+    // changed location: stats must be recomputed
+    StorageDescriptor movedSd = new StorageDescriptor(oldSd);
+    movedSd.setLocation("gs://bucket/warehouse/t1_moved");
+    Table movedTable = new Table(oldTable);
+    movedTable.setSd(movedSd);
+    org.junit.Assert.assertTrue(HiveAlterHandler.isTableLocationChanged(oldTable, movedTable));
+
+    // location set where there was none before
+    Table noLocTable = new Table(oldTable);
+    noLocTable.setSd(new StorageDescriptor());
+    org.junit.Assert.assertTrue(HiveAlterHandler.isTableLocationChanged(noLocTable, newTable));
   }
 
 }

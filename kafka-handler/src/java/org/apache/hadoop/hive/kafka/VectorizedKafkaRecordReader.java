@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -37,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Iterator;
 import java.util.Properties;
 
@@ -150,7 +152,7 @@ class VectorizedKafkaRecordReader implements RecordReader<NullWritable, Vectoriz
     LOG.trace("total read bytes [{}]", readBytes);
     if (consumer != null) {
       consumer.wakeup();
-      consumer.close();
+      consumer.close(Duration.ZERO);
     }
   }
 
@@ -178,13 +180,11 @@ class VectorizedKafkaRecordReader implements RecordReader<NullWritable, Vectoriz
   @SuppressWarnings("Duplicates") private static KafkaSerDe createAndInitializeSerde(Configuration jobConf) {
     KafkaSerDe serDe = new KafkaSerDe();
     MapWork mapWork = Preconditions.checkNotNull(Utilities.getMapWork(jobConf), "Map work is null");
-    Properties
-        properties =
-        mapWork.getPartitionDescs()
-            .stream()
-            .map(partitionDesc -> partitionDesc.getTableDesc().getProperties())
-            .findAny()
-            .orElseThrow(() -> new RuntimeException("Can not find table property at the map work"));
+    Iterator<org.apache.hadoop.hive.ql.plan.PartitionDesc> partitionIterator = mapWork.getPartitionDescs();
+    if (!partitionIterator.hasNext()) {
+      throw new RuntimeException("Can not find table property at the map work");
+    }
+    Properties properties = partitionIterator.next().getTableDesc().getProperties();
     try {
       serDe.initialize(jobConf, properties, null);
     } catch (SerDeException e) {

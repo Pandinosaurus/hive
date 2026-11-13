@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -24,6 +25,9 @@ import org.apache.hadoop.hive.ql.exec.UDFArgumentLengthException;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedExpressions;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.StringUpper;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.plan.ColStatistics;
+import org.apache.hadoop.hive.ql.stats.estimator.StatEstimator;
+import org.apache.hadoop.hive.ql.stats.estimator.StatEstimatorProvider;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
@@ -34,6 +38,9 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.hive.serde2.typeinfo.BaseCharTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 
+import java.util.List;
+import java.util.Optional;
+
 /**
  * UDFUpper.
  *
@@ -43,7 +50,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
     extended = "Example:\n"
     + "  > SELECT _FUNC_('Facebook') FROM src LIMIT 1;\n" + "  'FACEBOOK'")
 @VectorizedExpressions({StringUpper.class})
-public class GenericUDFUpper extends GenericUDF {
+public class GenericUDFUpper extends GenericUDF implements StatEstimatorProvider {
   private transient PrimitiveObjectInspector argumentOI;
   private transient StringConverter stringConverter;
   private transient PrimitiveCategory returnType = PrimitiveCategory.STRING;
@@ -108,6 +115,16 @@ public class GenericUDFUpper extends GenericUDF {
   @Override
   public String getDisplayString(String[] children) {
     return getStandardDisplayString("upper", children);
+  }
+
+  @Override
+  public StatEstimator getStatEstimator() {
+    return new StatEstimator() {
+      @Override
+      public Optional<ColStatistics> estimate(List<ColStatistics> argStats) {
+        return Optional.of(argStats.get(0).clone());
+      }
+    };
   }
 
 }

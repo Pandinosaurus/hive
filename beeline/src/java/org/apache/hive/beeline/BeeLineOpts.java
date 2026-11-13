@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /*
@@ -21,6 +22,15 @@
  * See SQLLine notice in LICENSE
  */
 package org.apache.hive.beeline;
+
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hive.common.util.MatchingStringsCompleter;
+import org.jline.reader.Candidate;
+import org.jline.reader.Completer;
+import org.jline.reader.LineReader;
+import org.jline.reader.ParsedLine;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -40,13 +50,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
-
-import jline.Terminal;
-import jline.TerminalFactory;
-import jline.console.completer.Completer;
-import jline.console.completer.StringsCompleter;
-import jline.console.history.MemoryHistory;
-import org.apache.hadoop.hive.conf.HiveConf;
 
 public class BeeLineOpts implements Completer {
   public static final int DEFAULT_MAX_WIDTH = 80;
@@ -86,7 +89,6 @@ public class BeeLineOpts implements Completer {
   private boolean showElapsedTime = true;
   private boolean entireLineAsCommand = false;
   private String numberFormat = "default";
-  private final Terminal terminal = TerminalFactory.get();
   private int maxWidth = DEFAULT_MAX_WIDTH;
   private int maxHeight = DEFAULT_MAX_HEIGHT;
   private int maxColumnWidth = DEFAULT_MAX_COLUMN_WIDTH;
@@ -106,7 +108,7 @@ public class BeeLineOpts implements Completer {
 
   private final File rcFile = new File(saveDir(), "beeline.properties");
   private String historyFile = new File(saveDir(), "history").getAbsolutePath();
-  private int maxHistoryRows = MemoryHistory.DEFAULT_MAX_SIZE;
+  private int maxHistoryRows = 500; // as in MemoryHistory of JLine 2
 
   private String scriptFile = null;
   private String[] initFiles = null;
@@ -152,11 +154,17 @@ public class BeeLineOpts implements Completer {
 
   public BeeLineOpts(BeeLine beeLine, Properties props) {
     this.beeLine = beeLine;
-    if (terminal.getWidth() > 0) {
-      maxWidth = terminal.getWidth();
-    }
-    if (terminal.getHeight() > 0) {
-      maxHeight = terminal.getHeight();
+    try {
+      Terminal terminal = TerminalBuilder.terminal();
+      if (terminal.getWidth() > 0) {
+        maxWidth = terminal.getWidth();
+      }
+      if (terminal.getHeight() > 0) {
+        maxHeight = terminal.getHeight();
+      }
+      terminal.close();
+    } catch (IOException e) {
+      beeLine.debug("Failed to initialize terminal for max width/height check: " + e.getMessage());
     }
     loadProperties(props);
   }
@@ -195,12 +203,11 @@ public class BeeLineOpts implements Completer {
 
 
   @Override
-  public int complete(String buf, int pos, List cand) {
+  public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
     try {
-      return new StringsCompleter(propertyNames()).complete(buf, pos, cand);
+      new MatchingStringsCompleter(propertyNames()).complete(reader, line, candidates);
     } catch (Exception e) {
       beeLine.handleException(e);
-      return -1;
     }
   }
 
@@ -291,7 +298,7 @@ public class BeeLineOpts implements Completer {
       if (conf == null) {
         conf = beeLine.getCommands().getHiveConf(false);
       }
-      setForce(HiveConf.getBoolVar(conf, HiveConf.ConfVars.CLIIGNOREERRORS));
+      setForce(HiveConf.getBoolVar(conf, HiveConf.ConfVars.CLI_IGNORE_ERRORS));
     }
   }
 
@@ -529,7 +536,7 @@ public class BeeLineOpts implements Completer {
       return showDbInPrompt;
     } else {
       HiveConf conf = beeLine.getCommands().getHiveConf(true);
-      return HiveConf.getBoolVar(conf, HiveConf.ConfVars.CLIPRINTCURRENTDB);
+      return HiveConf.getBoolVar(conf, HiveConf.ConfVars.CLI_PRINT_CURRENT_DB);
     }
   }
 
@@ -742,4 +749,3 @@ public class BeeLineOpts implements Completer {
     env = envToUse;
   }
 }
-

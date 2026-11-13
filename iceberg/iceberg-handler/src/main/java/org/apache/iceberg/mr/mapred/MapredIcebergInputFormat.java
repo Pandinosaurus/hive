@@ -22,6 +22,8 @@ package org.apache.iceberg.mr.mapred;
 import java.io.IOException;
 import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.ql.io.IOContext;
+import org.apache.hadoop.hive.ql.io.IOContextAwareRecordReader;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
@@ -37,7 +39,7 @@ import org.apache.hadoop.mapreduce.task.JobContextImpl;
 import org.apache.hadoop.mapreduce.task.TaskAttemptContextImpl;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.mr.InputFormatConfig;
-import org.apache.iceberg.mr.mapreduce.IcebergSplit;
+import org.apache.iceberg.mr.mapreduce.IcebergMergeSplit;
 import org.apache.iceberg.mr.mapreduce.IcebergSplitContainer;
 
 /**
@@ -75,19 +77,18 @@ public class MapredIcebergInputFormat<T> implements InputFormat<Void, Container<
   @Override
   public RecordReader<Void, Container<T>> getRecordReader(InputSplit split, JobConf job,
                                                           Reporter reporter) throws IOException {
-    IcebergSplit icebergSplit = ((IcebergSplitContainer) split).icebergSplit();
-    return new MapredIcebergRecordReader<>(innerInputFormat, icebergSplit, job, reporter);
+    org.apache.hadoop.mapreduce.InputSplit inputSplit = split instanceof IcebergMergeSplit ?
+            (IcebergMergeSplit) split : ((IcebergSplitContainer) split).icebergSplit();
+    return new MapredIcebergRecordReader<>(innerInputFormat, inputSplit, job, reporter);
   }
 
 
-  private static final class MapredIcebergRecordReader<T> extends AbstractMapredIcebergRecordReader<Container<T>> {
-
-    private final long splitLength; // for getPos()
+  private static final class MapredIcebergRecordReader<T> extends AbstractMapredIcebergRecordReader<Container<T>>
+      implements IOContextAwareRecordReader {
 
     MapredIcebergRecordReader(org.apache.iceberg.mr.mapreduce.IcebergInputFormat<T> mapreduceInputFormat,
-                              IcebergSplit split, JobConf job, Reporter reporter) throws IOException {
+        org.apache.hadoop.mapreduce.InputSplit split, JobConf job, Reporter reporter) throws IOException {
       super(mapreduceInputFormat, split, job, reporter);
-      splitLength = split.getLength();
     }
 
     @Override
@@ -111,8 +112,19 @@ public class MapredIcebergInputFormat<T> implements InputFormat<Void, Container<
     }
 
     @Override
+    public void setIOContext(IOContext ioContext) {
+      if (innerReader instanceof IOContextAwareRecordReader reader) {
+        reader.setIOContext(ioContext);
+      }
+    }
+
+    /**
+     * A split is a group of file scan tasks, so no position within it maps to a file offset. -1 keeps
+     * HiveContextAwareRecordReader from taking every row for the start of a file.
+     */
+    @Override
     public long getPos() throws IOException {
-      return (long) (splitLength * getProgress());
+      return -1;
     }
 
   }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
@@ -83,6 +84,7 @@ public class TestNewInputOutputFormat {
         + File.separator + "mapred" + File.separator + "staging");
     conf.set("mapred.temp.dir", workDir + File.separator + this.getClass().getSimpleName()
         + File.separator + "mapred" + File.separator + "temp");
+    conf.set("hive.exec.orc.default.compress", "ZLIB");
     localFs = FileSystem.get(conf);
   }
   

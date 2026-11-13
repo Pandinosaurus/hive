@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.expressions.aggregates;
@@ -26,6 +27,7 @@ import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorAggregationBufferRow;
@@ -38,6 +40,7 @@ import org.apache.hive.common.util.BloomKFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.hive.ql.exec.FunctionRegistry.BLOOM_FILTER_FUNCTION;
 import static org.apache.hive.common.util.BloomKFilter.START_OF_SERIALIZED_LONGS;
 
 public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
@@ -46,7 +49,7 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
 
   private long expectedEntries = -1;
   private transient int aggBufferSize;
-  private transient int numThreads;
+  private transient int numThreads = HiveConf.ConfVars.TEZ_BLOOM_FILTER_MERGE_THREADS.defaultIntVal;
 
   /**
    * class for storing the current aggregate value.
@@ -221,9 +224,9 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
           merge(currentBf);
         } catch (InterruptedException e) {// Executor.shutdownNow() is called
           if (!queue.isEmpty()){
-            LOG.debug(
-                "bloom filter merge was interrupted while processing and queue is still not empty"
-                    + ", this is fine in case of shutdownNow");
+            LOG.info(
+                "bloom filter merge was interrupted while processing and queue is still not empty (size: {})"
+                    + ", this is fine in case of shutdownNow", queue.size());
           }
           if (aborted.get()) {
             LOG.info("bloom filter merge was aborted, won't finish merging...");
@@ -584,7 +587,7 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
      * Just modes (PARTIAL2, FINAL).
      */
     return
-        name.equals("bloom_filter") &&
+        name.equals(BLOOM_FILTER_FUNCTION) &&
         inputColVectorType == ColumnVector.Type.BYTES &&
         outputColVectorType == ColumnVector.Type.BYTES &&
         (mode == Mode.PARTIAL2 || mode == Mode.FINAL);
@@ -599,5 +602,12 @@ public class VectorUDAFBloomFilterMerge extends VectorAggregateExpression {
 
     Aggregation bfAgg = (Aggregation) agg;
     outputColVector.setVal(batchIndex, bfAgg.bfBytes, 0, bfAgg.bfBytes.length);
+  }
+
+  /**
+   * Let's clone the batch when we're working in parallel, see HIVE-26655.
+   */
+  public boolean batchNeedsClone() {
+    return numThreads > 0;
   }
 }

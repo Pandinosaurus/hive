@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.physical;
 
@@ -49,7 +50,7 @@ import org.slf4j.LoggerFactory;
  * For any LLAP-related transformations which need to occur before vectorization.
  */
 public class LlapPreVectorizationPass implements PhysicalPlanResolver {
-  protected static transient final Logger LOG = LoggerFactory.getLogger(LlapPreVectorizationPass.class);
+  protected static final Logger LOG = LoggerFactory.getLogger(LlapPreVectorizationPass.class);
 
   @Override
   public PhysicalContext resolve(PhysicalContext pctx) throws SemanticException {

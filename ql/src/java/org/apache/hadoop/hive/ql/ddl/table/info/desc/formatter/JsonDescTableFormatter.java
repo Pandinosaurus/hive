@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.info.desc.formatter;
@@ -33,7 +34,8 @@ import org.apache.hadoop.hive.ql.metadata.PrimaryKeyInfo;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.metadata.UniqueConstraint;
 import org.apache.hadoop.hive.ql.metadata.formatting.MapBuilder;
-import org.apache.hadoop.hive.ql.parse.PartitionTransformSpec;
+import org.apache.hadoop.hive.ql.metadata.formatting.MetaDataFormatUtils;
+import org.apache.hadoop.hive.ql.parse.TransformSpec;
 
 import java.io.DataOutputStream;
 import java.util.ArrayList;
@@ -241,18 +243,21 @@ public class JsonDescTableFormatter extends DescTableFormatter {
     if (partition != null) {
       builder.put("partitionInfo", partition.getTPartition());
     } else {
-      builder.put("tableInfo", table.getTTable());
+      org.apache.hadoop.hive.metastore.api.Table tableInfo = table.getTTable().deepCopy();
+      tableInfo.setParameters(
+          MetaDataFormatUtils.withholdJdbcConnectionCredentialValues(tableInfo.getParameters()));
+      builder.put("tableInfo", tableInfo);
     }
     if (table.isNonNative() && table.getStorageHandler() != null &&
         table.getStorageHandler().supportsPartitionTransform()) {
-      List<PartitionTransformSpec> specs = table.getStorageHandler().getPartitionTransformSpec(table);
+      List<TransformSpec> specs = table.getStorageHandler().getPartitionTransformSpec(table);
       if (!specs.isEmpty()) {
         builder.put("partitionSpecInfo", specs.stream().map(s -> {
           Map<String, String> result = new LinkedHashMap<>();
           result.put("column_name", s.getColumnName());
           result.put("transform_type", s.getTransformType().name());
-          if (s.getTransformParam().isPresent()) {
-            result.put("transform_param", String.valueOf(s.getTransformParam().get()));
+          if (s.getTransformParam() != null) {
+            result.put("transform_param", String.valueOf(s.getTransformParam()));
           }
           return result;
         }).collect(Collectors.toList()));

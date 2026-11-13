@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.auth;
 
@@ -50,6 +51,9 @@ public class TestCustomAuthentication {
     hiveConf.set("hive.server2.authentication", "CUSTOM");
     hiveConf.set("hive.server2.custom.authentication.class",
         "org.apache.hive.service.auth.TestCustomAuthentication$SimpleAuthenticationProviderImpl");
+    // query history adds no value to this test
+    // this should be handled with HiveConfForTests when it's used here too
+    hiveConf.setBoolVar(HiveConf.ConfVars.HIVE_QUERY_HISTORY_ENABLED, false);
     FileOutputStream fos = new FileOutputStream(new File(hiveConf.getHiveSiteLocation().toURI()));
     hiveConf.writeXml(fos);
     fos.close();
@@ -79,7 +83,6 @@ public class TestCustomAuthentication {
   public void testCustomAuthentication() throws Exception {
 
     String url = "jdbc:hive2://localhost:10000/default";
-    Class.forName("org.apache.hive.jdbc.HiveDriver");
 
     try {
       DriverManager.getConnection(url, "wronguser", "pwd");
@@ -108,7 +111,7 @@ public class TestCustomAuthentication {
     }
 
     @Override
-    public void Authenticate(String user, String password) throws AuthenticationException {
+    public void authenticate(String user, String password) throws AuthenticationException {
 
       if(!userMap.containsKey(user)){
         throw new AuthenticationException("Invalid user : "+user);

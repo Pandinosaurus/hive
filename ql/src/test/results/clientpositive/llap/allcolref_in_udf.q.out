@@ -76,10 +76,10 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: a
-                  filterExpr: (UDFToDouble(key) < 100.0D) (type: boolean)
+                  filterExpr: ((UDFToDouble(key) < 100.0D) and (UDFToDouble(key) + 1.0D) is not null) (type: boolean)
                   Statistics: Num rows: 500 Data size: 89000 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (UDFToDouble(key) < 100.0D) (type: boolean)
+                    predicate: ((UDFToDouble(key) < 100.0D) and (UDFToDouble(key) + 1.0D) is not null) (type: boolean)
                     Statistics: Num rows: 166 Data size: 29548 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: key (type: string), value (type: string), concat(key, value) (type: string), (UDFToDouble(key) + 1.0D) (type: double)
@@ -168,15 +168,15 @@ POSTHOOK: type: QUERY
 POSTHOOK: Input: default@src
 #### A masked pattern was here ####
 4val_45val_5	4val_4	5val_5
-4val_45	NULL	5val_5
+4val_45	45val_5	NULL
 4val_45val_5	4val_4	5val_5
-4val_45	NULL	5val_5
+4val_45	45val_5	NULL
 4val_45val_5	4val_4	5val_5
-4val_45	NULL	5val_5
+4val_45	45val_5	NULL
 8val_89val_9	8val_8	9val_9
-8val_89	NULL	9val_9
+8val_89	89val_9	NULL
 9val_910val_10	9val_9	10val_10
-9val_910	NULL	10val_10
+9val_910	910val_10	NULL
 PREHOOK: query: create table allcolref as select array(key, value) from src
 PREHOOK: type: CREATETABLE_AS_SELECT
 PREHOOK: Input: default@src

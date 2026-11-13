@@ -9,19 +9,18 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.cli.status;
 
 import java.util.Arrays;
 import java.util.Properties;
-
-import jline.TerminalFactory;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.GnuParser;
@@ -30,6 +29,8 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.hadoop.util.ExitUtil;
+import org.jline.terminal.TerminalBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,12 +166,12 @@ public class LlapStatusServiceCommandLine {
     } catch (Exception e) {
       LOGGER.error("Parsing the command line arguments failed", e);
       printUsage();
-      System.exit(ExitCode.INCORRECT_USAGE.getCode());
+      ExitUtil.terminate(ExitCode.INCORRECT_USAGE.getCode());
     }
 
     if (cl.isHelp()) {
       printUsage();
-      System.exit(0);
+      ExitUtil.terminate(0);
     }
 
     return cl;
@@ -238,7 +239,7 @@ public class LlapStatusServiceCommandLine {
     HelpFormatter hf = new HelpFormatter();
     try {
       int width = hf.getWidth();
-      int jlineWidth = TerminalFactory.get().getWidth();
+      int jlineWidth = TerminalBuilder.terminal().getWidth();
       width = Math.min(160, Math.max(jlineWidth, width));
       hf.setWidth(width);
     } catch (Throwable t) { // Ignore

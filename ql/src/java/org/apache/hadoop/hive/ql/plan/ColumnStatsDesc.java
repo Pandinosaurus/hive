@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.plan;
 
 import java.io.Serializable;
 import java.util.List;
 
+import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer.FieldSchemas;
 import org.apache.hadoop.hive.ql.plan.Explain.Level;
 
 /**
@@ -34,15 +36,12 @@ public class ColumnStatsDesc implements Serializable, Cloneable {
   private int numBitVector;
   private boolean needMerge;
   private String tableName;
-  private List<String> colName;
-  private List<String> colType;
+  private FieldSchemas columnSchemas;
 
-
-  public ColumnStatsDesc(String tableName, List<String> colName,
-      List<String> colType, boolean isTblLevel, int numBitVector, FetchWork fWork1) {
+  public ColumnStatsDesc(String tableName, FieldSchemas columnSchemas, boolean isTblLevel,
+      int numBitVector, FetchWork fWork1) {
     this.tableName = tableName;
-    this.colName = colName;
-    this.colType = colType;
+    this.columnSchemas = columnSchemas;
     this.isTblLevel = isTblLevel;
     this.numBitVector = numBitVector;
     this.needMerge = this.numBitVector != 0;
@@ -69,20 +68,12 @@ public class ColumnStatsDesc implements Serializable, Cloneable {
 
   @Explain(displayName = "Columns")
   public List<String> getColName() {
-    return colName;
-  }
-
-  public void setColName(List<String> colName) {
-    this.colName = colName;
+    return columnSchemas == null ? null : columnSchemas.getColName();
   }
 
   @Explain(displayName = "Column Types")
   public List<String> getColType() {
-    return colType;
-  }
-
-  public void setColType(List<String> colType) {
-    this.colType = colType;
+    return columnSchemas == null ? null : columnSchemas.getColType();
   }
 
   public int getNumBitVector() {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
@@ -220,14 +221,14 @@ public class Statistics implements Serializable {
   }
 
   public void addBasicStats(Statistics stats) {
-    dataSize += stats.dataSize;
-    numRows += stats.numRows;
+    dataSize = StatsUtils.safeAdd(dataSize, stats.dataSize);
+    numRows = StatsUtils.safeAdd(numRows, stats.numRows);
     basicStatsState = inferColumnStatsState(basicStatsState, stats.basicStatsState);
   }
 
   @Deprecated
   public void addToDataSize(long rds) {
-    dataSize += rds;
+    dataSize = StatsUtils.safeAdd(dataSize, rds);
   }
 
   public void setColumnStats(Map<String, ColStatistics> colStats) {
@@ -240,28 +241,27 @@ public class Statistics implements Serializable {
   }
 
   public void addToColumnStats(List<ColStatistics> colStats) {
-
+    if (colStats == null) {
+      return;
+    }
     if (columnStats == null) {
       columnStats = Maps.newHashMap();
     }
 
-    if (colStats != null) {
-      for (ColStatistics cs : colStats) {
-        ColStatistics updatedCS = null;
-        if (cs != null) {
-
-          String key = cs.getColumnName();
-          // if column statistics for a column is already found then merge the statistics
-          if (columnStats.containsKey(key) && columnStats.get(key) != null) {
-            updatedCS = columnStats.get(key);
-            updatedCS.setAvgColLen(Math.max(updatedCS.getAvgColLen(), cs.getAvgColLen()));
-            updatedCS.setNumNulls(updatedCS.getNumNulls() + cs.getNumNulls());
-            updatedCS.setCountDistint(Math.max(updatedCS.getCountDistint(), cs.getCountDistint()));
-            columnStats.put(key, updatedCS);
-          } else {
-            columnStats.put(key, cs);
-          }
+    for (ColStatistics cs : colStats) {
+      if (cs == null) {
+        continue;
+      }
+      String key = cs.getColumnName();
+      ColStatistics existing = columnStats.computeIfAbsent(key, k -> cs);
+      if (existing != cs) {
+        existing.setAvgColLen(Math.max(existing.getAvgColLen(), cs.getAvgColLen()));
+        if (cs.getNumNulls() < 0 || existing.getNumNulls() < 0) {
+          existing.setNumNulls(-1);
+        } else {
+          existing.setNumNulls(StatsUtils.safeAdd(existing.getNumNulls(), cs.getNumNulls()));
         }
+        existing.setCountDistint(Math.max(existing.getCountDistint(), cs.getCountDistint()));
       }
     }
   }
@@ -345,9 +345,30 @@ public class Statistics implements Serializable {
     if (downScaleOnly && newRowCount >= numRows) {
       return ret;
     }
-    // FIXME: using real scaling by new/old ration might yield better results?
     ret.numRows = newRowCount;
     ret.dataSize = StatsUtils.safeMult(getAvgRowSize(), newRowCount);
+
+    // Adjust column stats to prevent invalid values after scaling: count-based
+    // stats are set to unknown (-1), zero values preserved. Distribution data cleared.
+    if (ret.columnStats != null) {
+      for (ColStatistics cs : ret.columnStats.values()) {
+        if (cs.getCountDistint() > newRowCount) {
+          cs.setCountDistint(newRowCount);
+        }
+        if (cs.getNumNulls() > 0) {
+          cs.setNumNulls(-1);
+        }
+        if (cs.getNumTrues() > 0) {
+          cs.setNumTrues(-1);
+        }
+        if (cs.getNumFalses() > 0) {
+          cs.setNumFalses(-1);
+        }
+        cs.setBitVectors(null);
+        cs.setHistogram(null);
+      }
+    }
+
     return ret;
   }
 

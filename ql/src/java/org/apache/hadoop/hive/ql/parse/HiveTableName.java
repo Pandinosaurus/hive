@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
@@ -38,21 +39,19 @@ public final class HiveTableName extends TableName {
    * @throws SemanticException
    */
   public static TableName of(Table table) throws SemanticException {
-    return ofNullable(table.getTableName(), table.getDbName());
+    return ofNullable(table.getTableName(), table.getDbName(), table.getSnapshotRef());
   }
 
   /**
    * Set a @{@link Table} object's table and db names based on the provided string.
    * @param dbTable the dbtable string
    * @param table the table to update
-   * @return the table
    * @throws SemanticException
    */
-  public static Table setFrom(String dbTable, Table table) throws SemanticException{
+  public static void setFrom(String dbTable, Table table) throws SemanticException{
     TableName name = ofNullable(dbTable);
     table.setTableName(name.getTable());
     table.setDbName(name.getDb());
-    return table;
   }
 
   /**
@@ -95,11 +94,15 @@ public final class HiveTableName extends TableName {
    */
   // to be @Deprecated
   public static TableName ofNullable(String dbTableName, String defaultDb) throws SemanticException {
+    return ofNullable(dbTableName, defaultDb, null);
+  }
+
+  public static TableName ofNullable(String dbTableName, String defaultDb, String tableMetaRef) throws SemanticException {
     if (dbTableName == null) {
       return new TableName(null, null, null);
     } else {
       try {
-        return fromString(dbTableName, SessionState.get().getCurrentCatalog(), defaultDb);
+        return fromString(dbTableName, SessionState.get().getCurrentCatalog(), defaultDb, tableMetaRef);
       } catch (IllegalArgumentException e) {
         throw new SemanticException(e);
       }

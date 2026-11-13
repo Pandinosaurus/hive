@@ -24,6 +24,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Arrays;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.hadoop.hive.common.JavaVersionUtils;
 import org.apache.hive.hcatalog.templeton.LauncherDelegator;
 import org.apache.hive.jdbc.HiveConnection;
 import org.slf4j.Logger;
@@ -121,8 +123,9 @@ public class TempletonControllerJob extends Configured implements Tool, JobSubmi
     if (amMemoryMB != null && !amMemoryMB.isEmpty()) {
       conf.set(AppConfig.HADOOP_MR_AM_MEMORY_MB, amMemoryMB);
     }
-    String amJavaOpts = appConf.controllerAMChildOpts();
-    if (amJavaOpts != null && !amJavaOpts.isEmpty()) {
+    String amJavaOpts = StringUtils.defaultString(appConf.controllerAMChildOpts());
+    amJavaOpts += JavaVersionUtils.getAddOpensFlags();
+    if (!amJavaOpts.isEmpty()) {
       conf.set(AppConfig.HADOOP_MR_AM_JAVA_OPTS, amJavaOpts);
     }
 
@@ -167,6 +170,7 @@ public class TempletonControllerJob extends Configured implements Tool, JobSubmi
     }
     return 0;
   }
+
   private String addToken(Job job, String user, String type) throws IOException, InterruptedException,
           TException {
     if(!secureMetastoreAccess) {
@@ -214,11 +218,6 @@ public class TempletonControllerJob extends Configured implements Tool, JobSubmi
     return real.doAs(new PrivilegedExceptionAction<String>() {
       @Override
       public String run() throws IOException, TException, InterruptedException {
-        try {
-          Class.forName("org.apache.hive.jdbc.HiveDriver");
-        } catch (ClassNotFoundException e) {
-          throw new IOException(e);
-        }
         String hs2Url = appConf.get(AppConfig.HIVE_SERVER2_URL);
         final HiveConnection con;
         try {

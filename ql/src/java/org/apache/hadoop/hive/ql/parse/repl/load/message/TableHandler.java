@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.repl.load.message;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.messaging.AlterPartitionMessage;
+import org.apache.hadoop.hive.metastore.messaging.AlterPartitionsMessage;
 import org.apache.hadoop.hive.metastore.messaging.AlterTableMessage;
 import org.apache.hadoop.hive.ql.exec.Task;
 import org.apache.hadoop.hive.ql.exec.repl.ReplExternalTables;
@@ -113,9 +115,16 @@ public class TableHandler extends AbstractMessageHandler {
         writeId = alterTableMessage.getWriteId();
         break;
       case EVENT_ALTER_PARTITION:
-        AlterPartitionMessage msg = deserializer.getAlterPartitionMessage(context.dmd.getPayload());
-        tableType = msg.getTableObj().getTableType();
-        writeId = msg.getWriteId();
+        String eventMessage = deserializer.deSerializeGenericString(context.dmd.getPayload());
+        if (eventMessage.contains("\"keyValues\":")) {
+          AlterPartitionMessage msg = deserializer.getAlterPartitionMessage(context.dmd.getPayload());
+          tableType = msg.getTableObj().getTableType();
+          writeId = msg.getWriteId();
+        } else {
+          AlterPartitionsMessage msg = deserializer.getAlterPartitionsMessage(context.dmd.getPayload());
+          tableType = msg.getTableType();
+          writeId = msg.getWriteId();
+        }
         break;
       default:
         break;

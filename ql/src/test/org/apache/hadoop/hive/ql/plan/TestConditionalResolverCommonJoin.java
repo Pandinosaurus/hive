@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
@@ -26,7 +27,6 @@ import org.apache.hadoop.hive.ql.ddl.DDLTask;
 import org.apache.hadoop.hive.ql.exec.Task;
 import org.junit.Test;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -70,19 +70,19 @@ public class TestConditionalResolverCommonJoin {
     ctx.setAliasToKnownSize(aliasToKnownSize);
 
     HiveConf conf = new HiveConf();
-    conf.setLongVar(HiveConf.ConfVars.HIVESMALLTABLESFILESIZE, 4096);
+    conf.setLongVar(HiveConf.ConfVars.HIVE_SMALL_TABLES_FILESIZE, 4096);
 
     // alias3 only can be selected
     Task resolved = resolver.resolveMapJoinTask(ctx, conf);
     Assert.assertEquals("alias3", resolved.getId());
 
-    conf.setLongVar(HiveConf.ConfVars.HIVESMALLTABLESFILESIZE, 65536);
+    conf.setLongVar(HiveConf.ConfVars.HIVE_SMALL_TABLES_FILESIZE, 65536);
 
-    // alias1, alias2, alias3 all can be selected but overriden by biggest one (alias3)
+    // alias1, alias2, alias3 all can be selected but Overridden by biggest one (alias3)
     resolved = resolver.resolveMapJoinTask(ctx, conf);
     Assert.assertEquals("alias3", resolved.getId());
 
-    conf.setLongVar(HiveConf.ConfVars.HIVESMALLTABLESFILESIZE, 2048);
+    conf.setLongVar(HiveConf.ConfVars.HIVE_SMALL_TABLES_FILESIZE, 2048);
 
     // not selected
     resolved = resolver.resolveMapJoinTask(ctx, conf);

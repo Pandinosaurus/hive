@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl;
@@ -65,17 +66,17 @@ public final class DDLSemanticAnalyzerFactory {
       new HashMap<>();
 
   static {
-    Set<Class<? extends BaseSemanticAnalyzer>> analyzerClasses1 =
+    Set<Class<? extends BaseSemanticAnalyzer>> analyzerClasses =
         new Reflections(DDL_ROOT).getSubTypesOf(BaseSemanticAnalyzer.class);
-    Set<Class<? extends CalcitePlanner>> analyzerClasses2 =
-        new Reflections(DDL_ROOT).getSubTypesOf(CalcitePlanner.class);
-    Set<Class<? extends BaseSemanticAnalyzer>> analyzerClasses = Sets.union(analyzerClasses1, analyzerClasses2);
     for (Class<? extends BaseSemanticAnalyzer> analyzerClass : analyzerClasses) {
       if (Modifier.isAbstract(analyzerClass.getModifiers())) {
         continue;
       }
 
       DDLType ddlType = analyzerClass.getAnnotation(DDLType.class);
+      if (ddlType == null) {
+        continue;
+      }
       for (int type : ddlType.types()) {
         if (TYPE_TO_ANALYZER.containsKey(type)) {
           throw new IllegalStateException(
@@ -93,6 +94,9 @@ public final class DDLSemanticAnalyzerFactory {
       }
 
       DDLType ddlType = analyzerCategoryClass.getAnnotation(DDLType.class);
+      if (ddlType == null) {
+        continue;
+      }
       for (int type : ddlType.types()) {
         if (TYPE_TO_ANALYZERCATEGORY.containsKey(type)) {
           throw new IllegalStateException(

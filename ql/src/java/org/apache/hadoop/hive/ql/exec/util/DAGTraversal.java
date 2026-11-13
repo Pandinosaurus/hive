@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.util;
@@ -36,8 +37,8 @@ public class DAGTraversal {
     List<Task<?>> listOfTasks = new ArrayList<>(tasks);
     while (!listOfTasks.isEmpty()) {
       // HashSet will make sure that no duplicate children are added. If a task is added multiple
-      // time to the children list then it may cause the list to grow exponentially. Lets take an example of
-      // incremental load with 2 events. The DAG will look some thing similar as below.
+      // time to the children list then it may cause the list to grow exponentially. Let's take an example of
+      // incremental load with 2 events. The DAG will look something similar as below.
       //
       //                 --->ev1.task1--                          --->ev2.task1--
       //                /               \                        /               \
@@ -48,7 +49,7 @@ public class DAGTraversal {
       // While traversing the DAG, if the filter is not added then  ev1.barrierTask will be added 3 times in
       // the children list and in next iteration ev2.task1 will be added 3 times and ev2.task2 will be added
       // 3 times. So in next iteration ev2.barrierTask will be added 6 times. As it goes like this, the next barrier
-      // task will be added 12-15 times and may reaches millions with large number of events.
+      // task will be added 12-15 times and may reach millions with large number of events.
       Set<Task<?>> children = new HashSet<>();
       for (Task<?> task : listOfTasks) {
         // skip processing has to be done first before continuing

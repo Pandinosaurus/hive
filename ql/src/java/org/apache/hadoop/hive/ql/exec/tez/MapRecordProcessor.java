@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.tez;
 
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -99,7 +101,7 @@ public class MapRecordProcessor extends RecordProcessor {
 
   public MapRecordProcessor(final JobConf jconf, final ProcessorContext context) throws Exception {
     super(jconf, context);
-    String queryId = HiveConf.getVar(jconf, HiveConf.ConfVars.HIVEQUERYID);
+    String queryId = HiveConf.getVar(jconf, HiveConf.ConfVars.HIVE_QUERY_ID);
     if (LlapProxy.isDaemon()) {
       setLlapOfFragmentId(context);
     }
@@ -141,7 +143,9 @@ public class MapRecordProcessor extends RecordProcessor {
     // TODO HIVE-14042. Cleanup may be required if exiting early.
     Utilities.setMapWork(jconf, mapWork);
 
-    for (PartitionDesc part : mapWork.getAliasToPartnInfo().values()) {
+    Iterator<PartitionDesc> partitionIterator = mapWork.getPartitionDescs();
+    while (partitionIterator.hasNext()) {
+      PartitionDesc part = partitionIterator.next();
       TableDesc tableDesc = part.getTableDesc();
       Utilities.copyJobSecretToTableProperties(tableDesc);
     }

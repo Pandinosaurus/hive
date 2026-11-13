@@ -6,17 +6,23 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.http;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -42,21 +48,22 @@ import com.google.common.base.Joiner;
  * //  -i interval       sampling interval in nanoseconds (long)
  * //  -j jstackdepth    maximum Java stack depth (integer)
  * //  -b bufsize        frame buffer size (long)
+ * //  -m method         fully qualified method name: 'ClassName.methodName'
  * //  -t                profile different threads separately
  * //  -s                simple class names instead of FQN
- * //  -o fmt[,fmt...]   output format: summary|traces|flat|collapsed|svg|tree|jfr
+ * //  -o fmt[,fmt...]   output format: summary|traces|flat|collapsed|svg|tree|jfr|html
  * //  --width px        SVG width pixels (integer)
  * //  --height px       SVG frame height pixels (integer)
  * //  --minwidth px     skip frames smaller than px (double)
  * //  --reverse         generate stack-reversed FlameGraph / Call tree
  * Example:
- * - To collect 30 second CPU profile of current process (returns FlameGraph svg)
+ * - To collect 10 second CPU profile of current process (returns FlameGraph html)
  * curl "http://localhost:10002/prof"
  * - To collect 1 minute CPU profile of current process and output in tree format (html)
  * curl "http://localhost:10002/prof?output=tree&amp;duration=60"
- * - To collect 30 second heap allocation profile of current process (returns FlameGraph svg)
+ * - To collect 10 second heap allocation profile of current process (returns FlameGraph html)
  * curl "http://localhost:10002/prof?event=alloc"
- * - To collect lock contention profile of current process (returns FlameGraph svg)
+ * - To collect lock contention profile of current process (returns FlameGraph html)
  * curl "http://localhost:10002/prof?event=lock"
  * Following event types are supported (default is 'cpu') (NOTE: not all OS'es support all events)
  * // Perf events:
@@ -88,7 +95,6 @@ public class ProfileServlet extends HttpServlet {
   private static final String CONTENT_TYPE_TEXT = "text/plain; charset=utf-8";
   private static final String ASYNC_PROFILER_HOME_ENV = "ASYNC_PROFILER_HOME";
   private static final String ASYNC_PROFILER_HOME_SYSTEM_PROPERTY = "async.profiler.home";
-  private static final String PROFILER_SCRIPT = "/profiler.sh";
   private static final int DEFAULT_DURATION_SECONDS = 10;
   private static final AtomicInteger ID_GEN = new AtomicInteger(0);
   static final String OUTPUT_DIR = System.getProperty("java.io.tmpdir") + "/prof-output";
@@ -140,7 +146,8 @@ public class ProfileServlet extends HttpServlet {
     COLLAPSED,
     SVG,
     TREE,
-    JFR
+    JFR,
+    HTML
   }
 
   private Lock profilerLock = new ReentrantLock();
@@ -194,6 +201,14 @@ public class ProfileServlet extends HttpServlet {
     final Integer height = getInteger(req, "height", null);
     final Double minwidth = getMinWidth(req);
     final boolean reverse = req.getParameterMap().containsKey("reverse");
+    final String method = req.getParameter("method");
+
+    if (req.getParameter("event") != null && method != null) {
+      resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+      setResponseHeader(resp);
+      resp.getWriter().write("Event and method aren't allowed to be both used in the same request.");
+      return;
+    }
 
     if (process == null || !process.isAlive()) {
       try {
@@ -201,12 +216,12 @@ public class ProfileServlet extends HttpServlet {
         if (profilerLock.tryLock(lockTimeoutSecs, TimeUnit.SECONDS)) {
           try {
             File outputFile = new File(OUTPUT_DIR, "async-prof-pid-" + pid + "-" +
-              event.name().toLowerCase() + "-" + ID_GEN.incrementAndGet() + "." +
+              (method == null ? event.name().toLowerCase() : method) + "-" + ID_GEN.incrementAndGet() + "." +
               output.name().toLowerCase());
             List<String> cmd = new ArrayList<>();
-            cmd.add(asyncProfilerHome + PROFILER_SCRIPT);
+            cmd.add(getProfilerScriptPath());
             cmd.add("-e");
-            cmd.add(event.getInternalName());
+            cmd.add(method == null ? event.getInternalName() : method);
             cmd.add("-d");
             cmd.add("" + duration);
             cmd.add("-o");
@@ -252,7 +267,7 @@ public class ProfileServlet extends HttpServlet {
             // set response and set refresh header to output location
             setResponseHeader(resp);
             resp.setStatus(HttpServletResponse.SC_ACCEPTED);
-            String relativeUrl = "/prof-output/" + outputFile.getName();
+            String relativeUrl = "/prof-output";
             resp.getWriter().write(
               "Started [" + event.getInternalName() + "] profiling. This page will automatically redirect to " +
                 relativeUrl + " after " + duration + " seconds.\n\ncommand:\n" + Joiner.on(" ").join(cmd));
@@ -261,7 +276,8 @@ public class ProfileServlet extends HttpServlet {
             int refreshDelay = getInteger(req, "refreshDelay", 0);
 
             // instead of sending redirect, set auto-refresh so that browsers will refresh with redirected url
-            resp.setHeader("Refresh", (duration + refreshDelay) + ";" + relativeUrl);
+            resp.setHeader("Refresh", (duration + refreshDelay) + "; URL=" + relativeUrl + '?'
+                + ProfileOutputServlet.FILE_QUERY_PARAM + '=' + outputFile.getName());
             resp.getWriter().flush();
           } finally {
             profilerLock.unlock();
@@ -282,6 +298,16 @@ public class ProfileServlet extends HttpServlet {
       resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       resp.getWriter().write("Another instance of profiler is already running.");
     }
+  }
+
+  /**
+   * Get the path of the profiler script to be executed.
+   * Before async-profiler 3.0, the script was named profiler.sh, and after 3.0 it's bin/asprof
+   * @return
+   */
+  private String getProfilerScriptPath() {
+    Path defaultPath = Paths.get(asyncProfilerHome + "/bin/asprof");
+    return Files.exists(defaultPath)? defaultPath.toString() : asyncProfilerHome + "/profiler.sh";
   }
 
   private Integer getInteger(final HttpServletRequest req, final String param, final Integer defaultValue) {
@@ -331,14 +357,16 @@ public class ProfileServlet extends HttpServlet {
 
   private Output getOutput(final HttpServletRequest req) {
     final String outputArg = req.getParameter("output");
+    String outputFormat = outputArg.trim().toUpperCase();
     if (req.getParameter("output") != null) {
       try {
-        return Output.valueOf(outputArg.trim().toUpperCase());
+        return Output.valueOf(outputFormat);
       } catch (IllegalArgumentException e) {
-        return Output.SVG;
+        LOG.warn("Output format value '{}' is invalid, returning with default HTML", outputFormat);
+        return Output.HTML;
       }
     }
-    return Output.SVG;
+    return Output.HTML;
   }
 
   private void setResponseHeader(final HttpServletResponse response) {

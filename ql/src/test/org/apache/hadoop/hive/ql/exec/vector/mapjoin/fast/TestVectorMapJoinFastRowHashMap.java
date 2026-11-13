@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.mapjoin.fast;
@@ -493,6 +494,47 @@ public class TestVectorMapJoinFastRowHashMap extends CommonFastHashTable {
         map, HashTableKeyType.LONG, verifyTable,
         new String[] { "bigint" },
         /* doClipping */ false, /* useExactBytes */ true);
+  }
+
+  @Test
+  public void testDateRowsExact() throws Exception {
+    random = new Random(44332);
+
+    // Use a large capacity that doesn't require expansion, yet.
+    VectorMapJoinFastLongHashMapContainer map =
+        new VectorMapJoinFastLongHashMapContainer(
+            false,
+            false,
+            HashTableKeyType.DATE,
+            LARGE_CAPACITY,
+            LOAD_FACTOR,
+            LARGE_WB_SIZE,
+            -1,
+            tableDesc,
+            4);
+
+    VerifyFastRowHashMap verifyTable = new VerifyFastRowHashMap();
+    VectorRandomRowSource valueSource = new VectorRandomRowSource();
+
+    valueSource.init(
+        random,
+        VectorRandomRowSource.SupportedTypes.ALL,
+        4,
+        false,
+        false);
+
+    int rowCount = 1000;
+    Object[][] rows = valueSource.randomRows(rowCount);
+
+    addAndVerifyRows(
+        valueSource,
+        rows,
+        map,
+        HashTableKeyType.DATE,
+        verifyTable,
+        new String[] {"date"},
+        false,
+        true);
   }
 
   @Test

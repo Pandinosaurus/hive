@@ -9,16 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.repl.metric;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.hadoop.hive.conf.Constants;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.utils.StringUtils;
@@ -52,12 +53,15 @@ public abstract class ReplicationMetricCollector {
   private static boolean enableForTests;
   private static long scheduledExecutionIdForTests = 0L;
   private HiveConf conf;
+  private static final String STAGE_ENDED_LOG_FORMAT = "Stage Ended {}, {}";
 
   public void setMetricsMBean(ObjectName metricsMBean) {
     this.metricsMBean = metricsMBean;
   }
 
   private ObjectName metricsMBean;
+
+  private AtomicDouble sizeOfDataReplicatedInKB = new AtomicDouble(0);
 
   public ReplicationMetricCollector(String dbName, Metadata.ReplicationType replicationType,
                              String stagingDir, long dumpExecutionId, HiveConf conf) {
@@ -72,6 +76,28 @@ public abstract class ReplicationMetricCollector {
       Metadata metadata = new Metadata(dbName, replicationType, getStagingDir(stagingDir));
       replicationMetric = new ReplicationMetric(executionId, policy, dumpExecutionId, metadata);
     }
+  }
+
+  public ReplicationMetricCollector(String dbName, Metadata.ReplicationType replicationType,
+                                    String stagingDir, long dumpExecutionId, HiveConf conf,
+                                    String failoverEndpoint, String failoverType) {
+    this.conf = conf;
+    checkEnabledForTests(conf);
+    String policy = conf.get(Constants.SCHEDULED_QUERY_SCHEDULENAME);
+    long executionId = conf.getLong(Constants.SCHEDULED_QUERY_EXECUTIONID, 0L);
+    if (!StringUtils.isEmpty(policy) && executionId > 0) {
+      isEnabled = true;
+      metricCollector = MetricCollector.getInstance().init(conf);
+      MetricSink.getInstance().init(conf);
+      Metadata metadata = new Metadata(dbName, replicationType, getStagingDir(stagingDir));
+      metadata.setFailoverEndPoint(failoverEndpoint);
+      metadata.setFailoverType(failoverType);
+      replicationMetric = new ReplicationMetric(executionId, policy, dumpExecutionId, metadata);
+    }
+  }
+
+  public void incrementSizeOfDataReplicated(long bytesCount) {
+    sizeOfDataReplicatedInKB.addAndGet((double)bytesCount/1024);
   }
 
   public void reportStageStart(String stageName, Map<String, Long> metricMap) throws SemanticException {
@@ -90,7 +116,8 @@ public abstract class ReplicationMetricCollector {
   }
 
   public void reportFailoverStart(String stageName, Map<String, Long> metricMap,
-                                  FailoverMetaData failoverMd) throws SemanticException {
+                                  FailoverMetaData failoverMd, String failoverEndpoint,
+                                  String failoverType) throws SemanticException {
     if (isEnabled) {
       LOG.info("Failover Stage Started {}, {}, {}", stageName, metricMap.size(), metricMap);
       Progress progress = replicationMetric.getProgress();
@@ -104,7 +131,25 @@ public abstract class ReplicationMetricCollector {
       Metadata metadata = replicationMetric.getMetadata();
       metadata.setFailoverMetadataLoc(failoverMd.getFilePath());
       metadata.setFailoverEventId(failoverMd.getFailoverEventId());
+      metadata.setFailoverEndPoint(failoverEndpoint);
+      metadata.setFailoverType(failoverType);
       replicationMetric.setMetadata(metadata);
+      metricCollector.addMetric(replicationMetric);
+    }
+  }
+
+  public void setSrcTimeInProgress(long endTimeOnSrc) throws SemanticException {
+    if (isEnabled) {
+      LOG.debug("Updating last commit time on src in progress as: {}", endTimeOnSrc);
+      Progress progress = replicationMetric.getProgress();
+      Stage stage = progress.getStageByName("REPL_LOAD");
+      if (stage == null) {
+        return;
+      }
+      stage.setEndTimeOnSrc(endTimeOnSrc);
+      stage.setEndTimeOnTgt(getCurrentTimeInMillis());
+      progress.addStage(stage);
+      replicationMetric.setProgress(progress);
       metricCollector.addMetric(replicationMetric);
     }
   }
@@ -113,7 +158,7 @@ public abstract class ReplicationMetricCollector {
       SnapshotUtils.ReplSnapshotCount replSnapshotCount, ReplStatsTracker replStatsTracker) throws SemanticException {
     unRegisterMBeanSafe();
     if (isEnabled) {
-      LOG.debug("Stage ended {}, {}, {}", stageName, status, lastReplId );
+      LOG.debug("Stage ended {}, {}, {}", stageName, status, lastReplId);
       Progress progress = replicationMetric.getProgress();
       Stage stage = progress.getStageByName(stageName);
       if(stage == null){
@@ -131,6 +176,7 @@ public abstract class ReplicationMetricCollector {
       replicationMetric.setProgress(progress);
       Metadata metadata = replicationMetric.getMetadata();
       metadata.setLastReplId(lastReplId);
+      metadata.setReplicatedDBSizeInKB(sizeOfDataReplicatedInKB.get());
       replicationMetric.setMetadata(metadata);
       metricCollector.addMetric(replicationMetric);
       if (Status.FAILED == status || Status.FAILED_ADMIN == status) {
@@ -139,10 +185,35 @@ public abstract class ReplicationMetricCollector {
     }
   }
 
+  public void reportStageEndWithLastExecutionId(String stageName, Status status, String errorLogPath, long lastDumpId)
+          throws SemanticException {
+    unRegisterMBeanSafe();
+    if (isEnabled) {
+      LOG.debug(STAGE_ENDED_LOG_FORMAT, stageName, status);
+      Progress progress = replicationMetric.getProgress();
+      Stage stage = progress.getStageByName(stageName);
+      if(stage == null){
+        stage = new Stage(stageName, status, -1L);
+      }
+      stage.setStatus(status);
+      stage.setEndTime(getCurrentTimeInMillis());
+      stage.setLastSuccessfulDumpId(lastDumpId);
+      if (errorLogPath != null) {
+        stage.setErrorLogPath(errorLogPath);
+      }
+      progress.addStage(stage);
+      replicationMetric.setProgress(progress);
+      metricCollector.addMetric(replicationMetric);
+      if (Status.FAILED == status || Status.FAILED_ADMIN == status || Status.SKIPPED == status) {
+        reportEnd(status);
+      }
+    }
+  }
+
   public void reportStageEnd(String stageName, Status status, String errorLogPath) throws SemanticException {
     unRegisterMBeanSafe();
     if (isEnabled) {
-      LOG.debug("Stage Ended {}, {}", stageName, status );
+      LOG.debug(STAGE_ENDED_LOG_FORMAT, stageName, status);
       Progress progress = replicationMetric.getProgress();
       Stage stage = progress.getStageByName(stageName);
       if(stage == null){
@@ -165,7 +236,7 @@ public abstract class ReplicationMetricCollector {
   public void reportStageEnd(String stageName, Status status) throws SemanticException {
     unRegisterMBeanSafe();
     if (isEnabled) {
-      LOG.debug("Stage Ended {}, {}", stageName, status );
+      LOG.debug(STAGE_ENDED_LOG_FORMAT, stageName, status);
       Progress progress = replicationMetric.getProgress();
       Stage stage = progress.getStageByName(stageName);
       if(stage == null){
@@ -175,6 +246,8 @@ public abstract class ReplicationMetricCollector {
       stage.setEndTime(getCurrentTimeInMillis());
       progress.addStage(stage);
       replicationMetric.setProgress(progress);
+      Metadata metadata = replicationMetric.getMetadata();
+      metadata.setReplicatedDBSizeInKB(sizeOfDataReplicatedInKB.get());
       metricCollector.addMetric(replicationMetric);
       if (Status.FAILED == status || Status.FAILED_ADMIN == status) {
         reportEnd(status);

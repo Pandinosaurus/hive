@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.storage.archive;
@@ -182,7 +183,7 @@ public class AlterTableArchiveOperation extends DDLOperation<AlterTableArchiveDe
     context.getConsole().printInfo("Creating " + ARCHIVE_NAME + " for " + originalDir.toString() + " in " + tmpPath);
     context.getConsole().printInfo("Please wait... (this may take a while)");
     try {
-      int maxJobNameLength = context.getConf().getIntVar(HiveConf.ConfVars.HIVEJOBNAMELENGTH);
+      int maxJobNameLength = context.getConf().getIntVar(HiveConf.ConfVars.HIVE_JOBNAME_LENGTH);
       String jobName = String.format("Archiving %s@%s", table.getTableName(), partitionSpecInfo.getName());
       jobName = Utilities.abbreviate(jobName, maxJobNameLength - 6);
       context.getConf().set(MRJobConfig.JOB_NAME, jobName);

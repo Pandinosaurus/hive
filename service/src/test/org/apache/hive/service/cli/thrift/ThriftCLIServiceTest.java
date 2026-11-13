@@ -9,33 +9,28 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.cli.thrift;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.metastore.MetaStoreTestUtils;
 import org.apache.hive.service.Service;
 import org.apache.hive.service.cli.OperationHandle;
 import org.apache.hive.service.cli.OperationState;
 import org.apache.hive.service.cli.OperationStatus;
 import org.apache.hive.service.cli.SessionHandle;
-import org.apache.hive.service.server.HiveServer2;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
@@ -44,56 +39,7 @@ import org.junit.Test;
  * Subclass this to test more specific behaviour.
  *
  */
-public abstract class ThriftCLIServiceTest {
-
-  protected static int port;
-  protected static String host = "localhost";
-  protected static HiveServer2 hiveServer2;
-  protected static ThriftCLIServiceClient client;
-  protected static HiveConf hiveConf;
-  protected static String USERNAME = "anonymous";
-  protected static String PASSWORD = "anonymous";
-
-  /**
-   * @throws java.lang.Exception
-   */
-  @BeforeClass
-  public static void setUpBeforeClass() throws Exception {
-    // Find a free port
-    port = MetaStoreTestUtils.findFreePort();
-    hiveServer2 = new HiveServer2();
-    hiveConf = new HiveConf();
-  }
-
-  /**
-   * @throws java.lang.Exception
-   */
-  @AfterClass
-  public static void tearDownAfterClass() throws Exception {
-    stopHiveServer2();
-  }
-
-   static void startHiveServer2WithConf(HiveConf hiveConf) throws Exception {
-    hiveServer2.init(hiveConf);
-    // Start HiveServer2 with given config
-    // Fail if server doesn't start
-    try {
-      hiveServer2.start();
-    } catch (Throwable t) {
-      t.printStackTrace();
-      fail();
-    }
-    // Wait for startup to complete
-    Thread.sleep(2000);
-    System.out.println("HiveServer2 started on port " + port);
-  }
-
-  protected static void stopHiveServer2() throws Exception {
-    if (hiveServer2 != null) {
-      hiveServer2.stop();
-    }
-  }
-
+public abstract class ThriftCLIServiceTest extends AbstractThriftCLITest {
   static ThriftCLIServiceClient getServiceClientInternal() {
     for (Service service : hiveServer2.getServices()) {
       if (service instanceof ThriftBinaryCLIService) {

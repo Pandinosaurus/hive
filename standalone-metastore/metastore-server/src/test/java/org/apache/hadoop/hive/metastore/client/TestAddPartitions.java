@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.client;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -55,6 +57,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * Tests for creating partitions.
@@ -783,17 +786,11 @@ public class TestAddPartitions extends MetaStoreClientTest {
     Partition partition2 = buildPartition(DB_NAME.toUpperCase(), tableName.toUpperCase(), "2018",
         tableLocation + "/year=2018");
     Partition partition3 = buildPartition(DB_NAME, tableName, "2019", tableLocation + "/year=2019");
-    try {
-      client.add_partitions(Lists.newArrayList(partition1, partition2, partition3));
-      Assert.fail("MetaException should have been thrown.");
-    } catch (MetaException e) {
-      // Expected exception
-      System.out.println(e);
-    }
-
+    client.add_partitions(Lists.newArrayList(partition1, partition2, partition3));
     List<String> partitionNames = client.listPartitionNames(DB_NAME, tableName, MAX);
     Assert.assertNotNull(partitionNames);
-    Assert.assertTrue(partitionNames.isEmpty());
+    Assert.assertEquals(3, partitionNames.size());
+    Assert.assertEquals(Sets.newHashSet("year=2017", "year=2018", "year=2019"), new HashSet<>(partitionNames));
   }
 
   @Test(expected = MetaException.class)

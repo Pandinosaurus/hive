@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.mapjoin;
@@ -51,13 +52,11 @@ import org.apache.hadoop.hive.serde2.lazybinary.fast.LazyBinaryDeserializeRead;
 import org.apache.hadoop.hive.serde2.lazybinary.fast.LazyBinarySerializeWrite;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
-import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
-import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.hive.serde2.ByteStream.Output;
 
 /**
- * This class has methods for generating vectorized join results and forwarding batchs.
+ * This class has methods for generating vectorized join results and forwarding batches.
  *
  * In some cases when can forward the big table batch by setting scratch columns
  * with small table results and then making use of our output projection to pick out all the
@@ -123,7 +122,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
   //------------------------------------------------------------------------------------------------
 
   protected void performValueExpressions(VectorizedRowBatch batch,
-      int[] allMatchs, int allMatchCount) throws HiveException {
+      int[] allMatches, int allMatchCount) throws HiveException {
     /*
      *  For the moment, pretend all matched are selected so we can evaluate the value
      *  expressions.
@@ -132,7 +131,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
      *  selected and real batch size later...
      */
     int[] saveSelected = batch.selected;
-    batch.selected = allMatchs;
+    batch.selected = allMatches;
     boolean saveSelectedInUse = batch.selectedInUse;
     batch.selectedInUse = true;
     batch.size =  allMatchCount;
@@ -181,7 +180,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
    *          The big table batch.
    * @param hashMapResult
    *          The hash map results for the matching key.
-   * @param allMatchs
+   * @param allMatches
    *          The selection array for all matches key.
    * @param allMatchesIndex
    *          Index into allMatches of the matching key we are generating for.
@@ -193,7 +192,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
    *          The new count of selected rows.
    */
   protected int generateHashMapResultSingleValue(VectorizedRowBatch batch,
-      VectorMapJoinHashMapResult hashMapResult, int[] allMatchs, int allMatchesIndex,
+      VectorMapJoinHashMapResult hashMapResult, int[] allMatches, int allMatchesIndex,
       int duplicateCount, int numSel) throws HiveException, IOException {
 
     // Read single value.
@@ -204,7 +203,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
 
     for (int i = 0; i < duplicateCount; i++) {
 
-      final int batchIndex = allMatchs[allMatchesIndex + i];
+      final int batchIndex = allMatches[allMatchesIndex + i];
 
       if (outerSmallTableKeyVectorCopy != null) {
 
@@ -235,7 +234,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
    *          The big table batch.
    * @param hashMapResult
    *          The hash map results for the matching key.
-   * @param allMatchs
+   * @param allMatches
    *          The all match selected array that contains (physical) batch indices.
    * @param allMatchesIndex
    *          The index of the match key.
@@ -243,7 +242,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
    *          Number of equal key rows.
    */
   protected void generateHashMapResultMultiValue(VectorizedRowBatch batch,
-      VectorMapJoinHashMapResult hashMapResult, int[] allMatchs, int allMatchesIndex,
+      VectorMapJoinHashMapResult hashMapResult, int[] allMatches, int allMatchesIndex,
       int duplicateCount) throws HiveException, IOException {
 
     if (useOverflowRepeatedThreshold &&
@@ -254,7 +253,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
       // row batch optimization in the overflow batch.
 
       generateHashMapResultLargeMultiValue(
-                  batch, hashMapResult, allMatchs, allMatchesIndex, duplicateCount);
+                  batch, hashMapResult, allMatches, allMatchesIndex, duplicateCount);
       return;
     }
 
@@ -263,7 +262,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
 
     for (int i = 0; i < duplicateCount; i++) {
 
-      final int batchIndex = allMatchs[allMatchesIndex + i];
+      final int batchIndex = allMatches[allMatchesIndex + i];
 
       ByteSegmentRef byteSegmentRef = hashMapResult.first();
       while (byteSegmentRef != null) {
@@ -320,7 +319,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
    *          The big table batch.
    * @param hashMapResult
    *          The hash map results for the matching key.
-   * @param allMatchs
+   * @param allMatches
    *          The all match selected array that contains (physical) batch indices.
    * @param allMatchesIndex
    *          The index of the match key.
@@ -328,7 +327,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
    *          Number of equal key rows.
    */
   private void generateHashMapResultLargeMultiValue(VectorizedRowBatch batch,
-      VectorMapJoinHashMapResult hashMapResult, int[] allMatchs, int allMatchesIndex,
+      VectorMapJoinHashMapResult hashMapResult, int[] allMatches, int allMatchesIndex,
       int duplicateCount) throws HiveException, IOException {
 
     // Kick out previous overflow batch results.
@@ -367,7 +366,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
 
       for (int i = 0; i < duplicateCount; i++) {
 
-        int batchIndex = allMatchs[allMatchesIndex + i];
+        int batchIndex = allMatches[allMatchesIndex + i];
 
         if (bigTableRetainedVectorCopy != null) {
 
@@ -532,7 +531,7 @@ public abstract class VectorMapJoinGenerateResultOperator extends VectorMapJoinC
     HashPartition hp = ht.getHashPartitions()[partitionId];
 
     VectorRowBytesContainer rowBytesContainer = hp.getMatchfileRowBytesContainer();
-    Output output = rowBytesContainer.getOuputForRowBytes();
+    Output output = rowBytesContainer.getOutputForRowBytes();
     bigTableVectorSerializeRow.setOutputAppend(output);
     bigTableVectorSerializeRow.serializeWrite(batch, batchIndex);
     rowBytesContainer.finishRow();

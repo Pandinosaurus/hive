@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc;
@@ -141,6 +142,7 @@ public class HivePreparedStatement extends HiveStatement implements PreparedStat
   private List<String> splitSqlStatement(String sql) {
     List<String> parts = new ArrayList<>();
     int apCount = 0;
+    int backTicksCount = 0;
     int off = 0;
     boolean skip = false;
 
@@ -157,8 +159,11 @@ public class HivePreparedStatement extends HiveStatement implements PreparedStat
       case '\\':
         skip = true;
         break;
+      case '`':
+        backTicksCount++;
+        break;
       case '?':
-        if ((apCount & 1) == 0) {
+        if ((apCount & 1) == 0 && (backTicksCount & 1) == 0) {
           parts.add(sql.substring(off,i));
           off=i+1;
         }

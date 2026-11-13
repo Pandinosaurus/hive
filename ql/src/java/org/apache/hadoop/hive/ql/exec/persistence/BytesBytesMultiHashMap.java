@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.persistence;
@@ -624,8 +625,8 @@ public final class BytesBytesMultiHashMap implements MemoryEstimate {
     if (capacity > Integer.MAX_VALUE) {
       throw new RuntimeException("Attempting to expand the hash table to " + capacity
           + " that overflows maximum array size. For this query, you may want to disable "
-          + ConfVars.HIVEDYNAMICPARTITIONHASHJOIN.varname + " or reduce "
-          + ConfVars.HIVECONVERTJOINNOCONDITIONALTASKTHRESHOLD.varname);
+          + ConfVars.HIVE_DYNAMIC_PARTITION_HASHJOIN.varname + " or reduce "
+          + ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONAL_TASK_THRESHOLD.varname);
     }
   }
 

@@ -1,7 +1,9 @@
 PREHOOK: query: drop table if exists dependtest
 PREHOOK: type: DROPTABLE
+PREHOOK: Output: database:default
 POSTHOOK: query: drop table if exists dependtest
 POSTHOOK: type: DROPTABLE
+POSTHOOK: Output: database:default
 PREHOOK: query: create table dependtest (a string) partitioned by (b int)
 PREHOOK: type: CREATETABLE
 PREHOOK: Output: database:default
@@ -43,7 +45,24 @@ POSTHOOK: Input: default@dependtest
 POSTHOOK: Input: default@dependtest@b=1
 POSTHOOK: Input: default@viewtest
 #### A masked pattern was here ####
-{"input_tables":[{"tablename":"default@viewtest","tabletype":"VIRTUAL_VIEW"},{"tablename":"default@dependtest","tabletype":"MANAGED_TABLE","tableParents":"[default@viewtest]"}],"input_partitions":[{"partitionName":"default@dependtest@b=1"}]}
+{
+  "input_tables": [
+    {
+      "tablename": "default@viewtest",
+      "tabletype": "VIRTUAL_VIEW"
+    },
+    {
+      "tablename": "default@dependtest",
+      "tabletype": "MANAGED_TABLE",
+      "tableParents": "[default@viewtest]"
+    }
+  ],
+  "input_partitions": [
+    {
+      "partitionName": "default@dependtest@b=1"
+    }
+  ]
+}
 PREHOOK: query: drop view viewtest
 PREHOOK: type: DROPVIEW
 PREHOOK: Input: default@viewtest
@@ -55,8 +74,10 @@ POSTHOOK: Output: default@viewtest
 PREHOOK: query: drop table dependtest
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@dependtest
+PREHOOK: Output: database:default
 PREHOOK: Output: default@dependtest
 POSTHOOK: query: drop table dependtest
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@dependtest
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@dependtest

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.minikdc;
@@ -53,8 +54,8 @@ public class MiniHiveKdc {
   public static String AUTHENTICATION_TYPE = "KERBEROS";
   private static final String HIVE_METASTORE_SERVICE_PRINCIPAL = "hive";
 
-  private final MiniKdc miniKdc;
-  private final File workDir;
+  final MiniKdc miniKdc;
+  final File workDir;
   private final Map<String, String> userPrincipals =
       new HashMap<String, String>();
   private final Properties kdcConf = MiniKdc.createConf();
@@ -238,10 +239,13 @@ public class MiniHiveKdc {
     String hiveMetastoreKeytab = miniHiveKdc.getKeyTabFile(
         miniHiveKdc.getServicePrincipalForUser(MiniHiveKdc.HIVE_METASTORE_SERVICE_PRINCIPAL));
 
-    return new MiniHS2.Builder().withTransactionalTables(false).withConf(hiveConf)
+    MiniHS2.Builder b = new MiniHS2.Builder().withTransactionalTables(false).withConf(hiveConf)
         .withSecureRemoteMetastore(hiveMetastorePrincipal, hiveMetastoreKeytab).
-            withMiniKdc(hivePrincipal, hiveKeytab).withAuthenticationType(authenticationType)
-        .build();
+            withMiniKdc(hivePrincipal, hiveKeytab).withAuthenticationType(authenticationType);
+    if(HiveServer2.isHttpTransportMode(hiveConf)){
+      b.withHTTPTransport();
+    }
+    return b.build();
   }
 
   /**

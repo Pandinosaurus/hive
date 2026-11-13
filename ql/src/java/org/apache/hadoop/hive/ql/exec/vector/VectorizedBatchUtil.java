@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector;
@@ -22,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -33,6 +35,7 @@ import org.apache.hadoop.hive.common.type.HiveIntervalYearMonth;
 import org.apache.hadoop.hive.common.type.HiveVarchar;
 import org.apache.hadoop.hive.common.type.Timestamp;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.io.ByteWritable;
 import org.apache.hadoop.hive.serde2.io.DateWritableV2;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
@@ -69,6 +72,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static java.util.stream.Collectors.toList;
 
 public class VectorizedBatchUtil {
   private static final Logger LOG = LoggerFactory.getLogger(VectorizedBatchUtil.class);
@@ -113,7 +118,7 @@ public class VectorizedBatchUtil {
     typeName = typeName.toLowerCase();
 
     // Allow undecorated CHAR and VARCHAR to support scratch column type names.
-    if (typeName.equals("char") || typeName.equals("varchar")) {
+    if (typeName.equals(serdeConstants.CHAR_TYPE_NAME) || typeName.equals(serdeConstants.VARCHAR_TYPE_NAME)) {
       return new BytesColumnVector(VectorizedRowBatch.DEFAULT_SIZE);
     }
 
@@ -204,6 +209,8 @@ public class VectorizedBatchUtil {
             createColumnVector(mapTypeInfo.getMapKeyTypeInfo()),
             createColumnVector(mapTypeInfo.getMapValueTypeInfo()));
       }
+    case UNKNOWN:
+      return new VoidColumnVector(VectorizedRowBatch.DEFAULT_SIZE);
     default:
       throw new RuntimeException("Vectorization is not supported for datatype:"
           + typeInfo.getCategory());
@@ -516,17 +523,17 @@ public class VectorizedBatchUtil {
       }
         break;
     case DECIMAL:
-      DecimalColumnVector dcv = (DecimalColumnVector) batch.cols[offset + colIndex];
+      ColumnVector dcv = batch.cols[offset + colIndex];
       if (writableCol != null) {
         dcv.isNull[rowIndex] = false;
         HiveDecimalWritable wobj = (HiveDecimalWritable) writableCol;
-        dcv.set(rowIndex, wobj);
+        ((IDecimalColumnVector) dcv).set(rowIndex, wobj);
       } else {
         setNullColIsNullValue(dcv, rowIndex);
       }
       break;
     default:
-      throw new HiveException("Vectorizaton is not supported for datatype:" +
+      throw new HiveException("Vectorization is not supported for datatype:" +
           poi.getPrimitiveCategory());
     }
   }
@@ -998,5 +1005,17 @@ public class VectorizedBatchUtil {
       int index = (batch.selectedInUse ? batch.selected[i] : i);
       debugDisplayOneRow(batch, index, prefix);
     }
+  }
+
+  /**
+   * Reset all columns other than Partition columns
+   * @param rowBatch VectorizedRowBatch to reset
+   */
+  public static void resetNonPartitionColumns(VectorizedRowBatch rowBatch) {
+    List<Integer> columnsToReset = IntStream.concat(
+            IntStream.range(0, rowBatch.getDataColumnCount()),
+            IntStream.range(rowBatch.getDataColumnCount() + rowBatch.getPartitionColumnCount(), rowBatch.cols.length)
+    ).boxed().collect(toList());
+    rowBatch.reset(columnsToReset);
   }
 }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.serde2;
@@ -43,7 +44,7 @@ public abstract class AbstractEncodingAwareSerDe extends AbstractSerDe {
     super.initialize(configuration, tableProperties, partitionProperties);
     charset = Charset.forName(properties.getProperty(serdeConstants.SERIALIZATION_ENCODING, "UTF-8"));
     if (this.charset.equals(Charsets.ISO_8859_1) || this.charset.equals(Charsets.US_ASCII)) {
-      log.warn("The data may not be properly converted to target charset " + charset);
+      log.warn("{} The data may not be properly converted to target charset {}", getClass().getName(), charset);
     }
   }
 

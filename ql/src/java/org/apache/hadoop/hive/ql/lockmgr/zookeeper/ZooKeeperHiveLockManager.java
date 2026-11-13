@@ -9,21 +9,24 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.lockmgr.zookeeper;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import org.apache.hadoop.hive.common.TableName;
 import org.apache.hadoop.hive.common.metrics.common.Metrics;
 import org.apache.hadoop.hive.common.metrics.common.MetricsConstant;
 import org.apache.hadoop.hive.common.metrics.common.MetricsFactory;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.DriverState;
 import org.apache.hadoop.hive.ql.lockmgr.*;
@@ -765,7 +768,11 @@ public class ZooKeeperHiveLockManager implements HiveLockManager {
       String objName = path.substring(("/" + parent + "/").length(), indx-1);
       String[] names = objName.split("/");
 
-      if (names.length < 2) {
+      if (names.length == 2) {
+        Database database = db.getDatabase(names[0], names[1]);
+        if (database != null) {
+          return new HiveLockObject(database, data);
+        }
         return null;
       }
 
@@ -773,18 +780,18 @@ public class ZooKeeperHiveLockManager implements HiveLockManager {
         return new HiveLockObject(names, data);
       }
 
-      // do not throw exception if table does not exist
-      Table tab = db.getTable(names[0], names[1], false);
+      TableName tableName = TableName.fromString(names[2],  names[0], names[1]);
+      Table tab = db.getTable(tableName);
       if (tab == null) {
         return null;
       }
 
-      if (names.length == 2) {
+      if (names.length == 3) {
         return new HiveLockObject(tab, data);
       }
 
       Map<String, String> partSpec = new HashMap<String, String>();
-      for (indx = 2; indx < names.length; indx++) {
+      for (indx = 3; indx < names.length; indx++) {
         String[] partVals = names[indx].split("=");
         partSpec.put(partVals[0], partVals[1]);
       }

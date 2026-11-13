@@ -60,7 +60,7 @@
 
 <property>
   <name>javax.jdo.option.ConnectionDriverName</name>
-  <value>org.apache.derby.jdbc.EmbeddedDriver</value>
+  <value>org.apache.derby.iapi.jdbc.AutoloadedDriver</value>
 </property>
 
 <property>
@@ -78,14 +78,6 @@
   <name>hive.metastore.warehouse.dir</name>
   <value>${test.warehouse.dir}</value>
   <description></description>
-</property>
-
-<property>
-  <name>hive.metastore.metadb.dir</name>
-  <value>file://${build.dir}/test/data/metadb/</value>
-  <description>
-  Required by metastore server or if the uris argument below is not supplied
-  </description>
 </property>
 
 <property>

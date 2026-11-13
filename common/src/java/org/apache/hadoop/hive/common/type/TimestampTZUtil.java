@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common.type;
 
@@ -25,6 +26,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Month;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -36,11 +38,11 @@ import java.time.format.TextStyle;
 import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
+import java.util.Locale;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import org.apache.hive.common.util.DateUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +52,7 @@ import static java.time.temporal.ChronoField.MINUTE_OF_HOUR;
 import static java.time.temporal.ChronoField.MONTH_OF_YEAR;
 import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
 import static java.time.temporal.ChronoField.YEAR;
+import static org.apache.hive.common.util.DateUtils.NANOS_PER_SEC;
 
 public class TimestampTZUtil {
 
@@ -57,6 +60,8 @@ public class TimestampTZUtil {
 
   private static final LocalTime DEFAULT_LOCAL_TIME = LocalTime.of(0, 0);
   private static final Pattern SINGLE_DIGIT_PATTERN = Pattern.compile("[\\+-]\\d:\\d\\d");
+
+  public static final String NOT_LEAP_YEAR = "not a leap year";
 
   private static final DateTimeFormatter TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
       // Date and Time Parts
@@ -79,9 +84,9 @@ public class TimestampTZUtil {
         optionalEnd().optionalEnd();
     // Zone part
     builder.optionalStart().appendLiteral(" ").optionalEnd();
-    builder.optionalStart().appendZoneText(TextStyle.NARROW).optionalEnd();
-
-    FORMATTER = builder.toFormatter();
+    builder.optionalStart().appendZoneOrOffsetId().optionalEnd();
+    // Hardcode Locale.US to ensure consistent parsing behavior regardless of the system's default locale.
+    FORMATTER = builder.toFormatter(Locale.US);
   }
 
   public static TimestampTZ parse(String s) {
@@ -89,9 +94,13 @@ public class TimestampTZUtil {
   }
 
   public static TimestampTZ parse(String s, ZoneId defaultTimeZone) {
+    return parse(s, defaultTimeZone, FORMATTER);
+  }
+
+  public static TimestampTZ parse(String s, ZoneId defaultTimeZone, DateTimeFormatter formatter) {
     // need to handle offset with single digital hour, see JDK-8066806
     s = handleSingleDigitHourOffset(s);
-    TemporalAccessor accessor = FORMATTER.parse(s);
+    TemporalAccessor accessor = formatter.parse(s);
 
     LocalDate localDate = accessor.query(TemporalQueries.localDate());
 
@@ -189,7 +198,18 @@ public class TimestampTZUtil {
         java.util.Date date = formatter.parse(ts.format(TIMESTAMP_FORMATTER));
         // Set the formatter to use a different timezone
         formatter.setTimeZone(TimeZone.getTimeZone(toZone));
-        Timestamp result = Timestamp.valueOf(formatter.format(date));
+        Timestamp result;
+        try {
+          result = Timestamp.valueOf(formatter.format(date));
+        } catch (IllegalArgumentException ex) {
+          if (ex.getCause().getMessage().contains(NOT_LEAP_YEAR)) {
+            int leapYearDateAdjustment = ts.getMonth() == Month.MARCH.getValue() ? 2 : -2;
+            result = Timestamp.valueOf(formatter.format(DateUtils.addDays(date, leapYearDateAdjustment)))
+                .minusDays(leapYearDateAdjustment);
+          } else {
+            throw ex;
+          }
+        }
         result.setNanos(ts.getNanos());
         return result;
       } catch (ParseException e) {
@@ -207,6 +227,6 @@ public class TimestampTZUtil {
   }
 
   public static double convertTimestampTZToDouble(TimestampTZ timestampTZ) {
-    return timestampTZ.getEpochSecond() + timestampTZ.getNanos() / DateUtils.NANOS_PER_SEC;
+    return timestampTZ.getEpochSecond() + timestampTZ.getNanos() / NANOS_PER_SEC;
   }
 }

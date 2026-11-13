@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite;
 
@@ -31,6 +32,7 @@ import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.plan.RelOptUtil.InputFinder;
 import org.apache.calcite.plan.RelOptUtil.InputReferencedVisitor;
+import org.apache.calcite.plan.hep.HepRelVertex;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.Aggregate;
 import org.apache.calcite.rel.core.AggregateCall;
@@ -47,9 +49,12 @@ import org.apache.calcite.rex.RexCorrelVariable;
 import org.apache.calcite.rex.RexDynamicParam;
 import org.apache.calcite.rex.RexFieldAccess;
 import org.apache.calcite.rex.RexInputRef;
+import org.apache.calcite.rex.RexLambda;
+import org.apache.calcite.rex.RexLambdaRef;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexLocalRef;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.rex.RexNodeAndFieldIndex;
 import org.apache.calcite.rex.RexOver;
 import org.apache.calcite.rex.RexPatternFieldRef;
 import org.apache.calcite.rex.RexShuttle;
@@ -68,19 +73,23 @@ import org.apache.calcite.util.ImmutableBitSet;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.ql.exec.ColumnInfo;
 import org.apache.hadoop.hive.ql.exec.FunctionInfo;
 import org.apache.hadoop.hive.ql.exec.FunctionRegistry;
+import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.metadata.VirtualColumn;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveMultiJoin;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSqlFunction;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveTableFunctionScan;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveValues;
 import org.apache.hadoop.hive.ql.optimizer.calcite.translator.ExprNodeConverter;
 import org.apache.hadoop.hive.ql.optimizer.calcite.translator.SqlFunctionConverter;
 import org.apache.hadoop.hive.ql.optimizer.calcite.translator.TypeConverter;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.parse.ParseUtils;
+import org.apache.hadoop.hive.ql.parse.QB;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
@@ -100,12 +109,19 @@ import com.google.common.collect.Sets;
 
 public class HiveCalciteUtil {
 
-  public static boolean validateASTForUnsupportedTokens(ASTNode ast) {
-    if (ParseUtils.containsTokenOfType(ast, HiveParser.TOK_CHARSETLITERAL, HiveParser.TOK_TABLESPLITSAMPLE)) {
-      return false;
-    } else {
-      return true;
+  public static Pair<Boolean, String> unsupportedFeaturesPresentInASTorQB(ASTNode ast, QB qb) {
+    Pair<Boolean, String> containsToken = 
+        ParseUtils.containsTokenOfType(ast, HiveParser.TOK_CHARSETLITERAL, HiveParser.TOK_TABLESPLITSAMPLE, 
+            HiveParser.TOK_UNIQUEJOIN, HiveParser.TOK_TABLEBUCKETSAMPLE);
+
+    if (Boolean.TRUE.equals(containsToken.getKey())) {
+      return containsToken;
     }
+    if (qb.hasTableSampleRecursive()) {
+      return Pair.of(true, "TOK_TABLEBUCKETSAMPLE");
+    }
+
+    return Pair.of(false, null);
   }
 
   public static List<RexNode> getProjsFromBelowAsInputRef(final RelNode rel) {
@@ -248,9 +264,9 @@ public class HiveCalciteUtil {
     // fields
     if (newKeyCount > 0) {
       leftRel = factory.createProject(leftRel, Collections.emptyList(), newLeftFields,
-          SqlValidatorUtil.uniquify(newLeftFieldNames));
+          SqlValidatorUtil.uniquify(newLeftFieldNames, true), Collections.emptySet());
       rightRel = factory.createProject(rightRel, Collections.emptyList(), newRightFields,
-          SqlValidatorUtil.uniquify(newRightFieldNames));
+          SqlValidatorUtil.uniquify(newRightFieldNames, true), Collections.emptySet());
     }
 
     inputRels[0] = leftRel;
@@ -609,7 +625,7 @@ public class HiveCalciteUtil {
     RelNode originalProjRel = null;
 
     while (tmpRel != null) {
-      if (tmpRel instanceof HiveProject || tmpRel instanceof HiveTableFunctionScan) {
+      if (tmpRel instanceof HiveProject || tmpRel instanceof HiveTableFunctionScan || tmpRel instanceof HiveValues) {
         originalProjRel = tmpRel;
         break;
       }
@@ -826,19 +842,6 @@ public class HiveCalciteUtil {
     return deterministicFuncWithSingleInputRef;
   }
 
-  public static <T> ImmutableMap<Integer, T> getColInfoMap(List<T> hiveCols,
-      int startIndx) {
-    Builder<Integer, T> bldr = ImmutableMap.<Integer, T> builder();
-
-    int indx = startIndx;
-    for (T ci : hiveCols) {
-      bldr.put(indx, ci);
-      indx++;
-    }
-
-    return bldr.build();
-  }
-
   public static ImmutableSet<Integer> shiftVColsSet(Set<Integer> hiveVCols, int shift) {
     ImmutableSet.Builder<Integer> bldr = ImmutableSet.<Integer> builder();
 
@@ -944,7 +947,7 @@ public class HiveCalciteUtil {
       PrimitiveTypeInfo typeInfo, Integer pos, RelDataType aggFnRetType) {
     ImmutableList.Builder<RelDataType> aggArgRelDTBldr = new ImmutableList.Builder<RelDataType>();
     aggArgRelDTBldr.add(TypeConverter.convert(typeInfo, cluster.getTypeFactory()));
-    SqlAggFunction aggFunction = SqlFunctionConverter.getCalciteAggFn(funcName, false,
+    SqlAggFunction aggFunction = SqlFunctionConverter.getCalciteAggFn(funcName,
         aggArgRelDTBldr.build(), aggFnRetType);
     List<Integer> argList = new ArrayList<Integer>();
     argList.add(pos);
@@ -1129,11 +1132,34 @@ public class HiveCalciteUtil {
     public Boolean visitPatternFieldRef(RexPatternFieldRef fieldRef) {
       return false;
     }
+
+    @Override
+    public Boolean visitLambda(RexLambda lambda) {
+      return false;
+    }
+
+    @Override
+    public Boolean visitLambdaRef(RexLambdaRef lambdaRef) {
+      return false;
+    }
+
+    @Override
+    public Boolean visitNodeAndFieldIndex(RexNodeAndFieldIndex nodeAndFieldIndex) {
+      return false;
+    }
   }
 
   public static Set<Integer> getInputRefs(RexNode expr) {
     InputRefsCollector irefColl = new InputRefsCollector(true);
     expr.accept(irefColl);
+    return irefColl.getInputRefSet();
+  }
+
+  public static Set<Integer> getInputRefs(List<RexNode> exprs) {
+    InputRefsCollector irefColl = new InputRefsCollector(true);
+    for (RexNode expr : exprs) {
+      expr.accept(irefColl);
+    }
     return irefColl.getInputRefSet();
   }
 
@@ -1214,96 +1240,40 @@ public class HiveCalciteUtil {
     }
   }
 
-  private static class DisjunctivePredicatesFinder extends RexVisitorImpl<Void> {
-    // accounting for DeMorgan's law
-    boolean inNegation = false;
-    boolean hasDisjunction = false;
-
-    public DisjunctivePredicatesFinder() {
-      super(true);
-    }
-
-    @Override
-    public Void visitCall(RexCall call) {
-      switch (call.getKind()) {
-      case OR:
-        if (inNegation) {
-          return super.visitCall(call);
-        } else {
-          this.hasDisjunction = true;
-          return null;
-        }
-      case AND:
-        if (inNegation) {
-          this.hasDisjunction = true;
-          return null;
-        } else {
-          return super.visitCall(call);
-        }
-      case NOT:
-        inNegation = !inNegation;
-        return super.visitCall(call);
-      default:
-        return super.visitCall(call);
-      }
-    }
-  }
-
   /**
-   * Returns whether the expression has disjunctions (OR) at any level of nesting.
-   * <ul>
-   * <li> Example 1: OR(=($0, $1), IS NOT NULL($2))):INTEGER (OR in the top-level expression) </li>
-   * <li> Example 2: NOT(AND(=($0, $1), IS NOT NULL($2))
-   *   this is equivalent to OR((&lt;&gt;($0, $1), IS NULL($2)) </li>
-   * <li> Example 3: AND(OR(=($0, $1), IS NOT NULL($2)))) (OR in inner expression) </li>
-   * </ul>
-   * @param node the expression where to look for disjunctions.
-   * @return true if the given expressions contains a disjunction, false otherwise.
+   * Given a join, creates a bitset of the joined columns originating from the right-hand side.
+   * @param joinRel a join that concatenates all columns from its inputs (so no semi-join)
+   * @return a bitset
    */
-  public static boolean hasDisjuction(RexNode node) {
-    DisjunctivePredicatesFinder finder = new DisjunctivePredicatesFinder();
-    node.accept(finder);
-    return finder.hasDisjunction;
+  public static ImmutableBitSet getRightSideBitset(RelNode joinRel) {
+    if(joinRel.getInputs().size() != 2) {
+      throw new IllegalArgumentException("The relation must have exactly two children:\n" + RelOptUtil.toString(joinRel));
+    }
+    int nTotalFields = joinRel.getRowType().getFieldCount();
+    int nFieldsLeft = (joinRel.getInputs().get(0)).getRowType().getFieldCount();
+    return ImmutableBitSet.range(nFieldsLeft, nTotalFields);
   }
 
   /**
-   * Checks if any of the expression given as list expressions are from right side of the join.
-   *  This is used during anti join conversion.
+   * Checks the operands in the join conditions are only from left side.
    *
-   * @param joinRel Join node whose right side has to be searched.
-   * @param expressions The list of expression to search.
-   * @return true if any of the expressions is from right side of join.
+   * @param joinRel Join node
+   * @return true if the join condition operands are from right and left side, false otherwise.
    */
-  public static boolean hasAnyExpressionFromRightSide(RelNode joinRel, List<RexNode> expressions)  {
-    List<RelDataTypeField> joinFields = joinRel.getRowType().getFieldList();
-    int nTotalFields = joinFields.size();
-    List<RelDataTypeField> leftFields = (joinRel.getInputs().get(0)).getRowType().getFieldList();
-    int nFieldsLeft = leftFields.size();
-    ImmutableBitSet rightBitmap = ImmutableBitSet.range(nFieldsLeft, nTotalFields);
-
-    for (RexNode node : expressions) {
-      ImmutableBitSet inputBits = RelOptUtil.InputFinder.bits(node);
-      if (rightBitmap.contains(inputBits)) {
+  public static boolean checkIfJoinConditionOnlyUsesLeftOperands(Join joinRel) {
+    RexNode condition = joinRel.getCondition();
+    RelNode leftRel = joinRel.getLeft();
+    int leftFieldCount = leftRel.getRowType().getFieldCount();
+    ImmutableBitSet leftBitmap = ImmutableBitSet.range(leftFieldCount);
+    List<RexNode> conditions = RelOptUtil.conjunctions(condition);
+    for (RexNode cond : conditions) {
+      ImmutableBitSet condBitmap = RelOptUtil.InputFinder.bits(cond);
+      // here condition becomes true if both the operands are from left table
+      if (leftBitmap.contains(condBitmap)) {
         return true;
       }
     }
     return false;
-  }
-
-  public static boolean hasAllExpressionsFromRightSide(RelNode joinRel, List<RexNode> expressions) {
-    List<RelDataTypeField> joinFields = joinRel.getRowType().getFieldList();
-    int nTotalFields = joinFields.size();
-    List<RelDataTypeField> leftFields = (joinRel.getInputs().get(0)).getRowType().getFieldList();
-    int nFieldsLeft = leftFields.size();
-    ImmutableBitSet rightBitmap = ImmutableBitSet.range(nFieldsLeft, nTotalFields);
-
-    for (RexNode node : expressions) {
-      ImmutableBitSet inputBits = RelOptUtil.InputFinder.bits(node);
-      if (!rightBitmap.contains(inputBits)) {
-        return false;
-      }
-    }
-    return true;
   }
 
   /**
@@ -1333,5 +1303,21 @@ public class HiveCalciteUtil {
 
     rexNode.accept(visitor);
     return rexTableInputRefs;
+  }
+
+  public static RelNode stripHepVertices(RelNode rel) {
+    if (rel instanceof HepRelVertex) {
+      rel = ((HepRelVertex) rel).getCurrentRel();
+    }
+    List<RelNode> oldInputs = rel.getInputs();
+    List<RelNode> newInputs = new ArrayList<>();
+    for (RelNode oldInput : oldInputs) {
+      newInputs.add(stripHepVertices(oldInput));
+    }
+    if (oldInputs.equals(newInputs)) {
+      return rel;
+    } else {
+      return rel.copy(rel.getTraitSet(), newInputs);
+    }
   }
 }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -29,7 +30,10 @@ import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.api.ThriftHiveMetastore;
+import org.apache.hadoop.hive.metastore.api.AbortCompactResponse;
+import org.apache.hadoop.hive.metastore.api.AbortCompactionRequest;
 import org.apache.hadoop.hive.metastore.txn.TxnStore;
+import org.apache.thrift.TException;
 
 /**
  * An interface wrapper for HMSHandler.  This interface contains methods that need to be
@@ -72,26 +76,6 @@ public interface IHMSHandler extends ThriftHiveMetastore.Iface, Configurable {
       throws NoSuchObjectException, MetaException;
 
   /**
-   * Equivalent of get_table, but does not log audits and fire pre-event listener.
-   * Meant to be used for calls made by other hive classes, that are not using the
-   * thrift interface.
-   * @param catName catalog name
-   * @param dbname database name
-   * @param name table name
-   * @return Table object
-   * @throws NoSuchObjectException If the table does not exist.
-   * @throws MetaException  If another error occurs.
-   */
-  @Deprecated
-  Table get_table_core(final String catName, final String dbname, final String name)
-      throws MetaException, NoSuchObjectException;
-  @Deprecated
-  Table get_table_core(final String catName, final String dbname,
-                       final String name,
-                       final String writeIdList)
-      throws MetaException, NoSuchObjectException;
-
-  /**
    *
    * @param getTableRequest request object to query table in HMS
    * @return Table Object
@@ -123,4 +107,10 @@ public interface IHMSHandler extends ThriftHiveMetastore.Iface, Configurable {
    */
   DataConnector get_dataconnector_core(final String name)
       throws NoSuchObjectException, MetaException;
+
+  AbortCompactResponse abort_Compactions(AbortCompactionRequest rqst) throws TException;
+
+  IMetaStoreMetadataTransformer getMetadataTransformer();
+
+  MetaStoreFilterHook getMetaFilterHook();
 }

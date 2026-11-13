@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.mapjoin.fast;
@@ -21,6 +22,7 @@ package org.apache.hadoop.hive.ql.exec.vector.mapjoin.fast;
 import org.apache.hadoop.hive.common.MemoryEstimate;
 import org.apache.hadoop.hive.ql.exec.JoinUtil;
 import org.apache.hadoop.hive.ql.exec.persistence.MatchTracker;
+import org.apache.hadoop.hive.ql.exec.vector.mapjoin.VectorMapJoinLongHashUtil;
 import org.apache.hadoop.hive.ql.exec.vector.mapjoin.hashtable.VectorMapJoinHashMapResult;
 import org.apache.hadoop.hive.ql.exec.vector.mapjoin.hashtable.VectorMapJoinLongHashMap;
 import org.apache.hadoop.hive.ql.exec.vector.mapjoin.hashtable.VectorMapJoinNonMatchedIterator;
@@ -109,10 +111,11 @@ public class VectorMapJoinFastLongHashMapContainer extends VectorMapJoinFastHash
     private NonMatchedLongHashMapIterator(MatchTracker matchTracker,
         VectorMapJoinFastLongHashMap[] vectorMapJoinFastLongHashMaps, int numThreads) {
       super(matchTracker);
+
       hashMapIterators = new VectorMapJoinFastLongHashMap.NonMatchedLongHashMapIterator[numThreads];
       for (int i = 0; i < numThreads; ++i) {
-        hashMapIterators[i] = new VectorMapJoinFastLongHashMap.NonMatchedLongHashMapIterator(matchTracker,
-            vectorMapJoinFastLongHashMaps[i]);
+        hashMapIterators[i] = new VectorMapJoinFastLongHashMap.NonMatchedLongHashMapIterator(
+            matchTracker.getPartition(i), vectorMapJoinFastLongHashMaps[i]);
       }
       index = 0;
       this.numThreads = numThreads;
@@ -168,7 +171,7 @@ public class VectorMapJoinFastLongHashMapContainer extends VectorMapJoinFastHash
       throw new HiveException("DeserializeRead details: " +
           keyBinarySortableDeserializeRead.getDetailedReadPositionString(), e);
     }
-    long key = VectorMapJoinFastLongHashUtil.deserializeLongKey(keyBinarySortableDeserializeRead, hashTableKeyType);
+    long key = VectorMapJoinLongHashUtil.deserializeLongKey(keyBinarySortableDeserializeRead, hashTableKeyType);
     return HashCodeUtil.calculateLongHashCode(key);
   }
 
@@ -186,7 +189,11 @@ public class VectorMapJoinFastLongHashMapContainer extends VectorMapJoinFastHash
   public JoinUtil.JoinResult lookup(long key, VectorMapJoinHashMapResult hashMapResult,
       MatchTracker matchTracker) {
     long hashCode = HashCodeUtil.calculateLongHashCode(key);
-    return vectorMapJoinFastLongHashMaps[(int) ((numThreads - 1) & hashCode)].lookup(key, hashMapResult, matchTracker);
+    int partition = (int) ((numThreads - 1) & hashCode);
+    MatchTracker childMatchTracker = matchTracker != null ? matchTracker.getPartition(partition) : null;
+
+    return vectorMapJoinFastLongHashMaps[partition].lookup(key, hashMapResult,
+        childMatchTracker);
   }
 
   public long getEstimatedMemorySize() {
@@ -208,11 +215,13 @@ public class VectorMapJoinFastLongHashMapContainer extends VectorMapJoinFastHash
 
   @Override
   public MatchTracker createMatchTracker() {
-    int count = 0;
-    for (int i = 0; i < numThreads; ++i) {
-      count += vectorMapJoinFastLongHashMaps[i].logicalHashBucketCount;
+    MatchTracker parentMatchTracker = MatchTracker.createPartitioned(numThreads);
+    for (int i = 0; i < numThreads; i++) {
+      int childSize = vectorMapJoinFastLongHashMaps[i].logicalHashBucketCount;
+      parentMatchTracker.addPartition(i, childSize);
     }
-    return MatchTracker.create(count);
+
+    return parentMatchTracker;
   }
 
   @Override

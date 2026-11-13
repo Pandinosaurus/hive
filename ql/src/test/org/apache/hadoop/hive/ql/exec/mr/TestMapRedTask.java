@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.mr;
 
@@ -25,8 +26,6 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Arrays;
-
-import javax.security.auth.login.LoginException;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.metrics.common.Metrics;
@@ -59,7 +58,7 @@ public class TestMapRedTask {
   }
 
   @Test
-  public void mrTaskSumbitViaChildWithImpersonation() throws IOException, LoginException {
+  public void mrTaskSumbitViaChildWithImpersonation() throws IOException {
     Utils.getUGI().setAuthenticationMethod(PROXY);
 
     Context ctx = Mockito.mock(Context.class);
@@ -69,7 +68,7 @@ public class TestMapRedTask {
 
     QueryState queryState = new QueryState.Builder().build();
     HiveConf conf= queryState.getConf();
-    conf.setBoolVar(HiveConf.ConfVars.SUBMITVIACHILD, true);
+    conf.setBoolVar(HiveConf.ConfVars.SUBMIT_VIA_CHILD, true);
 
     MapredWork mrWork = new MapredWork();
     mrWork.setMapWork(Mockito.mock(MapWork.class));

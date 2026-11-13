@@ -9,21 +9,25 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
@@ -116,11 +120,6 @@ public class StatsSetupConst {
    */
   public static final String NUM_ERASURE_CODED_FILES = "numFilesErasureCoded";
 
-  /**
-   * Temp dir for writing stats from tasks.
-   */
-  public static final String STATS_TMP_LOC = "hive.stats.tmp.loc";
-
   public static final String STATS_FILE_PREFIX = "tmpstats-";
   /**
    * List of all supported statistics
@@ -133,6 +132,11 @@ public class StatsSetupConst {
    * statistics that inherently require a scan of the data.
    */
   public static final List<String> STATS_REQUIRE_COMPUTE = ImmutableList.of(ROW_COUNT, RAW_DATA_SIZE);
+
+  /**
+   * Set of table properties which should have numeric values
+   */
+  public static final Set<String> STATS_NUMERIC = ImmutableSet.copyOf(SUPPORTED_STATS);
 
   /**
    * List of statistics that can be collected quickly without requiring a scan of the data.
@@ -166,6 +170,8 @@ public class StatsSetupConst {
   public static final String BASIC_STATS = "BASIC_STATS";
 
   public static final String CASCADE = "CASCADE";
+
+  public static final String  STATS_FOR_CREATE_TABLE = "setStatsStateForCreateTable";
 
   public static final String TRUE = "true";
 
@@ -219,6 +225,55 @@ public class StatsSetupConst {
 
   }
 
+  /**
+   * Class for marking the column statistics when creating tables.
+   */
+  public static class ColumnStatsSetup {
+    private static ObjectReader objectReader;
+    private static ObjectWriter objectWriter;
+    static {
+      ObjectMapper objectMapper = new ObjectMapper();
+      objectReader = objectMapper.readerFor(ColumnStatsSetup.class);
+      objectWriter = objectMapper.writerFor(ColumnStatsSetup.class);
+    }
+
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    public boolean enabled;
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    public boolean isIcebergTable;
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    public List<String> columnNames = new ArrayList<>();
+
+    public static ColumnStatsSetup parseStatsSetup(String statsSetup) {
+      if (statsSetup == null) {
+        return new ColumnStatsSetup();
+      }
+      try {
+        return objectReader.readValue(statsSetup);
+      } catch (Exception e) {
+         return new ColumnStatsSetup();
+      }
+    }
+
+    /**
+     * Get json representation of the ColumnStatsSetup
+     */
+    public static String getStatsSetupAsString(boolean enabled,
+        boolean isIcebergTable,
+        List<String> columns) {
+      try {
+        ColumnStatsSetup statsSetup = new ColumnStatsSetup();
+        statsSetup.enabled = enabled;
+        statsSetup.isIcebergTable = isIcebergTable;
+        statsSetup.columnNames = new ArrayList<>(columns);
+        return objectWriter.writeValueAsString(statsSetup);
+      } catch (Exception e) {
+        // this should not happen
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
   public static boolean areBasicStatsUptoDate(Map<String, String> params) {
     if (params == null) {
       return false;
@@ -227,12 +282,20 @@ public class StatsSetupConst {
     return stats.basicStats;
   }
 
-  public static boolean areColumnStatsUptoDate(Map<String, String> params, String colName) {
+  /** Whether the stored column statistics are up to date for every column asked. */
+  public static boolean areColumnStatsUptoDate(Map<String, String> params, List<String> colNames) {
     if (params == null) {
-      return false;
+      // every column of no columns is up to date
+      return colNames.isEmpty();
     }
+    // the marker is one document holding every column, so it is parsed for the ask rather than
+    // once per column: a caller asking per partition would otherwise reparse it per column too
     ColumnStatsAccurate stats = parseStatsAcc(params.get(COLUMN_STATS_ACCURATE));
-    return stats.columnStats.containsKey(colName);
+    return stats.columnStats.keySet().containsAll(colNames);
+  }
+
+  public static boolean areColumnStatsUptoDate(Map<String, String> params, String colName) {
+    return areColumnStatsUptoDate(params, Collections.singletonList(colName));
   }
 
   // It will only throw JSONException when stats.put(BASIC_STATS, TRUE)
@@ -240,7 +303,7 @@ public class StatsSetupConst {
   // note that set basic stats false will wipe out column stats too.
   public static void setBasicStatsState(Map<String, String> params, String setting) {
     if (setting.equals(FALSE)) {
-      if (params!=null && params.containsKey(COLUMN_STATS_ACCURATE)) {
+      if (params != null) {
         params.remove(COLUMN_STATS_ACCURATE);
       }
       return;
@@ -265,12 +328,8 @@ public class StatsSetupConst {
       return;
     }
     ColumnStatsAccurate stats = parseStatsAcc(params.get(COLUMN_STATS_ACCURATE));
-
-    for (String colName : colNames) {
-      if (!stats.columnStats.containsKey(colName)) {
-        stats.columnStats.put(colName, true);
-      }
-    }
+    colNames.forEach(colName -> 
+        stats.columnStats.putIfAbsent(colName.toLowerCase(), true));
 
     try {
       params.put(COLUMN_STATS_ACCURATE, ColumnStatsAccurate.objectWriter.writeValueAsString(stats));
@@ -288,22 +347,13 @@ public class StatsSetupConst {
       // No table/partition params, no statistics available
       return null;
     }
-
     ColumnStatsAccurate stats = parseStatsAcc(params.get(COLUMN_STATS_ACCURATE));
 
     // No stats available.
     if (stats == null) {
       return null;
     }
-
-    List<String> colNames = new ArrayList<String>();
-    for (Map.Entry<String, Boolean> entry : stats.columnStats.entrySet()) {
-      if (entry.getValue()) {
-        colNames.add(entry.getKey());
-      }
-    }
-
-    return colNames;
+    return ImmutableList.copyOf(stats.columnStats.keySet());
   }
 
   public static boolean canColumnStatsMerge(Map<String, String> params, String colName) {
@@ -319,7 +369,6 @@ public class StatsSetupConst {
     if (params == null || params.get(COLUMN_STATS_ACCURATE) == null) {
       return;
     }
-
     ColumnStatsAccurate stats = parseStatsAcc(params.get(COLUMN_STATS_ACCURATE));
     stats.columnStats.clear();
 
@@ -334,11 +383,15 @@ public class StatsSetupConst {
     if (params == null) {
       return;
     }
-    try {
-      ColumnStatsAccurate stats = parseStatsAcc(params.get(COLUMN_STATS_ACCURATE));
-      for (String string : colNames) {
-        stats.columnStats.remove(string);
+    ColumnStatsAccurate stats = parseStatsAcc(params.get(COLUMN_STATS_ACCURATE));
+    colNames.forEach(colName -> {
+      // it is possible that colName could be null
+      if (colName != null) {
+        stats.columnStats.remove(colName.toLowerCase());
       }
+    });
+
+    try {      
       params.put(COLUMN_STATS_ACCURATE, ColumnStatsAccurate.objectWriter.writeValueAsString(stats));
     } catch (JsonProcessingException e) {
       LOG.trace(e.getMessage());

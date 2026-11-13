@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.daemon;
@@ -19,7 +24,6 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.hadoop.hive.llap.LlapUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.conf.Configuration;
@@ -32,8 +36,6 @@ import org.apache.hadoop.hive.llap.daemon.impl.LlapDaemon;
 import org.apache.hadoop.hive.llap.shufflehandler.ShuffleHandler;
 import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.service.Service;
-import org.apache.hadoop.util.Shell;
-import org.apache.hadoop.yarn.exceptions.YarnRuntimeException;
 import org.apache.hive.testutils.MiniZooKeeperCluster;
 import org.apache.tez.runtime.library.api.TezRuntimeConfiguration;
 
@@ -137,7 +139,6 @@ public class MiniLlapCluster extends AbstractService {
   @Override
   public void serviceInit(Configuration conf) throws IOException, InterruptedException {
     int rpcPort = 0;
-    int externalClientCloudRpcPort = 0;
     int mngPort = 0;
     int shufflePort = 0;
     int webPort = 0;
@@ -146,7 +147,6 @@ public class MiniLlapCluster extends AbstractService {
     LOG.info("MiniLlap configured to use ports from conf: {}", usePortsFromConf);
     if (usePortsFromConf) {
       rpcPort = HiveConf.getIntVar(conf, HiveConf.ConfVars.LLAP_DAEMON_RPC_PORT);
-      externalClientCloudRpcPort = HiveConf.getIntVar(conf, ConfVars.LLAP_EXTERNAL_CLIENT_CLOUD_RPC_PORT);
       mngPort = HiveConf.getIntVar(conf, HiveConf.ConfVars.LLAP_MANAGEMENT_RPC_PORT);
       shufflePort = conf.getInt(ShuffleHandler.SHUFFLE_PORT_CONFIG_KEY, ShuffleHandler.DEFAULT_SHUFFLE_PORT);
       webPort = HiveConf.getIntVar(conf, ConfVars.LLAP_DAEMON_WEB_PORT);
@@ -169,12 +169,10 @@ public class MiniLlapCluster extends AbstractService {
     clusterSpecificConfiguration.set(ConfVars.HIVE_ZOOKEEPER_QUORUM.varname, "localhost");
     clusterSpecificConfiguration.setInt(ConfVars.HIVE_ZOOKEEPER_CLIENT_PORT.varname, miniZooKeeperCluster.getClientPort());
 
-    boolean externalClientCloudSetupEnabled = LlapUtil.isCloudDeployment(conf);
-
     LOG.info("Initializing {} llap instances for MiniLlapCluster with name={}", numInstances, clusterNameTrimmed);
     for (int i = 0 ;i < numInstances ; i++) {
       llapDaemons[i] = new LlapDaemon(conf, numExecutorsPerService, execBytesPerService, llapIoEnabled,
-          ioIsDirect, ioBytesPerService, localDirs, rpcPort, externalClientCloudSetupEnabled, externalClientCloudRpcPort,
+          ioIsDirect, ioBytesPerService, localDirs, rpcPort,
           mngPort, shufflePort, webPort, clusterNameTrimmed);
       llapDaemons[i].init(new Configuration(conf));
     }

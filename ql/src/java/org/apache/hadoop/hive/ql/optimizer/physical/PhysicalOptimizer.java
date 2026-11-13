@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.physical;
@@ -22,7 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 
 /**
@@ -46,7 +46,7 @@ public class PhysicalOptimizer {
    */
   private void initialize(HiveConf hiveConf) {
     resolvers = new ArrayList<PhysicalPlanResolver>();
-    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVECONVERTJOIN)) {
+    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_CONVERT_JOIN)) {
       resolvers.add(new CommonJoinResolver());
 
       // The joins have been automatically converted to map-joins.
@@ -56,18 +56,18 @@ public class PhysicalOptimizer {
         resolvers.add(new SortMergeJoinResolver());
       }
     }
-    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVESKEWJOIN)) {
+    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_SKEW_JOIN)) {
       resolvers.add(new SkewJoinResolver());
     }
 
     resolvers.add(new MapJoinResolver());
-    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVEMETADATAONLYQUERIES)) {
+    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_METADATA_ONLY_QUERIES)) {
       resolvers.add(new MetadataOnlyOptimizer());
     }
-    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVENULLSCANOPTIMIZE)) {
+    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_NULL_SCAN_OPTIMIZE)) {
       resolvers.add(new NullScanOptimizer());
     }
-    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVESAMPLINGFORORDERBY)) {
+    if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_SAMPLING_FOR_ORDERBY)) {
       resolvers.add(new SamplingOptimizer());
     }
 
@@ -91,7 +91,7 @@ public class PhysicalOptimizer {
                 "enable")) {
       resolvers.add(new Vectorizer());
     }
-    if (!"none".equalsIgnoreCase(hiveConf.getVar(HiveConf.ConfVars.HIVESTAGEIDREARRANGE))) {
+    if (!"none".equalsIgnoreCase(hiveConf.getVar(HiveConf.ConfVars.HIVE_STAGE_ID_REARRANGE))) {
       resolvers.add(new StageIDsRearranger());
     }
 

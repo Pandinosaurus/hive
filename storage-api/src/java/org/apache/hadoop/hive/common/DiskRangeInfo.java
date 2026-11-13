@@ -9,15 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common;
 
 import org.apache.hadoop.hive.common.io.DiskRangeList;
+import org.apache.hive.common.util.SuppressFBWarnings;
 
 
 /**
@@ -40,6 +42,7 @@ public class DiskRangeInfo {
     this.totalLength = indexBaseOffset;
   }
 
+  @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "intended")
   public void addDiskRange(DiskRangeList diskRange) {
     if (tail == null) {
       head = tail = diskRange;
@@ -49,6 +52,7 @@ public class DiskRangeInfo {
     totalLength += diskRange.getLength();
   }
 
+  @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "intended")
   public DiskRangeList getDiskRanges() {
     return head;
   }

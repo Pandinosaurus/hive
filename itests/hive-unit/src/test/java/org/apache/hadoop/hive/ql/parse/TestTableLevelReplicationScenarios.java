@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
@@ -27,6 +28,7 @@ import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.exec.repl.ReplAck;
 import org.apache.hadoop.hive.ql.exec.repl.ReplDumpWork;
 import org.apache.hadoop.hive.ql.exec.repl.util.ReplUtils;
+import org.apache.hadoop.hive.ql.parse.repl.dump.EventsDumpMetadata;
 import org.apache.hadoop.hive.ql.parse.repl.load.DumpMetaData;
 import org.apache.hadoop.security.UserGroupInformation;
 
@@ -69,7 +71,7 @@ public class TestTableLevelReplicationScenarios extends BaseReplicationScenarios
     overrides.put(HiveConf.ConfVars.REPL_INCLUDE_EXTERNAL_TABLES.varname, "true");
     overrides.put(HiveConf.ConfVars.HIVE_DISTCP_DOAS_USER.varname,
         UserGroupInformation.getCurrentUser().getUserName());
-
+    overrides.put(HiveConf.ConfVars.REPL_BATCH_INCREMENTAL_EVENTS.varname, "false");
     internalBeforeClassSetup(overrides, TestTableLevelReplicationScenarios.class);
   }
 
@@ -1277,8 +1279,11 @@ public class TestTableLevelReplicationScenarios extends BaseReplicationScenarios
     fs.delete(lastEvtRoot, true);
     fs.delete(secondLastEvtRoot, true);
     fs.delete(thirdLastEvtRoot, true);
-    org.apache.hadoop.hive.ql.parse.repl.dump.Utils.writeOutput(String.valueOf(lastEventID - 3), ackLastEventID,
-      primary.hiveConf);
+    EventsDumpMetadata eventsDumpMetadata = EventsDumpMetadata.deserialize(ackLastEventID, conf);
+    eventsDumpMetadata.setLastReplId(lastEventID - 3);
+    eventsDumpMetadata.setEventsDumpedCount(eventsDumpMetadata.getEventsDumpedCount() - 3);
+    org.apache.hadoop.hive.ql.parse.repl.dump.Utils.writeOutput(eventsDumpMetadata.serialize(), ackLastEventID,
+            primary.hiveConf);
     ReplDumpWork.testDeletePreviousDumpMetaPath(false);
 
     WarehouseInstance.Tuple incrementalDump4 = primary.run("use " + primaryDbName)
@@ -1355,8 +1360,11 @@ public class TestTableLevelReplicationScenarios extends BaseReplicationScenarios
     fs.delete(lastEvtRoot, true);
     fs.delete(secondLastEvtRoot, true);
     fs.delete(thirdLastEvtRoot, true);
-    org.apache.hadoop.hive.ql.parse.repl.dump.Utils.writeOutput(String.valueOf(lastEventID - 3), ackLastEventID,
-      primary.hiveConf);
+    EventsDumpMetadata eventsDumpMetadata = EventsDumpMetadata.deserialize(ackLastEventID, conf);
+    eventsDumpMetadata.setLastReplId(lastEventID - 3);
+    eventsDumpMetadata.setEventsDumpedCount(eventsDumpMetadata.getEventsDumpedCount() - 3);
+    org.apache.hadoop.hive.ql.parse.repl.dump.Utils.writeOutput(eventsDumpMetadata.serialize(), ackLastEventID,
+            primary.hiveConf);
     ReplDumpWork.testDeletePreviousDumpMetaPath(false);
 
     replPolicy = primaryDbName + ".'(t1+)|(t2)'.'t11|t3|t13'";

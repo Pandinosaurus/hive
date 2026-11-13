@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common.type;
 
@@ -184,6 +185,72 @@ public class TestUnsignedInt128 {
   @Test
   public void testUnsignedInt128() {
     assertEquals(0L, new UnsignedInt128().asLong());
+  }
+
+  @Test
+  public void testUnsignedInt128Count() {
+    UnsignedInt128 minValue = UnsignedInt128.MIN_VALUE;
+    assertEquals((byte) 0, minValue.getCount());
+    UnsignedInt128 maxValue = UnsignedInt128.MAX_VALUE;
+    assertEquals((byte) 4, maxValue.getCount());
+    UnsignedInt128 unsignedInt128 = new UnsignedInt128(0, 0, 0, 0);
+    assertEquals((byte) 0, unsignedInt128.getCount());
+
+    // Let count equals 4. updateCount() will not be called if update v0, v1, v2, v3.
+    unsignedInt128.setV3(100);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.setV3(200);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.setV2(100);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.setV1(100);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.setV0(100);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.zeroClear();
+    assertEquals((byte) 0, unsignedInt128.getCount());
+
+    // Let count equals 3. updateCount() will not be called if update v0, v1, v2.
+    unsignedInt128.setV2(100);
+    assertEquals((byte) 3, unsignedInt128.getCount());
+    unsignedInt128.setV2(200);
+    assertEquals((byte) 3, unsignedInt128.getCount());
+    unsignedInt128.setV1(100);
+    assertEquals((byte) 3, unsignedInt128.getCount());
+    unsignedInt128.setV0(100);
+    assertEquals((byte) 3, unsignedInt128.getCount());
+    unsignedInt128.setV3(100);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.zeroClear();
+    assertEquals((byte) 0, unsignedInt128.getCount());
+
+    // Let count equals 2. updateCount() will not be called if update v0, v1.
+    unsignedInt128.setV1(100);
+    assertEquals((byte) 2, unsignedInt128.getCount());
+    unsignedInt128.setV1(100);
+    assertEquals((byte) 2, unsignedInt128.getCount());
+    unsignedInt128.setV0(1);
+    assertEquals((byte) 2, unsignedInt128.getCount());
+    unsignedInt128.setV2(100);
+    assertEquals((byte) 3, unsignedInt128.getCount());
+    unsignedInt128.setV3(100);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.zeroClear();
+    assertEquals((byte) 0, unsignedInt128.getCount());
+
+    // Let count equals 2. updateCount() will not be called if update v0.
+    unsignedInt128.setV0(2);
+    assertEquals((byte) 1, unsignedInt128.getCount());
+    unsignedInt128.setV0(2);
+    assertEquals((byte) 1, unsignedInt128.getCount());
+    unsignedInt128.setV1(100);
+    assertEquals((byte) 2, unsignedInt128.getCount());
+    unsignedInt128.setV2(100);
+    assertEquals((byte) 3, unsignedInt128.getCount());
+    unsignedInt128.setV3(100);
+    assertEquals((byte) 4, unsignedInt128.getCount());
+    unsignedInt128.zeroClear();
+    assertEquals((byte) 0, unsignedInt128.getCount());
   }
 
   @Test

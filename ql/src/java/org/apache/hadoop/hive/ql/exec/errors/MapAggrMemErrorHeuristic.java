@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.errors;
@@ -46,7 +47,7 @@ public class MapAggrMemErrorHeuristic extends RegexErrorHeuristic {
   @Override
   public void init(String query, JobConf conf) {
     super.init(query, conf);
-    configMatches = HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVEMAPSIDEAGGREGATE);
+    configMatches = HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_MAPSIDE_AGGREGATE);
   }
 
   @Override
@@ -56,9 +57,9 @@ public class MapAggrMemErrorHeuristic extends RegexErrorHeuristic {
       List<String> matchingLines = getRegexToLogLines().get(OUT_OF_MEMORY_REGEX);
 
       if (matchingLines.size() > 0) {
-        String confName = HiveConf.ConfVars.HIVEMAPAGGRHASHMEMORY.toString();
+        String confName = HiveConf.ConfVars.HIVE_MAP_AGGR_HASH_MEMORY.toString();
         float confValue =  HiveConf.getFloatVar(getConf(),
-            HiveConf.ConfVars.HIVEMAPAGGRHASHMEMORY);
+            HiveConf.ConfVars.HIVE_MAP_AGGR_HASH_MEMORY);
 
         es = new ErrorAndSolution(
             "Out of memory due to hash maps used in map-side aggregation.",

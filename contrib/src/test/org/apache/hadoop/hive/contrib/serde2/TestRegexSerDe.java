@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.contrib.serde2;
 
@@ -28,6 +29,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils.ObjectInspectorCopyOption;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.hive.common.IPStackUtils;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
@@ -65,11 +67,12 @@ public class TestRegexSerDe {
           "%1$s %2$s %3$s %4$s %5$s %6$s %7$s %8$s %9$s");
 
       // Data
-      Text t = new Text(
-          "127.0.0.1 - - [26/May/2009:00:00:00 +0000] "
+      Text t = new Text(String.format(
+              "%s - - [26/May/2009:00:00:00 +0000] "
               + "\"GET /someurl/?track=Blabla(Main) HTTP/1.1\" 200 5864 - "
               + "\"Mozilla/5.0 (Windows; U; Windows NT 6.0; en-US) " 
-              + "AppleWebKit/525.19 (KHTML, like Gecko) Chrome/1.0.154.65 Safari/525.19\"");
+              + "AppleWebKit/525.19 (KHTML, like Gecko) Chrome/1.0.154.65 Safari/525.19\"",
+          IPStackUtils.resolveLoopbackAddress()));
 
       // Deserialize
       Object row = serDe.deserialize(t);

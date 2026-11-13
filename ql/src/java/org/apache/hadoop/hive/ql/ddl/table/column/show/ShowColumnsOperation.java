@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.column.show;
@@ -36,6 +37,7 @@ import org.apache.hadoop.hive.ql.ddl.ShowUtils.TextMetaDataTable;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.session.SessionState;
+import org.apache.hadoop.hive.ql.udf.UDFLike;
 
 /**
  * Operation process of showing the columns.
@@ -66,10 +68,7 @@ public class ShowColumnsOperation extends DDLOperation<ShowColumnsDesc> {
 
   private List<FieldSchema> getCols() throws HiveException {
     Table table = context.getDb().getTable(desc.getTableName());
-    List<FieldSchema> allColumns = new ArrayList<>();
-    allColumns.addAll(table.getCols());
-    allColumns.addAll(table.getPartCols());
-    return allColumns;
+    return table.getAllCols();
   }
 
   private Matcher getMatcher() {
@@ -77,10 +76,9 @@ public class ShowColumnsOperation extends DDLOperation<ShowColumnsDesc> {
     if (columnPattern == null) {
       columnPattern = "*";
     }
-    columnPattern = columnPattern.toLowerCase();
-    columnPattern = columnPattern.replaceAll("\\*", ".*");
 
-    Pattern pattern = Pattern.compile(columnPattern);
+    String regex = UDFLike.likePatternToRegExp(columnPattern, false, true);
+    Pattern pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
     return pattern.matcher("");
   }
 
@@ -94,13 +92,7 @@ public class ShowColumnsOperation extends DDLOperation<ShowColumnsDesc> {
     }
 
     if (desc.isSorted()) {
-      result.sort(
-          new Comparator<FieldSchema>() {
-            @Override
-            public int compare(FieldSchema f1, FieldSchema f2) {
-              return f1.getName().compareTo(f2.getName());
-            }
-          });
+      result.sort(Comparator.comparing(FieldSchema::getName));
     }
     return result;
   }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.database.lock;
@@ -31,16 +32,23 @@ import org.apache.hadoop.hive.ql.plan.Explain.Level;
 public class LockDatabaseDesc implements DDLDesc, Serializable {
   private static final long serialVersionUID = 1L;
 
+  private final String catalogName;
   private final String databaseName;
   private final String mode;
   private final String queryId;
   private final String queryStr;
 
-  public LockDatabaseDesc(String databaseName, String mode, String queryId, String queryStr) {
+  public LockDatabaseDesc(String catalogName, String databaseName, String mode, String queryId, String queryStr) {
+    this.catalogName = catalogName;
     this.databaseName = databaseName;
     this.mode = mode;
     this.queryId = queryId;
     this.queryStr = queryStr;
+  }
+
+  @Explain(displayName = "catalog", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
+  public String getCatalogName() {
+    return catalogName;
   }
 
   @Explain(displayName = "database", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })

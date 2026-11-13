@@ -1,7 +1,9 @@
 PREHOOK: query: drop table if exists testAvro
 PREHOOK: type: DROPTABLE
+PREHOOK: Output: database:default
 POSTHOOK: query: drop table if exists testAvro
 POSTHOOK: type: DROPTABLE
+POSTHOOK: Output: database:default
 PREHOOK: query: create table testAvro
    ROW FORMAT SERDE
      'org.apache.hadoop.hive.serde2.avro.AvroSerDe'
@@ -41,15 +43,17 @@ max_col_len
 num_trues           	                    
 num_falses          	                    
 bit_vector          	                    
-comment             	from deserializer   
+comment             	                    
 COLUMN_STATS_ACCURATE	{\"BASIC_STATS\":\"true\",\"COLUMN_STATS\":{\"col1\":\"true\",\"col2\":\"true\",\"col3\":\"true\",\"col4\":\"true\",\"col5\":\"true\",\"col6\":\"true\"}}
 PREHOOK: query: analyze table testAvro compute statistics for columns col1,col3
 PREHOOK: type: ANALYZE_TABLE
+#### A masked pattern was here ####
 PREHOOK: Input: default@testavro
 PREHOOK: Output: default@testavro
 #### A masked pattern was here ####
 POSTHOOK: query: analyze table testAvro compute statistics for columns col1,col3
 POSTHOOK: type: ANALYZE_TABLE
+#### A masked pattern was here ####
 POSTHOOK: Input: default@testavro
 POSTHOOK: Output: default@testavro
 #### A masked pattern was here ####
@@ -70,6 +74,6 @@ max_col_len         	0
 num_trues           	                    
 num_falses          	                    
 bit_vector          	                    
-comment             	from deserializer   
+comment             	                    
 COLUMN_STATS_ACCURATE	{\"BASIC_STATS\":\"true\",\"COLUMN_STATS\":{\"col1\":\"true\",\"col2\":\"true\",\"col3\":\"true\",\"col4\":\"true\",\"col5\":\"true\",\"col6\":\"true\"}}
 #### A masked pattern was here ####

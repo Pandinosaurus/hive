@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /*
@@ -22,7 +23,7 @@
  */
 package org.apache.hive.beeline;
 
-import jline.console.completer.Completer;
+import org.jline.reader.Completer;
 
 /**
  * A generic command to be executed. Execution of the command
@@ -71,7 +72,7 @@ interface CommandHandler {
 
 
   /**
-   * Returns the completors that can handle parameters.
+   * Returns the completers that can handle parameters.
    */
   public Completer[] getParameterCompleters();
 

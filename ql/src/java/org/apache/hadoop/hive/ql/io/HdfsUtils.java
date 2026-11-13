@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hive.common.util.Ref;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.shims.HadoopShims;
 import org.apache.hadoop.hive.shims.ShimLoader;
@@ -134,6 +137,19 @@ public class HdfsUtils {
     return (fileId > 0) ? new Path(HDFS_ID_PATH_PREFIX + fileId) : path;
   }
 
+  /**
+   * The path to read a cached file through: its inode path when the cache key is an HDFS inode id
+   * and {@code hive.llap.io.use.fileid.path} is on, so a rename or a re-create cannot swap the
+   * bytes under cache entries keyed on that inode; otherwise {@code path} itself.
+   */
+  public static Path getFileIdPath(Path path, Object fileKey, Configuration daemonConf) {
+    if (fileKey instanceof Long fileId
+        && HiveConf.getBoolVar(daemonConf, HiveConf.ConfVars.LLAP_IO_USE_FILEID_PATH)) {
+      return getFileIdPath(path, fileId);
+    }
+    return path;
+  }
+
   public static boolean isDefaultFs(DistributedFileSystem fs) {
     URI uri = fs.getUri();
 
@@ -223,7 +239,7 @@ public class HdfsUtils {
       return null;
     }
     if (filter == null) {
-      filter = AcidUtils.hiddenFileFilter;
+      filter = FileUtils.HIDDEN_FILES_PATH_FILTER;
     }
 
     List<HadoopShims.HdfsFileStatusWithId> childrenWithId = null;

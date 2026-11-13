@@ -9,19 +9,24 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse;
 
 import org.antlr.runtime.tree.Tree;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.QueryProperties;
 import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.ddl.DDLSemanticAnalyzerFactory;
+import org.apache.hadoop.hive.ql.parse.rewrite.DeleteRewriterFactory;
+import org.apache.hadoop.hive.ql.parse.rewrite.MergeRewriterFactory;
+import org.apache.hadoop.hive.ql.parse.rewrite.UpdateRewriterFactory;
 import org.apache.hadoop.hive.ql.plan.HiveOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +65,10 @@ public final class SemanticAnalyzerFactory {
       queryState.setCommandType(opType);
 
       if (DDLSemanticAnalyzerFactory.handles(tree)) {
-        return DDLSemanticAnalyzerFactory.getAnalyzer(tree, queryState);
+        BaseSemanticAnalyzer sem = DDLSemanticAnalyzerFactory.getAnalyzer(tree, queryState);
+        QueryProperties queryProperties = sem.getQueryProperties();
+        queryProperties.setQueryType(QueryProperties.QueryType.DDL);
+        return sem;
       }
 
       switch (tree.getType()) {
@@ -94,11 +102,12 @@ public final class SemanticAnalyzerFactory {
         return new ColumnStatsSemanticAnalyzer(queryState);
 
       case HiveParser.TOK_UPDATE_TABLE:
+        return new UpdateSemanticAnalyzer(queryState, new UpdateRewriterFactory(queryState.getConf()));
       case HiveParser.TOK_DELETE_FROM:
-        return new UpdateDeleteSemanticAnalyzer(queryState);
+        return new DeleteSemanticAnalyzer(queryState, new DeleteRewriterFactory(queryState.getConf()));
 
       case HiveParser.TOK_MERGE:
-        return new MergeSemanticAnalyzer(queryState);
+        return new MergeSemanticAnalyzer(queryState, new MergeRewriterFactory(queryState.getConf()));
 
       case HiveParser.TOK_ALTER_SCHEDULED_QUERY:
       case HiveParser.TOK_CREATE_SCHEDULED_QUERY:

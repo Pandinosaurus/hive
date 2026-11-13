@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -58,6 +59,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
@@ -78,7 +80,7 @@ import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
-import org.apache.commons.collections.MapUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -161,6 +163,7 @@ import org.apache.hadoop.hive.ql.plan.PartitionDesc;
 import org.apache.hadoop.hive.ql.plan.PlanUtils;
 import org.apache.hadoop.hive.ql.plan.ReduceWork;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
+import org.apache.hadoop.hive.ql.plan.TableScanDesc;
 import org.apache.hadoop.hive.ql.secrets.URISecretSource;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.stats.StatsFactory;
@@ -207,7 +210,7 @@ import org.apache.hive.common.util.ReflectionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.kryo5.Kryo;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -256,6 +259,10 @@ public final class Utilities {
   public static final String MAPNAME = "Map ";
   public static final String REDUCENAME = "Reducer ";
   public static final String ENSURE_OPERATORS_EXECUTED = "ENSURE_OPERATORS_EXECUTED";
+  public static final String CREATE_TIME = "create_time";
+  public static final String SNAPSHOT_REF = "snapshot_ref";
+  public static final String AS_OF_VERSION = "as_of_version";
+  public static final String AS_OF_TIMESTAMP = "as_of_timestamp";
 
   @Deprecated
   protected static final String DEPRECATED_MAPRED_DFSCLIENT_PARALLELISM_MAX = "mapred.dfsclient.parallelism.max";
@@ -762,8 +769,16 @@ public final class Utilities {
     if (tbl.getMetaTable() != null) {
       props.put("metaTable", tbl.getMetaTable());
     }
-    return (new TableDesc(tbl.getInputFormatClass(), tbl
-        .getOutputFormatClass(), props));
+    if (tbl.getSnapshotRef() != null) {
+      props.put(SNAPSHOT_REF, tbl.getSnapshotRef());
+    }
+    if (tbl.getAsOfVersion() != null) {
+      props.put(AS_OF_VERSION, tbl.getAsOfVersion());
+    }
+    if (tbl.getAsOfTimestamp() != null) {
+      props.put(AS_OF_TIMESTAMP, tbl.getAsOfTimestamp());
+    }
+    return new TableDesc(tbl.getInputFormatClass(), tbl.getOutputFormatClass(), props, tbl.getCatName());
   }
 
   // column names and column types are all delimited by comma
@@ -1034,7 +1049,8 @@ public final class Utilities {
     return src;
   }
 
-  private static final String tmpPrefix = "_tmp.";
+  private static final String hadoopTmpPrefix = "_tmp.";
+  private static final String tmpPrefix = "-tmp.";
   private static final String taskTmpPrefix = "_task_tmp.";
 
   public static Path toTaskTempPath(Path orig) {
@@ -1045,10 +1061,25 @@ public final class Utilities {
   }
 
   public static Path toTempPath(Path orig) {
-    if (orig.getName().indexOf(tmpPrefix) == 0) {
+    return toTempPath(orig, tmpPrefix);
+  }
+
+  private static Path toTempPath(Path orig, String prefix) {
+    if (orig.getName().indexOf(prefix) == 0) {
       return orig;
     }
-    return new Path(orig.getParent(), tmpPrefix + orig.getName());
+    return new Path(orig.getParent(), prefix + orig.getName());
+  }
+
+  /**
+   * This method is to convert a path into a temporary path for the direct insert manifest files.
+   * It is important to use a prefix which starts with '_', like '_tmp.', so the content of this
+   * directory would be filtered out by the AcidUtils.acidHiddenFileFilter.
+   * @param orig
+   * @return
+   */
+  public static Path toManifestDirTempPath(String orig) {
+    return toTempPath(new Path(orig), hadoopTmpPrefix);
   }
 
   /**
@@ -1065,7 +1096,7 @@ public final class Utilities {
     String name = file.getPath().getName();
     // in addition to detecting hive temporary files, we also check hadoop
     // temporary folders that used to show up in older releases
-    return (name.startsWith("_task") || name.startsWith(tmpPrefix));
+    return (name.startsWith("_task") || name.startsWith(tmpPrefix) || name.startsWith(hadoopTmpPrefix));
   }
 
   /**
@@ -1388,7 +1419,7 @@ public final class Utilities {
   }
 
 
-  private static boolean shouldAvoidRename(FileSinkDesc conf, Configuration hConf) {
+  public static boolean shouldAvoidRename(FileSinkDesc conf, Configuration hConf) {
     // we are avoiding rename/move only if following conditions are met
     //  * execution engine is tez
     //  * if it is select query
@@ -1410,96 +1441,39 @@ public final class Utilities {
     }
   }
 
-  public static void mvFileToFinalPath(Path specPath, Configuration hconf,
-                                       boolean success, Logger log, DynamicPartitionCtx dpCtx, FileSinkDesc conf,
+  public static void mvFileToFinalPath(Path specPath, String unionSuffix, Configuration hconf,
+                                       boolean success, DynamicPartitionCtx dpCtx, FileSinkDesc conf,
                                        Reporter reporter) throws IOException,
       HiveException {
 
-    // There are following two paths this could could take based on the value of shouldAvoidRename
-    //  shouldAvoidRename indicate if tmpPath should be renamed/moved or now.
-    //    if false:
-    //      Skip renaming/moving the tmpPath
-    //      Deduplicate and keep a list of files
-    //      Pass on the list of files to conf (to be used later by fetch operator)
-    //    if true:
-    //       1) Rename tmpPath to a new directory name to prevent additional files
-    //          from being added by runaway processes.
-    //       2) Remove duplicates from the temp directory
-    //       3) Rename/move the temp directory to specPath
+    // On success, behavior is controlled by whether the staging directory should be renamed (see computeAvoidRename).
+    // For SELECT statements and CTAS / Create MV on blob storage, staging directory is not renamed;
+    // files are deduplicated and either passed to the fetch operator (SELECT) or moved in place (CTAS) via
+    // moveKeptFiles. For INSERT, LOAD and similar write statements: renameTmpIfNeeded  fences runaway processes
+    // by renaming tmpPath to *.moved, then removeDuplicatesAndFillBuckets + moveKeptFiles move files to specPath.
+    // If the branch produced no output, then .moved staging dir is deleted.
 
     FileSystem fs = specPath.getFileSystem(hconf);
     Path tmpPath = Utilities.toTempPath(specPath);
     Path taskTmpPath = Utilities.toTaskTempPath(specPath);
-    PerfLogger perfLogger = SessionState.getPerfLogger();
-    boolean isBlobStorage = BlobStorageUtils.isBlobStorageFileSystem(hconf, fs);
-    boolean avoidRename = false;
-    boolean shouldAvoidRename = shouldAvoidRename(conf, hconf);
-
-    if(isBlobStorage && (shouldAvoidRename|| ((conf != null) && conf.isCTASorCM()))
-        || (!isBlobStorage && shouldAvoidRename)) {
-      avoidRename = true;
+    if (!StringUtils.isEmpty(unionSuffix)) {
+      specPath = specPath.getParent();
     }
+    boolean avoidRename = computeAvoidRename(conf, hconf, fs);
     if (success) {
-      if (!avoidRename && fs.exists(tmpPath)) {
-        //   1) Rename tmpPath to a new directory name to prevent additional files
-        //      from being added by runaway processes.
-        // this is only done for all statements except SELECT, CTAS and Create MV
-        Path tmpPathOriginal = tmpPath;
-        tmpPath = new Path(tmpPath.getParent(), tmpPath.getName() + ".moved");
-        LOG.debug("shouldAvoidRename is false therefore moving/renaming " + tmpPathOriginal + " to " + tmpPath);
-        perfLogger.perfLogBegin("FileSinkOperator", "rename");
-        Utilities.rename(fs, tmpPathOriginal, tmpPath);
-        perfLogger.perfLogEnd("FileSinkOperator", "rename");
-      }
-
-      // Remove duplicates from tmpPath
+      tmpPath = renameTmpIfNeeded(fs, tmpPath, avoidRename);
       List<FileStatus> statusList = HiveStatsUtils.getFileStatusRecurse(
-          tmpPath, ((dpCtx == null) ? 1 : dpCtx.getNumDPCols()), fs);
-      FileStatus[] statuses = statusList.toArray(new FileStatus[statusList.size()]);
-      if(statuses != null && statuses.length > 0) {
-        Set<FileStatus> filesKept = new HashSet<>();
-        perfLogger.perfLogBegin("FileSinkOperator", "RemoveTempOrDuplicateFiles");
-        // remove any tmp file or double-committed output files
-        List<Path> emptyBuckets = Utilities.removeTempOrDuplicateFiles(
-            fs, statuses, dpCtx, conf, hconf, filesKept, false);
-        perfLogger.perfLogEnd("FileSinkOperator", "RemoveTempOrDuplicateFiles");
-        // create empty buckets if necessary
-        if (!emptyBuckets.isEmpty()) {
-          perfLogger.perfLogBegin("FileSinkOperator", "CreateEmptyBuckets");
-          createEmptyBuckets(
-              hconf, emptyBuckets, conf.getCompressed(), conf.getTableInfo(), reporter);
-          for(Path p:emptyBuckets) {
-            FileStatus[] items = fs.listStatus(p);
-            filesKept.addAll(Arrays.asList(items));
-          }
-          perfLogger.perfLogEnd("FileSinkOperator", "CreateEmptyBuckets");
-        }
-
-        // move to the file destination
-        Utilities.FILE_OP_LOGGER.trace("Moving tmp dir: {} to: {}", tmpPath, specPath);
-        if(shouldAvoidRename(conf, hconf)){
-          // for SELECT statements
-          LOG.debug("Skipping rename/move files. Files to be kept are: " + filesKept.toString());
-          conf.getFilesToFetch().addAll(filesKept);
-        } else if (conf !=null && conf.isCTASorCM() && isBlobStorage) {
-          // for CTAS or Create MV statements
-          perfLogger.perfLogBegin("FileSinkOperator", "moveSpecifiedFileStatus");
-          LOG.debug("CTAS/Create MV: Files being renamed:  " + filesKept.toString());
-          if (conf.getTable() != null && conf.getTable().getTableType().equals(TableType.EXTERNAL_TABLE)) {
-            // Do this optimisation only for External tables.
-            createFileList(filesKept, tmpPath, specPath, fs);
-          } else {
-            Set<String> filesKeptPaths = filesKept.stream().map(x -> x.getPath().toString()).collect(Collectors.toSet());
-            moveSpecifiedFilesInParallel(hconf, fs, tmpPath, specPath, filesKeptPaths);
-          }
-          perfLogger.perfLogEnd("FileSinkOperator", "moveSpecifiedFileStatus");
-        } else {
-          // for rest of the statement e.g. INSERT, LOAD etc
-          perfLogger.perfLogBegin("FileSinkOperator", "RenameOrMoveFiles");
-          LOG.debug("Final renaming/moving. Source: " + tmpPath + " .Destination: " + specPath);
-          renameOrMoveFilesInParallel(hconf, fs, tmpPath, specPath);
-          perfLogger.perfLogEnd("FileSinkOperator", "RenameOrMoveFiles");
-        }
+              tmpPath, (dpCtx == null ? 1 : dpCtx.getNumDPCols()), fs);
+      FileStatus[] statuses = statusList.toArray(new FileStatus[0]);
+      if (statuses.length > 0) {
+        Set<FileStatus> filesKept = removeDuplicatesAndFillBuckets(
+                hconf, fs, statuses, unionSuffix, dpCtx, conf, reporter);
+        moveKeptFiles(hconf, fs, tmpPath, specPath, conf, filesKept);
+      } else if (!avoidRename) {
+        // Empty UNION branch: .moved staging dir exists but contains no output files - delete it
+        // (e.g. UNION ALL branch produced 0 rows)
+        Utilities.FILE_OP_LOGGER.debug("Deleting empty staging directory after commit: {}", tmpPath);
+        fs.delete(tmpPath, true);
       }
     } else {
       Utilities.FILE_OP_LOGGER.trace("deleting tmpPath {}", tmpPath);
@@ -1507,6 +1481,78 @@ public final class Utilities {
     }
     Utilities.FILE_OP_LOGGER.trace("deleting taskTmpPath {}", taskTmpPath);
     fs.delete(taskTmpPath, true);
+  }
+
+  private static boolean computeAvoidRename(FileSinkDesc conf, Configuration hconf, FileSystem fs) {
+    boolean isBlobStorage = BlobStorageUtils.isBlobStorageFileSystem(hconf, fs);
+    boolean shouldAvoidRename = shouldAvoidRename(conf, hconf);
+    return (isBlobStorage && (shouldAvoidRename || (conf != null && conf.isCTASorCM())))
+        || (!isBlobStorage && shouldAvoidRename);
+  }
+
+  private static Path renameTmpIfNeeded(FileSystem fs, Path tmpPath, boolean avoidRename)
+          throws IOException, HiveException {
+    if (!avoidRename && fs.exists(tmpPath)) {
+      Path moved = new Path(tmpPath.getParent(), tmpPath.getName() + ".moved");
+      LOG.debug("shouldAvoidRename is false therefore moving/renaming {} to {}", tmpPath, moved);
+      PerfLogger perfLogger = SessionState.getPerfLogger();
+      perfLogger.perfLogBegin("FileSinkOperator", "rename");
+      Utilities.rename(fs, tmpPath, moved);
+      perfLogger.perfLogEnd("FileSinkOperator", "rename");
+      return moved;
+    }
+    return tmpPath;
+  }
+
+  private static Set<FileStatus> removeDuplicatesAndFillBuckets(Configuration hconf, FileSystem fs,
+      FileStatus[] statuses, String unionSuffix, DynamicPartitionCtx dpCtx,
+      FileSinkDesc conf, Reporter reporter) throws IOException, HiveException {
+    Set<FileStatus> filesKept = new HashSet<>();
+    PerfLogger perfLogger = SessionState.getPerfLogger();
+    int dpLevels = dpCtx == null ? 0 : dpCtx.getNumDPCols();
+    int numBuckets = (conf != null && conf.getTable() != null) ? conf.getTable().getNumBuckets() : 0;
+    perfLogger.perfLogBegin("FileSinkOperator", "RemoveTempOrDuplicateFiles");
+    List<Path> emptyBuckets = removeTempOrDuplicateFiles(
+        fs, statuses, unionSuffix, dpLevels, numBuckets, hconf, null, 0, false, filesKept, false);
+    perfLogger.perfLogEnd("FileSinkOperator", "RemoveTempOrDuplicateFiles");
+    if (conf != null && !emptyBuckets.isEmpty()) {
+      perfLogger.perfLogBegin("FileSinkOperator", "CreateEmptyBuckets");
+      createEmptyBuckets(hconf, emptyBuckets, conf.getCompressed(), conf.getTableInfo(), reporter);
+      for (Path p : emptyBuckets) {
+        filesKept.addAll(Arrays.asList(fs.listStatus(p)));
+      }
+      perfLogger.perfLogEnd("FileSinkOperator", "CreateEmptyBuckets");
+    }
+    return filesKept;
+  }
+
+  private static void moveKeptFiles(Configuration hconf, FileSystem fs, Path tmpPath,
+      Path specPath, FileSinkDesc conf, Set<FileStatus> filesKept) throws IOException, HiveException {
+    Utilities.FILE_OP_LOGGER.trace("Moving tmp dir: {} to: {}", tmpPath, specPath);
+    PerfLogger perfLogger = SessionState.getPerfLogger();
+    if (shouldAvoidRename(conf, hconf)) {
+      // SELECT statements: pass files to fetch operator
+      LOG.debug("Skipping rename/move files. Files to be kept are: {}", filesKept);
+      conf.getFilesToFetch().addAll(filesKept);
+    } else if (conf != null && conf.isCTASorCM()
+        && BlobStorageUtils.isBlobStorageFileSystem(hconf, fs)) {
+      // CTAS / Create MV on blob storage
+      perfLogger.perfLogBegin("FileSinkOperator", "moveSpecifiedFileStatus");
+      LOG.debug("CTAS/Create MV: Files being renamed: {}", filesKept);
+      if (conf.getTable() != null && conf.getTable().getTableType().equals(TableType.EXTERNAL_TABLE)) {
+        createFileList(filesKept, tmpPath, specPath, fs);
+      } else {
+        Set<String> paths = filesKept.stream().map(x -> x.getPath().toString()).collect(Collectors.toSet());
+        moveSpecifiedFilesInParallel(hconf, fs, tmpPath, specPath, paths);
+      }
+      perfLogger.perfLogEnd("FileSinkOperator", "moveSpecifiedFileStatus");
+    } else {
+      // INSERT, LOAD, etc.
+      perfLogger.perfLogBegin("FileSinkOperator", "RenameOrMoveFiles");
+      LOG.debug("Final renaming/moving. Source: {} .Destination: {}", tmpPath, specPath);
+      renameOrMoveFilesInParallel(hconf, fs, tmpPath, specPath);
+      perfLogger.perfLogEnd("FileSinkOperator", "RenameOrMoveFiles");
+    }
   }
 
   private static void createFileList(Set<FileStatus> filesKept, Path srcPath, Path targetPath, FileSystem fs)
@@ -1808,15 +1854,14 @@ public final class Utilities {
           if (!path.getName().equals(AcidUtils.baseOrDeltaSubdir(isBaseDir, writeId, writeId, stmtId))) {
             throw new IOException("Unexpected non-MM directory name " + path);
           }
+        }
 
-          Utilities.FILE_OP_LOGGER.trace("removeTempOrDuplicateFiles processing files in MM directory {}", path);
-
-          if (!StringUtils.isEmpty(unionSuffix)) {
-            try {
-              items = fs.listStatus(new Path(path, unionSuffix));
-            } catch (FileNotFoundException e) {
-              continue;
-            }
+        Utilities.FILE_OP_LOGGER.trace("removeTempOrDuplicateFiles processing files in directory {}", path);
+        if (!StringUtils.isEmpty(unionSuffix)) {
+          try {
+            items = fs.listStatus(new Path(path, unionSuffix));
+          } catch (FileNotFoundException e) {
+            continue;
           }
         }
 
@@ -2258,6 +2303,10 @@ public final class Utilities {
     return names;
   }
 
+  public static List<String> getColumnTypesFromFieldSchema(List<FieldSchema> fieldSchemas) {
+    return fieldSchemas.stream().map(FieldSchema::getType).toList();
+  }
+
   public static List<String> getInternalColumnNamesFromSignature(List<ColumnInfo> colInfos) {
     List<String> names = new ArrayList<String>();
     for (ColumnInfo ci : colInfos) {
@@ -2486,7 +2535,7 @@ public final class Utilities {
         String[] comps = keyString.split(TableDesc.SECRET_DELIMIT);
         String tblName = comps[1];
         String keyName = comps[2];
-        if (tbl.getTableName().equalsIgnoreCase(tblName)) {
+        if (tblName.equalsIgnoreCase(tbl.getTableName())) {
           tbl.getProperties().put(keyName, new String(credentials.getSecretKey(key)));
         }
       }
@@ -2812,6 +2861,16 @@ public final class Utilities {
     return getTasks(tasks, new TaskFilterFunction<>(TezTask.class));
   }
 
+  /**
+   * Returns the first task in the graph of the given type.
+   *
+   * <p>Pass an interface rather than a task class to keep a caller on the compile path from loading an
+   * execution-engine class for a query that has none.
+   */
+  public static <T> Optional<T> getFirstTask(List<Task<?>> tasks, Class<T> type) {
+    return getTasks(tasks, new TaskFilterFunction<>(type)).stream().findFirst();
+  }
+
   public static List<ExecDriver> getMRTasks(List<Task<?>> tasks) {
     return getTasks(tasks, new TaskFilterFunction<>(ExecDriver.class));
   }
@@ -2929,12 +2988,12 @@ public final class Utilities {
 
   private static void validateDynPartitionCount(Configuration conf, Collection<Path> partitions) throws HiveException {
     int partsToLoad = partitions.size();
-    int maxPartition = HiveConf.getIntVar(conf, HiveConf.ConfVars.DYNAMICPARTITIONMAXPARTS);
+    int maxPartition = HiveConf.getIntVar(conf, HiveConf.ConfVars.DYNAMIC_PARTITION_MAX_PARTS);
     if (partsToLoad > maxPartition) {
       throw new HiveException("Number of dynamic partitions created is " + partsToLoad
           + ", which is more than "
           + maxPartition
-          +". To solve this try to set " + HiveConf.ConfVars.DYNAMICPARTITIONMAXPARTS.varname
+          +". To solve this try to set " + HiveConf.ConfVars.DYNAMIC_PARTITION_MAX_PARTS.varname
           + " to at least " + partsToLoad + '.');
     }
   }
@@ -3346,8 +3405,8 @@ public final class Utilities {
    */
   public static int estimateNumberOfReducers(HiveConf conf, ContentSummary inputSummary,
                                              MapWork work, boolean finalMapRed) throws IOException {
-    long bytesPerReducer = conf.getLongVar(HiveConf.ConfVars.BYTESPERREDUCER);
-    int maxReducers = conf.getIntVar(HiveConf.ConfVars.MAXREDUCERS);
+    long bytesPerReducer = conf.getLongVar(HiveConf.ConfVars.BYTES_PER_REDUCER);
+    int maxReducers = conf.getIntVar(HiveConf.ConfVars.MAX_REDUCERS);
 
     double samplePercentage = getHighestSamplePercentage(work);
     long totalInputFileSize = getTotalInputFileSize(inputSummary, work, samplePercentage);
@@ -3515,6 +3574,9 @@ public final class Utilities {
     Set<Path> pathsProcessed = new HashSet<Path>();
     List<Path> pathsToAdd = new LinkedList<Path>();
     DriverState driverState = DriverState.getDriverState();
+    if (work.isUseInputPathsDirectly() && work.getInputPaths() != null) {
+      return work.getInputPaths();
+    }
     // AliasToWork contains all the aliases
     Collection<String> aliasToWork = work.getAliasToWork().keySet();
     if (!skipDummy) {
@@ -3737,7 +3799,7 @@ public final class Utilities {
       Path hiveScratchDir, String alias)
           throws Exception {
 
-    TableDesc tableDesc = work.getAliasToPartnInfo().get(alias).getTableDesc();
+    TableDesc tableDesc = work.getPartitionDesc(alias).getTableDesc();
     if (tableDesc.isNonNative()) {
       // if it does not need native storage, we can't create an empty file for it.
       return null;
@@ -3759,7 +3821,7 @@ public final class Utilities {
 
     work.setPathToAliases(pathToAliases);
 
-    PartitionDesc pDesc = work.getAliasToPartnInfo().get(alias).clone();
+    PartitionDesc pDesc = work.getPartitionDesc(alias).clone();
     work.addPathToPartitionInfo(newPath, pDesc);
 
     return newPath;
@@ -3796,7 +3858,7 @@ public final class Utilities {
    */
   public static void setInputAttributes(Configuration conf, MapWork mWork) {
     HiveConf.ConfVars var = HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_EXECUTION_ENGINE).equals("tez") ?
-      HiveConf.ConfVars.HIVETEZINPUTFORMAT : HiveConf.ConfVars.HIVEINPUTFORMAT;
+      HiveConf.ConfVars.HIVE_TEZ_INPUT_FORMAT : HiveConf.ConfVars.HIVE_INPUT_FORMAT;
     if (mWork.getInputformat() != null) {
       HiveConf.setVar(conf, var, mWork.getInputformat());
     }
@@ -3861,8 +3923,10 @@ public final class Utilities {
 
       if (op instanceof FileSinkOperator) {
         FileSinkDesc fdesc = ((FileSinkOperator) op).getConf();
-        if (fdesc.isMmTable() || fdesc.isDirectInsert()) {
-          // No need to create for MM tables, or ACID insert
+        if (fdesc.isMmTable() || fdesc.isDirectInsert() ||
+            (fdesc.getTableInfo() != null && fdesc.getTableInfo().isNonNative())) {
+          // No need to create for MM tables or ACID insert; storage-handler tables manage
+          // their own output locations and commit
           continue;
         }
         Path tempDir = fdesc.getDirName();
@@ -4158,7 +4222,7 @@ public final class Utilities {
       if (!localFs.exists(new Path(path))) {
         throw new RuntimeException("Could not validate jar file " + path + " for class " + clazz);
       }
-      jars.add(path);
+      jars.add(localFs.makeQualified(new Path(path)).toString());
     }
     if (jars.isEmpty()) {
       return;
@@ -4186,7 +4250,7 @@ public final class Utilities {
   public static List<String> getStatsTmpDirs(BaseWork work, Configuration conf) {
 
     List<String> statsTmpDirs = new ArrayList<>();
-    if (!StatsSetupConst.StatDB.fs.name().equalsIgnoreCase(HiveConf.getVar(conf, ConfVars.HIVESTATSDBCLASS))) {
+    if (!StatsSetupConst.StatDB.fs.name().equalsIgnoreCase(HiveConf.getVar(conf, ConfVars.HIVE_STATS_DBCLASS))) {
       // no-op for non-fs stats collection
       return statsTmpDirs;
     }
@@ -4270,6 +4334,34 @@ public final class Utilities {
       conf.set(IOConstants.SCHEMA_EVOLUTION_COLUMNS_TYPES, tableScanOp.getSchemaEvolutionColumnsTypes());
     } else {
       LOG.info("schema.evolution.columns and schema.evolution.columns.types not available");
+    }
+  }
+
+  /**
+   * Sets partition column names to the configuration, if there is available info in the operator.
+   */
+  public static void setPartitionColumnNames(Configuration conf, TableScanOperator tableScanOp) {
+    TableScanDesc scanDesc = tableScanOp.getConf();
+    Table metadata = scanDesc.getTableMetadata();
+    if (metadata == null) {
+      return;
+    }
+    List<FieldSchema> partCols = metadata.getPartCols();
+    if (partCols != null && !partCols.isEmpty()) {
+      conf.set(serdeConstants.LIST_PARTITION_COLUMNS, MetaStoreUtils.getColumnNamesFromFieldSchema(partCols));
+    }
+  }
+
+  /**
+   * Returns a list with partition column names present in the configuration,
+   * or empty if there is no such information available.
+   */
+  public static List<String> getPartitionColumnNames(Configuration conf) {
+    String colNames = conf.get(serdeConstants.LIST_PARTITION_COLUMNS);
+    if (colNames != null) {
+      return splitColNames(new ArrayList<>(), colNames);
+    } else {
+      return Collections.emptyList();
     }
   }
 
@@ -4518,7 +4610,7 @@ public final class Utilities {
     if (isDelete) {
       deltaDir = AcidUtils.deleteDeltaSubdir(writeId, writeId, stmtId);
     }
-    Path manifestPath = new Path(manifestRoot, "_tmp." + deltaDir);
+    Path manifestPath = new Path(manifestRoot, Utilities.toManifestDirTempPath(deltaDir));
 
     if (isInsertOverwrite) {
       // When doing a multi-statement insert overwrite query with dynamic partitioning, the
@@ -4920,11 +5012,27 @@ public final class Utilities {
         "HDFS dir: " + rootHDFSDirPath + ", permission: " + currentHDFSDirPermission);
     }
     // If the root HDFS scratch dir already exists, make sure it is writeable.
-    if (!((currentHDFSDirPermission.toShort() & writableHDFSDirPermission
-        .toShort()) == writableHDFSDirPermission.toShort())) {
-      throw new RuntimeException("The dir: " + rootHDFSDirPath
-          + " on HDFS should be writable. Current permissions are: " + currentHDFSDirPermission);
+    if (!isWritable(currentHDFSDirPermission, writableHDFSDirPermission) &&
+        !attemptMakePathWritable(fs, rootHDFSDirPath,
+            FsPermission.createImmutable((short) (currentHDFSDirPermission.toShort() | writableHDFSDirPermission.toShort())))) {
+      throw new RuntimeException(
+          "The dir: " + rootHDFSDirPath + " should be writable. Current permissions are: " + currentHDFSDirPermission);
     }
+  }
+
+  private static boolean attemptMakePathWritable(FileSystem fs, Path path, FsPermission perm) {
+    try {
+      LOG.info("Attempting to set {} permissions on path {}", perm, path);
+      fs.setPermission(path, perm);
+      return isWritable(fs.getFileStatus(path).getPermission(), perm);
+    } catch (IOException e) {
+      return false;
+    }
+  }
+
+  private static boolean isWritable(FsPermission currentHDFSDirPermission, FsPermission writableHDFSDirPermission) {
+    return (currentHDFSDirPermission.toShort() & writableHDFSDirPermission.toShort())
+        == writableHDFSDirPermission.toShort();
   }
 
   // Get the bucketing version stored in the string format
@@ -5006,8 +5114,54 @@ public final class Utilities {
     }
   }
 
-  public static boolean arePathsEqualOrWithin(Path p1, Path p2) {
-    return ((p1.toString().toLowerCase().indexOf(p2.toString().toLowerCase()) > -1) ||
-        (p2.toString().toLowerCase().indexOf(p1.toString().toLowerCase()) > -1)) ? true : false;
+  public static String getTableOrMVSuffix(Context context, boolean createTableOrMVUseSuffix) {
+    String suffix = "";
+    if (createTableOrMVUseSuffix) {
+      long txnId = Optional.ofNullable(context)
+              .map(ctx -> ctx.getHiveTxnManager().getCurrentTxnId()).orElse(0L);
+      if (txnId != 0) {
+        suffix = AcidUtils.getPathSuffix(txnId);
+      }
+    }
+    return suffix;
+  }
+
+  /**
+   * Stores the creation time of the given table in the provided configuration.
+   * <p>
+   * The value is written under a composite key of the form:
+   * {@code &lt;dbName&gt;.&lt;tableName&gt;.&lt;CREATE_TIME&gt;}.
+   * </p>
+   *
+   * @param conf
+   *     configuration to store the table creation time; must not be {@code null}
+   * @param table
+   *     table whose database and name are used to construct the configuration key;
+   *     must not be {@code null}
+   */
+  public static void setTableCreateTime(Configuration conf, Table table) {
+    Objects.requireNonNull(table, "Cannot get table create time. Table object is expected to be non-null.");
+    String fullTableName = TableName.getDbTable(table.getDbName(), table.getTableName());
+    conf.setInt(String.format("%s.%s", fullTableName, CREATE_TIME), table.getCreateTime());
+  }
+
+  /**
+   * Retrieves the table creation time from the configuration.
+   * <p>
+   * The value is expected to be stored under the key
+   * {@code &lt;tableName&gt;.&lt;CREATE_TIME&gt;}. If the value is not present,
+   * this method returns {@code 0}.
+   * </p>
+   *
+   * @param conf
+   *     configuration containing the table creation time; must not be {@code null}
+   * @param tableName
+   *     fully qualified table name ({@code dbName.tableName})
+   *     used to construct the configuration key
+   * @return
+   *     the table creation time, or {@code 0} if not set
+   */
+  public static int getTableCreateTime(Configuration conf, String tableName) {
+    return conf.getInt(String.format("%s.%s", tableName, CREATE_TIME), 0);
   }
 }

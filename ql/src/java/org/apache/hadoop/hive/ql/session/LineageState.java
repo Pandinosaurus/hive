@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.session;
@@ -29,6 +30,7 @@ import org.apache.hadoop.hive.ql.exec.ColumnInfo;
 import org.apache.hadoop.hive.ql.exec.Operator;
 import org.apache.hadoop.hive.ql.hooks.LineageInfo;
 import org.apache.hadoop.hive.ql.hooks.LineageInfo.DataContainer;
+import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.optimizer.lineage.LineageCtx.Index;
 
 /**
@@ -88,6 +90,19 @@ public class LineageState implements Serializable {
     if (op != null) {
       dirToFop.put(newPath.toUri().toString(), op);
     }
+  }
+
+  /**
+   * Set the lineage information for the associated directory.
+   *
+   * @param dir The directory containing the query results.
+   * @param dc The associated data container.
+   * @param table table metadata used to resolve written columns for lineage mapping.
+   */
+  public synchronized void setLineage(Path dir, DataContainer dc, Table table) {
+    List<FieldSchema> cols = table.hasNonNativePartitionSupport() ?
+        table.getAllCols() : table.getCols();
+    setLineage(dir, dc, cols);
   }
 
   /**

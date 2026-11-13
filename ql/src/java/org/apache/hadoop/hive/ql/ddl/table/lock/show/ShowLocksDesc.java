@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.lock.show;
@@ -33,20 +34,24 @@ import org.apache.hadoop.hive.ql.plan.Explain.Level;
 public class ShowLocksDesc implements DDLDesc, Serializable {
   private static final long serialVersionUID = 1L;
 
-  private static final String OLD_FORMAT_SCHEMA = "tab_name,mode#string:string";
-  private static final String NEW_FORMAT_SCHEMA = "lockid,database,table,partition,lock_state," +
+  private static final String OLD_FORMAT_SCHEMA = "name,mode#string:string";
+  private static final String OLD_TBL_FORMAT_SCHEMA = "tab_name,mode#string:string";
+  private static final String OLD_DB_FORMAT_SCHEMA = "db_name,mode#string:string";
+  private static final String NEW_FORMAT_SCHEMA = "lockid,catalog,database,table,partition,lock_state," +
       "blocked_by,lock_type,transaction_id,last_heartbeat,acquired_at,user,hostname,agent_info#" +
-      "string:string:string:string:string:string:string:string:string:string:string:string:string";
+      "string:string:string:string:string:string:string:string:string:string:string:string:string:string";
 
   private final String resFile;
+  private final String catName;
   private final String dbName;
   private final String tableName;
   private final Map<String, String> partSpec;
   private final boolean isExt;
   private final boolean isNewFormat;
 
-  public ShowLocksDesc(Path resFile, String dbName, boolean isExt, boolean isNewFormat) {
+  public ShowLocksDesc(Path resFile, String catName, String dbName, boolean isExt, boolean isNewFormat) {
     this.resFile = resFile.toString();
+    this.catName = catName;
     this.dbName = dbName;
     this.tableName = null;
     this.partSpec = null;
@@ -54,10 +59,11 @@ public class ShowLocksDesc implements DDLDesc, Serializable {
     this.isNewFormat = isNewFormat;
   }
 
-  public ShowLocksDesc(Path resFile, String tableName, Map<String, String> partSpec, boolean isExt,
-      boolean isNewFormat) {
+  public ShowLocksDesc(Path resFile, String catName, String dbName, String tableName,
+                       Map<String, String> partSpec, boolean isExt, boolean isNewFormat) {
     this.resFile = resFile.toString();
-    this.dbName = null;
+    this.catName = catName;
+    this.dbName = dbName;
     this.tableName = tableName;
     this.partSpec = partSpec;
     this.isExt = isExt;
@@ -67,6 +73,11 @@ public class ShowLocksDesc implements DDLDesc, Serializable {
   @Explain(displayName = "result file", explainLevels = { Level.EXTENDED })
   public String getResFile() {
     return resFile;
+  }
+
+  @Explain(displayName = "catName", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
+  public String getCatName() {
+    return catName;
   }
 
   @Explain(displayName = "dbName", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
@@ -94,5 +105,13 @@ public class ShowLocksDesc implements DDLDesc, Serializable {
 
   public String getSchema() {
     return isNewFormat ? NEW_FORMAT_SCHEMA : OLD_FORMAT_SCHEMA;
+  }
+
+  public String getTblSchema() {
+    return isNewFormat ? NEW_FORMAT_SCHEMA : OLD_TBL_FORMAT_SCHEMA;
+  }
+
+  public String getDbSchema() {
+    return isNewFormat ? NEW_FORMAT_SCHEMA : OLD_DB_FORMAT_SCHEMA;
   }
 }

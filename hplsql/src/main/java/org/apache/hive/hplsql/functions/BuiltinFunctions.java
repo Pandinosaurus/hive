@@ -1,21 +1,20 @@
 /*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *  * Licensed to the Apache Software Foundation (ASF) under one
- *  * or more contributor license agreements.  See the NOTICE file
- *  * distributed with this work for additional information
- *  * regarding copyright ownership.  The ASF licenses this file
- *  * to you under the Apache License, Version 2.0 (the
- *  * "License"); you may not use this file except in compliance
- *  * with the License.  You may obtain a copy of the License at
- *  *
- *  *     http://www.apache.org/licenses/LICENSE-2.0
- *  *
- *  * Unless required by applicable law or agreed to in writing, software
- *  * distributed under the License is distributed on an "AS IS" BASIS,
- *  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  * See the License for the specific language governing permissions and
- *  * limitations under the License.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.hplsql.functions;
@@ -114,7 +113,10 @@ public class BuiltinFunctions {
       execMinPartDate(ctx);
     } else if (ctx.T_PART_LOC() != null) {
       execPartLoc(ctx);
-    } else {
+    } else if (exec.buildSql){
+      exec.stackPush(Exec.getFormattedText(ctx));
+    }
+    else {
       evalNull();
     }
   }
@@ -132,7 +134,7 @@ public class BuiltinFunctions {
       func.run(ctx);
     }
     else {
-      exec.stackPush(Exec.getFormattedText(ctx));
+      specExec(ctx);
     }
   }
 
@@ -372,6 +374,10 @@ public class BuiltinFunctions {
 
   protected void evalString(String string) {
     exec.stackPush(new Var(string));
+  }
+
+  protected void evalSqlString(String string) {
+    exec.stackPush(new Var(Var.Type.SQL_STRING, (Object) string));
   }
 
   protected Var evalPop(ParserRuleContext ctx) {

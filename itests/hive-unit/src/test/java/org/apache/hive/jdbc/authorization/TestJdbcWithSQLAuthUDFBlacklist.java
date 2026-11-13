@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc.authorization;
@@ -28,6 +29,7 @@ import java.util.HashMap;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.security.SessionStateUserAuthenticator;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd.SQLStdHiveAuthorizerFactory;
 import org.apache.hive.jdbc.miniHS2.MiniHS2;
@@ -43,8 +45,6 @@ public class TestJdbcWithSQLAuthUDFBlacklist {
   private MiniHS2 miniHS2 = null;
 
   public void startHS2(HiveConf conf) throws Exception {
-    Class.forName(MiniHS2.getJdbcDriverName());
-
     conf.setVar(ConfVars.HIVE_AUTHORIZATION_MANAGER, SQLStdHiveAuthorizerFactory.class.getName());
     conf.setVar(ConfVars.HIVE_AUTHENTICATOR_MANAGER, SessionStateUserAuthenticator.class.getName());
     conf.setBoolVar(ConfVars.HIVE_AUTHORIZATION_ENABLED, true);
@@ -64,7 +64,7 @@ public class TestJdbcWithSQLAuthUDFBlacklist {
 
   @Test
   public void testBlackListedUdfUsage() throws Exception {
-    HiveConf conf = new HiveConf();
+    HiveConf conf = new HiveConfForTest(getClass());
     conf.setVar(ConfVars.HIVE_SERVER2_BUILTIN_UDF_BLACKLIST, "sqrt");
     startHS2(conf);
 

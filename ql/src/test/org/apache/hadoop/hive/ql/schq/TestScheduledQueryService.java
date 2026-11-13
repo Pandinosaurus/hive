@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.schq;
 
@@ -96,52 +97,6 @@ public class TestScheduledQueryService {
     }
     ft.fetch(res);
     return res.size();
-  }
-
-
-  public static class MockScheduledQueryService implements IScheduledQueryMaintenanceService {
-    // Use notify/wait on this object to indicate when the scheduled query has finished executing.
-    Object notifier = new Object();
-
-    int id = 0;
-    private String stmt;
-    ScheduledQueryProgressInfo lastProgressInfo;
-
-    public MockScheduledQueryService(String string) {
-      stmt = string;
-    }
-
-    @Override
-    public ScheduledQueryPollResponse scheduledQueryPoll() {
-      ScheduledQueryPollResponse r = new ScheduledQueryPollResponse();
-      r.setExecutionId(id++);
-      r.setQuery(stmt);
-      r.setScheduleKey(new ScheduledQueryKey("sch1", getClusterNamespace()));
-      r.setUser("nobody");
-      if (id == 1) {
-        return r;
-      } else {
-        return null;
-      }
-    }
-
-    @Override
-    public void scheduledQueryProgress(ScheduledQueryProgressInfo info) {
-      System.out.printf("%d, state: %s, error: %s", info.getScheduledExecutionId(), info.getState(),
-          info.getErrorMessage());
-      lastProgressInfo = info;
-      if (info.getState() == QueryState.FINISHED || info.getState() == QueryState.FAILED) {
-        // Query is done, notify any waiters
-        synchronized (notifier) {
-          notifier.notifyAll();
-        }
-      }
-    }
-
-    @Override
-    public String getClusterNamespace() {
-      return "default";
-    }
   }
 
   @Test

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer;
@@ -38,12 +39,14 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.hive.common.StatsSetupConst;
 import org.apache.hadoop.hive.ql.stats.StatsUtils;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
+import org.apache.hadoop.hive.ql.QueryProperties.QueryFeature;
 import org.apache.hadoop.hive.ql.exec.CommonJoinOperator;
 import org.apache.hadoop.hive.ql.exec.FetchTask;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
@@ -59,6 +62,7 @@ import org.apache.hadoop.hive.ql.exec.TableScanOperator;
 import org.apache.hadoop.hive.ql.exec.TaskFactory;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.hooks.ReadEntity;
+import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.ql.io.ContentSummaryInputFormat;
 import org.apache.hadoop.hive.ql.io.HiveInputFormat;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -104,7 +108,11 @@ public class SimpleFetchOptimizer extends Transform {
   @Override
   public ParseContext transform(ParseContext pctx) throws SemanticException {
     Map<String, TableScanOperator> topOps = pctx.getTopOps();
-    if (pctx.getQueryProperties().isQuery() && !pctx.getQueryProperties().isAnalyzeCommand()
+    boolean isAnalyzeCommand = pctx.getQueryProperties().hasFeature(QueryFeature.ANALYZE)
+        && !pctx.getQueryProperties().hasFeature(QueryFeature.REWRITE);
+    if ((pctx.getQueryProperties().hasFeature(QueryFeature.QUERY)
+        || pctx.getQueryProperties().hasFeature(QueryFeature.VIEW))
+        && !isAnalyzeCommand
         && topOps.size() == 1) {
       // no join, no groupby, no distinct, no lateral view, no subq,
       // no CTAS or insert, not analyze command, and single sourced.
@@ -127,11 +135,10 @@ public class SimpleFetchOptimizer extends Transform {
   }
 
   // returns non-null FetchTask instance when succeeded
-  @SuppressWarnings("unchecked")
   private FetchTask optimize(ParseContext pctx, String alias, TableScanOperator source)
       throws Exception {
     String mode = HiveConf.getVar(
-        pctx.getConf(), HiveConf.ConfVars.HIVEFETCHTASKCONVERSION);
+        pctx.getConf(), HiveConf.ConfVars.HIVE_FETCH_TASK_CONVERSION);
 
     boolean aggressive = "more".equals(mode);
     final int limit = pctx.getQueryProperties().getOuterQueryLimit();
@@ -143,6 +150,14 @@ public class SimpleFetchOptimizer extends Transform {
     if (fetch != null && checkThreshold(fetch, limit, pctx)) {
       FetchWork fetchWork = fetch.convertToWork();
       FetchTask fetchTask = (FetchTask) TaskFactory.get(fetchWork);
+      boolean cachingEnabled = HiveConf.getBoolVar(pctx.getConf(),
+          HiveConf.ConfVars.HIVE_FETCH_TASK_CACHING);
+      if (cachingEnabled && !AcidUtils.isTransactionalTable(fetch.table)) {
+        LOG.debug("Fetch task caching is enabled but table {} is not transactional. " +
+            "Caching is only supported for ACID tables. Disabling.", fetch.table.getCompleteName());
+        cachingEnabled = false;
+      }
+      fetchTask.setCachingEnabled(cachingEnabled);
       fetchWork.setSink(fetch.completed(pctx, fetchWork));
       fetchWork.setSource(source);
       fetchWork.setLimit(limit);
@@ -152,27 +167,31 @@ public class SimpleFetchOptimizer extends Transform {
   }
 
   private boolean checkThreshold(FetchData data, int limit, ParseContext pctx) throws Exception {
-    if (limit > 0) {
-      if (data.hasOnlyPruningFilter()) {
-        /* partitioned table + query has only pruning filters */
-        return true;
-      } else if (data.isPartitioned() == false && data.isFiltered() == false) {
-        /* unpartitioned table + no filters */
-        return true;
+    boolean cachingEnabled = HiveConf.getBoolVar(pctx.getConf(), HiveConf.ConfVars.HIVE_FETCH_TASK_CACHING);
+    if (!cachingEnabled) {
+      if (limit > 0) {
+        if (data.hasOnlyPruningFilter()) {
+          // partitioned table + query has only pruning filters
+          return true;
+        } else if (!data.isPartitioned() && !data.isFiltered()) {
+          // unpartitioned table + no filters
+          return true;
+        }
+        // fall through
       }
-      /* fall through */
+      Operator child = data.scanOp.getChildOperators().get(0);
+      if(child instanceof SelectOperator) {
+        // select *, constant and casts can be allowed without a threshold check
+        if (checkExpressions((SelectOperator)child)) {
+          return true;
+        }
+      }
     }
+    // if caching is enabled we apply the treshold in all cases
     long threshold = HiveConf.getLongVar(pctx.getConf(),
-        HiveConf.ConfVars.HIVEFETCHTASKCONVERSIONTHRESHOLD);
+        HiveConf.ConfVars.HIVE_FETCH_TASK_CONVERSION_THRESHOLD);
     if (threshold < 0) {
       return true;
-    }
-    Operator child = data.scanOp.getChildOperators().get(0);
-    if(child instanceof SelectOperator) {
-      // select *, constant and casts can be allowed without a threshold check
-      if (checkExpressions((SelectOperator)child)) {
-        return true;
-      }
     }
     return data.isDataLengthWithInThreshold(pctx, threshold);
   }
@@ -203,7 +222,7 @@ public class SimpleFetchOptimizer extends Transform {
     }
 
     boolean bypassFilter = false;
-    if (HiveConf.getBoolVar(pctx.getConf(), HiveConf.ConfVars.HIVEOPTPPD)) {
+    if (HiveConf.getBoolVar(pctx.getConf(), HiveConf.ConfVars.HIVE_OPT_PPD)) {
       ExprNodeDesc pruner = pctx.getOpToPartPruner().get(ts);
       if (PartitionPruner.onlyContainsPartnCols(table, pruner)) {
         bypassFilter = !pctx.getPrunedPartitions(alias, ts).hasUnknownPartitions();
@@ -224,12 +243,9 @@ public class SimpleFetchOptimizer extends Transform {
 
       if (op instanceof FilterOperator) {
         ExprNodeDesc predicate = ((FilterOperator) op).getConf().getPredicate();
-        if (predicate instanceof ExprNodeConstantDesc
-                && "boolean".equals(predicate.getTypeInfo().getTypeName())) {
-          continue;
-        } else if (PartitionPruner.onlyContainsPartnCols(table, predicate)) {
-          continue;
-        } else {
+        if (!(predicate instanceof ExprNodeConstantDesc
+                && serdeConstants.BOOLEAN_TYPE_NAME.equals(predicate.getTypeInfo().getTypeName()))
+            && !PartitionPruner.onlyContainsPartnCols(table, predicate)) {
           onlyPruningFilter = false;
         }
       }
@@ -416,7 +432,7 @@ public class SimpleFetchOptimizer extends Transform {
       inputs.clear();
       Utilities.addSchemaEvolutionToTableScanOperator(table, scanOp);
       TableDesc tableDesc = Utilities.getTableDesc(table);
-      if (!table.isPartitioned()) {
+      if (!table.isPartitioned() || table.hasNonNativePartitionSupport()) {
         inputs.add(new ReadEntity(table, parent, !table.isView() && parent == null));
         FetchWork work = new FetchWork(table.getPath(), tableDesc);
         PlanUtils.configureInputJobPropertiesForStorageHandler(work.getTblDesc());
@@ -555,7 +571,7 @@ public class SimpleFetchOptimizer extends Transform {
 
         status = (threshold - dataSize) >= 0 ? Status.PASS : Status.FAIL;
       } else if (table != null && table.isPartitioned() && partsList != null) {
-        List<Long> dataSizes = StatsUtils.getBasicStatForPartitions(table, partsList.getNotDeniedPartns(),
+        List<Long> dataSizes = StatsUtils.getBasicStatForPartitions(partsList.getNotDeniedPartns(),
           StatsSetupConst.TOTAL_SIZE);
         long totalDataSize = StatsUtils.getSumIgnoreNegatives(dataSizes);
         if (totalDataSize <= 0) {

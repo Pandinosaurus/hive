@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.serde2.typeinfo;
@@ -23,9 +24,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.hadoop.hive.common.type.HiveChar;
 import org.apache.hadoop.hive.common.type.HiveDecimal;
 import org.apache.hadoop.hive.common.type.HiveVarchar;
+import org.apache.hadoop.hive.common.type.TimestampTZUtil;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorUtils.PrimitiveTypeEntry;
@@ -55,7 +58,8 @@ public final class TypeInfoFactory {
   public static final PrimitiveTypeInfo byteTypeInfo = new PrimitiveTypeInfo(serdeConstants.TINYINT_TYPE_NAME);
   public static final PrimitiveTypeInfo shortTypeInfo = new PrimitiveTypeInfo(serdeConstants.SMALLINT_TYPE_NAME);
   public static final PrimitiveTypeInfo dateTypeInfo = new PrimitiveTypeInfo(serdeConstants.DATE_TYPE_NAME);
-  public static final PrimitiveTypeInfo timestampTypeInfo = new PrimitiveTypeInfo(serdeConstants.TIMESTAMP_TYPE_NAME);
+  public static final PrimitiveTypeInfo timestampTypeInfo = new TimestampTypeInfo();
+  public static final PrimitiveTypeInfo nanoTimestampTypeInfo = new TimestampTypeInfo(9);
   public static final PrimitiveTypeInfo intervalYearMonthTypeInfo = new PrimitiveTypeInfo(serdeConstants.INTERVAL_YEAR_MONTH_TYPE_NAME);
   public static final PrimitiveTypeInfo intervalDayTimeTypeInfo = new PrimitiveTypeInfo(serdeConstants.INTERVAL_DAY_TIME_TYPE_NAME);
   public static final PrimitiveTypeInfo binaryTypeInfo = new PrimitiveTypeInfo(serdeConstants.BINARY_TYPE_NAME);
@@ -71,6 +75,9 @@ public final class TypeInfoFactory {
    */
   public static final TimestampLocalTZTypeInfo timestampLocalTZTypeInfo = new TimestampLocalTZTypeInfo(
       ZoneId.systemDefault().getId());
+
+  public static final TimestampLocalTZTypeInfo timestampNanoLocalTZTypeInfo =
+      new TimestampLocalTZTypeInfo(9, ZoneId.systemDefault());
 
   public static final PrimitiveTypeInfo unknownTypeInfo = new PrimitiveTypeInfo("unknown");
 
@@ -98,6 +105,8 @@ public final class TypeInfoFactory {
     cachedPrimitiveTypeInfo.put(serdeConstants.BINARY_TYPE_NAME, binaryTypeInfo);
     cachedPrimitiveTypeInfo.put(decimalTypeInfo.getQualifiedName(), decimalTypeInfo);
     cachedPrimitiveTypeInfo.put("unknown", unknownTypeInfo);
+    cachedPrimitiveTypeInfo.put(nanoTimestampTypeInfo.toString(), nanoTimestampTypeInfo);
+    cachedPrimitiveTypeInfo.put(timestampNanoLocalTZTypeInfo.toString(), timestampNanoLocalTZTypeInfo);
   }
 
   /**
@@ -163,11 +172,31 @@ public final class TypeInfoFactory {
         }
         return new DecimalTypeInfo(Integer.valueOf(parts.typeParams[0]),
             Integer.valueOf(parts.typeParams[1]));
-      case TIMESTAMPLOCALTZ:
+      case TIMESTAMP:
         if (parts.typeParams.length != 1) {
           return null;
         }
-        return new TimestampLocalTZTypeInfo(parts.typeParams[0]);
+        int precision = Integer.parseInt(parts.typeParams[0]);
+        return new TimestampTypeInfo(precision);
+      case TIMESTAMPLOCALTZ:
+        int prec = 6;
+        ZoneId tz = ZoneId.systemDefault();
+
+        if (parts.typeParams.length == 1) {
+          String p0 = parts.typeParams[0];
+
+          if (NumberUtils.isCreatable((p0))) {
+            prec = Integer.parseInt(p0);
+          } else {
+            tz = TimestampTZUtil.parseTimeZone(p0);
+          }
+        } else if (parts.typeParams.length == 2) {
+          prec = Integer.parseInt(parts.typeParams[0]);
+          tz = TimestampTZUtil.parseTimeZone(parts.typeParams[1]);
+        } else {
+          return null;
+        }
+        return new TimestampLocalTZTypeInfo(prec, tz);
       default:
         return null;
     }
@@ -186,10 +215,18 @@ public final class TypeInfoFactory {
     return (DecimalTypeInfo) getPrimitiveTypeInfo(fullName);
   };
 
-  public static TimestampLocalTZTypeInfo getTimestampTZTypeInfo(ZoneId defaultTimeZone) {
-    String fullName = TimestampLocalTZTypeInfo.getQualifiedName(defaultTimeZone);
+  public static TimestampLocalTZTypeInfo getTimestampTZTypeInfo(ZoneId defaultTimeZone, int precision) {
+    String fullName = TimestampLocalTZTypeInfo.getQualifiedName(defaultTimeZone, precision);
     return (TimestampLocalTZTypeInfo) getPrimitiveTypeInfo(fullName);
   };
+
+  public static TimestampLocalTZTypeInfo getTimestampTZTypeInfo(ZoneId defaultTimeZone) {
+    return getTimestampTZTypeInfo(defaultTimeZone, 6);
+  };
+
+  public static TimestampTypeInfo getTimestampTypeInfo(int precision) {
+    return new TimestampTypeInfo(precision);
+  }
 
   public static TypeInfo getPrimitiveTypeInfoFromPrimitiveWritable(
       Class<?> clazz) {
@@ -239,6 +276,14 @@ public final class TypeInfoFactory {
       }
     }
     return result;
+  }
+
+  public static TypeInfo getVariantTypeInfo() {
+    return VariantTypeInfo.get();
+  }
+
+  public static TypeInfo getUnknownTypeInfo() {
+    return UnknownTypeInfo.get();
   }
 
   static ConcurrentHashMap<TypeInfo, TypeInfo> cachedListTypeInfo = new ConcurrentHashMap<TypeInfo, TypeInfo>();

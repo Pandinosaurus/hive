@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.tools;
 
 import org.apache.hadoop.hive.metastore.api.DataOperationType;
 import org.apache.hadoop.hive.metastore.api.LockComponent;
+import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.LockRequest;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -152,6 +154,7 @@ public class ACIDBenchmarks {
         for (int j = 0; j < nPartitions - (nPartitions > 1 ? 1 : 0); j++) {
           lockComponents.add(
             new Util.LockComponentBuilder()
+              .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
               .setDbName("default")
               .setTableName(String.format("tmp_table_%d", i))
               .setPartitionName("p_" + j)
@@ -162,6 +165,7 @@ public class ACIDBenchmarks {
         if (nPartitions != 1) {
           lockComponents.add(
             new Util.LockComponentBuilder()
+              .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
               .setDbName("default")
               .setTableName(String.format("tmp_table_%d", i))
               .setShared()

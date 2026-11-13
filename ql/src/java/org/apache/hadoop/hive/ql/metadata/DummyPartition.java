@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.metadata;
@@ -22,9 +23,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.google.common.collect.Maps;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 
 /**
@@ -36,25 +37,46 @@ import org.apache.hadoop.hive.metastore.api.FieldSchema;
  */
 public class DummyPartition extends Partition {
 
-  @SuppressWarnings("nls")
-  private static final Logger LOG = LoggerFactory
-      .getLogger("hive.ql.metadata.DummyPartition");
+  /**
+   * Name of the synthetic partition holding the rows that belong to no partition, e.g. data written
+   * before the table was partitioned. Its partition spec is empty, so no predicate can exclude it.
+   */
+  public static final String VOID = "__NO_PARTITION__";
+
+  /**
+   * Whether the name is the synthetic partition's. No statement can name that partition, so
+   * listings shown to users skip it, while planning and statistics keep counting its rows.
+   */
+  public static boolean isVoid(String partName) {
+    return VOID.equals(partName);
+  }
 
   private String name;
   private LinkedHashMap<String, String> partSpec;
+  private List<String> values;
+
   public DummyPartition() {
   }
   
-  public DummyPartition(Table tbl, String name) throws HiveException {
-    setTable(tbl);
+  public DummyPartition(Table table, String name) {
+    setTable(table);
     this.name = name;
-  }  
+  }
 
-  public DummyPartition(Table tbl, String name,
-      Map<String, String> partSpec) throws HiveException {
-    setTable(tbl);
-    this.name = name;
-    this.partSpec = new LinkedHashMap<String, String>(partSpec);
+  public DummyPartition(Table table) {
+    this(table, null, Maps.newHashMap());
+  }
+
+  public DummyPartition(Table table, String name, Map<String, String> partSpec) {
+    this(table, name);
+    org.apache.hadoop.hive.metastore.api.Partition tPart =
+        new org.apache.hadoop.hive.metastore.api.Partition();
+    tPart.setSd(table.getSd().deepCopy());
+    tPart.setParameters(Maps.newHashMap());
+    tPart.setDbName(table.getDbName());
+    
+    this.partSpec = Maps.newLinkedHashMap(partSpec);
+    setTPartition(tPart);
   }
 
   public String getName() {
@@ -76,11 +98,32 @@ public class DummyPartition extends Partition {
 
   @Override
   public List<String> getValues() {
-    List<String> values = new ArrayList<String>();
-    for (FieldSchema fs : this.getTable().getPartCols()) {
-      values.add(partSpec.get(fs.getName()));
+    if (values != null) {
+      return values;
     }
+
+    Table table = this.getTable();
+    values = new ArrayList<>();
+
+    for (FieldSchema fs : table.getPartCols()) {
+      String val = partSpec.get(fs.getName());
+      values.add(val);
+    }
+
     return values;
   }
 
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof DummyPartition) {
+      DummyPartition o = (DummyPartition) obj;
+      return Objects.equals(name, o.name) && Objects.equals(partSpec, o.partSpec);
+    }
+    return false;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(name) + Objects.hashCode(partSpec);
+  }
 }

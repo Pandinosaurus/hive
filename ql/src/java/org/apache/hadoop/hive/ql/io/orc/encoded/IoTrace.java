@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.orc.encoded;
@@ -60,7 +61,7 @@ public final class IoTrace {
       SARG_RESULT = 4, RANGES = 5, COLUMN_READ = 6, SKIP_STREAM = 7,
       ADD_STREAM = 8, START_RG = 9, START_COL = 10, START_STRIPE_STREAM = 11,
       START_STREAM = 12, START_READ = 13, UNCOMPRESSED_DATA = 14,
-      PARTIAL_UNCOMPRESSED_DATA = 15, VALID_UNCOMPRESSEED_CHUNK = 16, CACHE_COLLISION = 17,
+      PARTIAL_UNCOMPRESSED_DATA = 15, VALID_UNCOMPRESSED_CHUNK = 16, CACHE_COLLISION = 17,
       ORC_CB = 18, INVALID_ORC_CB = 19, PARTIAL_CB = 20, COMPOSITE_ORC_CB = 21, SARG_RESULT2 = 22;
 
   public void reset() {
@@ -183,7 +184,7 @@ public final class IoTrace {
           + offset + ", " + (offset + getSecondInt(log[ix])) + ")");
       return ix + 2;
     }
-    case VALID_UNCOMPRESSEED_CHUNK: {
+    case VALID_UNCOMPRESSED_CHUNK: {
       logger.info(ix + ": Combining uncompressed data for cache buffer of length "
           + getSecondInt(log[ix]) + " from 0x" + Integer.toHexString((int)log[ix + 1]));
       return ix + 2;
@@ -396,11 +397,11 @@ public final class IoTrace {
     this.offset += 2;
   }
 
-  public void logValidUncompresseedChunk(int totalLength, DiskRange chunk) {
+  public void logValidUncompressedChunk(int totalLength, DiskRange chunk) {
     if (log == null) return;
     int offset = this.offset;
     if (offset + 2 > log.length) return;
-    log[offset] = makeIntPair(VALID_UNCOMPRESSEED_CHUNK, totalLength);
+    log[offset] = makeIntPair(VALID_UNCOMPRESSED_CHUNK, totalLength);
     log[offset + 1] = chunk.hasData() ? System.identityHashCode(chunk.getData()) : 0;
     this.offset += 2;
   }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse;
@@ -26,7 +27,6 @@ import java.util.Deque;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 
 import org.antlr.runtime.CommonToken;
 import org.antlr.runtime.tree.CommonTreeAdaptor;
@@ -107,7 +107,7 @@ public class SubQueryUtils {
   }
 
   static public void subqueryRestrictionCheck(QB qb, ASTNode subqueryExprNode, RelNode srcRel,
-      boolean forHavingClause, Set<ASTNode> corrScalarQueries, Context ctx,
+      boolean forHavingClause, Context ctx,
       LinkedHashMap<RelNode, RowResolver> relToHiveRR)
       throws SemanticException {
 
@@ -157,14 +157,8 @@ public class SubQueryUtils {
 
     String havingInputAlias = null;
 
-    boolean [] subqueryConfig = {false, false};
     subQuery.subqueryRestrictionsCheck(inputRR, forHavingClause,
-        havingInputAlias, subqueryConfig);
-
-    if(subqueryConfig[0]) {
-      corrScalarQueries.add(subqueryExprNode);
-    }
-    //}
+        havingInputAlias);
   }
 
 

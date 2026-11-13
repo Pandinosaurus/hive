@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse;
@@ -29,11 +30,13 @@ import org.antlr.runtime.tree.Tree;
 import org.apache.hadoop.hive.common.type.Timestamp;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.ScheduledQuery;
 import org.apache.hadoop.hive.metastore.api.ScheduledQuery._Fields;
 import org.apache.hadoop.hive.metastore.api.ScheduledQueryKey;
 import org.apache.hadoop.hive.metastore.api.ScheduledQueryMaintenanceRequestType;
 import org.apache.hadoop.hive.ql.Context;
+import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.exec.TaskFactory;
 import org.apache.hadoop.hive.ql.plan.HiveOperation;
@@ -74,7 +77,16 @@ public class ScheduledQueryAnalyzer extends BaseSemanticAnalyzer {
     ScheduledQueryMaintenanceWork work;
     ScheduledQueryMaintenanceRequestType type = translateAstType(ast.getToken().getType());
     ScheduledQuery parsedSchq = interpretAstNode(ast);
-    ScheduledQuery schq = fillScheduledQuery(type, parsedSchq);
+    boolean throwException = true;
+    if (type == ScheduledQueryMaintenanceRequestType.DROP) {
+      boolean ifExists = ast.getFirstChildWithType(HiveParser.TOK_IFEXISTS) != null;
+      throwException = !ifExists && !HiveConf.getBoolVar(conf, ConfVars.DROP_IGNORES_NON_EXISTENT);
+    }
+    ScheduledQuery schq = fillScheduledQuery(type, parsedSchq, throwException);
+    if (schq == null) {
+      LOG.warn("Unable to find Scheduled query " + parsedSchq.getScheduleKey().getScheduleName());
+      return;
+    }
     checkAuthorization(type, schq);
     LOG.info("scheduled query operation: " + type + " " + schq);
     try {
@@ -87,8 +99,8 @@ public class ScheduledQueryAnalyzer extends BaseSemanticAnalyzer {
     queryState.setCommandType(toHiveOperation(type));
   }
 
-  private ScheduledQuery  fillScheduledQuery(ScheduledQueryMaintenanceRequestType type, ScheduledQuery schqChanges)
-      throws SemanticException {
+  private ScheduledQuery  fillScheduledQuery(ScheduledQueryMaintenanceRequestType type, ScheduledQuery schqChanges, boolean throwException)
+          throws SemanticException {
     if (type == ScheduledQueryMaintenanceRequestType.CREATE) {
       return composeOverlayObject(schqChanges, buildEmptySchq());
     } else {
@@ -101,8 +113,13 @@ public class ScheduledQueryAnalyzer extends BaseSemanticAnalyzer {
         // clear the next execution time
         schqStored.setNextExecutionIsSet(false);
         return composeOverlayObject(schqChanges, schqStored);
+      } catch (NoSuchObjectException e) {
+        if (throwException) {
+          throw new SemanticException(ErrorMsg.INVALID_SCHEDULED_QUERY.format(schqChanges.getScheduleKey().getScheduleName()), e);
+        }
+        return null;
       } catch (TException e) {
-        throw new SemanticException("unable to get Scheduled query" + e);
+        throw new SemanticException(e.getMessage(), e);
       }
     }
   }
@@ -198,6 +215,8 @@ public class ScheduledQueryAnalyzer extends BaseSemanticAnalyzer {
     case HiveParser.TOK_EXECUTE:
       int now = (int) (System.currentTimeMillis() / 1000);
       schq.setNextExecution(now);
+      return;
+    case HiveParser.TOK_IFEXISTS:
       return;
     default:
       throw new SemanticException("Unexpected token: " + node.getType());
@@ -345,7 +364,7 @@ public class ScheduledQueryAnalyzer extends BaseSemanticAnalyzer {
 
     sem.analyze(input, ctx);
     sem.validate();
-    sem.executeUnparseTranlations();
+    sem.executeUnParseTranslations();
 
     String expandedText = ctx.getTokenRewriteStream().toString(input.getTokenStartIndex(), input.getTokenStopIndex());
 

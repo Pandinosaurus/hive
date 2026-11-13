@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.dataconnector;
@@ -41,6 +42,7 @@ public interface IDataConnectorProvider {
   public static final String ORACLE_TYPE = "oracle";
   public static final String MSSQL_TYPE = "mssql";
   public static final String DERBY_TYPE = "derby";
+  public static final String HIVE_JDBC_TYPE = "hivejdbc";
 
   DataConnector connector = null;
 

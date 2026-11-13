@@ -6,18 +6,18 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.utils;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -72,37 +72,20 @@ public class FileUtils {
     }
   };
 
-  /**
-   * Move a particular file or directory to the trash.
-   * @param fs FileSystem to use
-   * @param f path of file or directory to move to trash.
-   * @param conf configuration object
-   * @return true if move successful
-   * @throws IOException
-   */
-  public static boolean moveToTrash(FileSystem fs, Path f, Configuration conf, boolean purge)
+  public static boolean deleteDir(FileSystem fs, Path f, boolean ifPurge, Configuration conf)
       throws IOException {
-    LOG.debug("deleting  " + f);
-    boolean result;
+    if (!fs.exists(f)) {
+      LOG.warn("The path to delete does not exist: {}", f);
+      return true;
+    }
+    if (!ifPurge && moveToTrash(fs, f, conf)) {
+      return true;
+    }
+    boolean result = false;
     try {
-      if(purge) {
-        LOG.debug("purge is set to true. Not moving to Trash " + f);
-      } else {
-        result = Trash.moveToAppropriateTrash(fs, f, conf);
-        if (result) {
-          LOG.trace("Moved to trash: " + f);
-          return true;
-        }
-      }
-    } catch (IOException ioe) {
       // for whatever failure reason including that trash has lower encryption zone
       // retry with force delete
-      LOG.warn(ioe.getMessage() + "; Force to delete it.");
-    }
-
-    try {
       result = fs.delete(f, true);
-
     } catch (RemoteException | SnapshotException se) {
       // If this is snapshot exception or the cause is snapshot replication from HDFS, could be the case where the
       // snapshots were created by replication, so in that case attempt to delete the replication related snapshots,
@@ -114,9 +97,30 @@ public class FileUtils {
       result = fs.delete(f, true);
     }
     if (!result) {
-      LOG.error("Failed to delete " + f);
+      LOG.error("Failed to delete {}", f);
     }
     return result;
+  }
+
+  /**
+   * Move a particular file or directory to the trash.
+   * @param fs FileSystem to use
+   * @param f path of file or directory to move to trash.
+   * @param conf configuration object
+   * @return true if move successful
+   */
+  private static boolean moveToTrash(FileSystem fs, Path f, Configuration conf) {
+    LOG.debug("moving {} to trash", f);
+    try {
+      boolean result = Trash.moveToAppropriateTrash(fs, f, conf);
+      if (result) {
+        LOG.trace("Moved to trash: {}", f);
+        return true;
+      }
+    } catch (IOException ioe) {
+      LOG.warn("Failed to move path to trash: {}", f, ioe);
+    }
+    return false;
   }
 
   /**
@@ -653,5 +657,29 @@ public class FileUtils {
       // No more matching files in the iterator
       nextFile = null;
     }
+  }
+
+  /**
+   * Checks whether {@code path} is {@code subtree} itself or nested under it, by walking up
+   * {@code path}'s ancestors looking for a match. Depth-based rather than a string-prefix
+   * comparison, so it isn't fooled by sibling paths that merely share a prefix (e.g. {@code /a/bc}
+   * is not within {@code /a/b}).
+   *
+   * @param path the path to check
+   * @param subtree the candidate ancestor, or exact match
+   * @return true if {@code path} equals {@code subtree} or is one of its descendants
+   */
+  public static boolean isPathWithinSubtree(final Path path, final Path subtree) {
+    final int subtreeDepth = subtree.depth();
+    int pathDepth = path.depth();
+    if (pathDepth < subtreeDepth) {
+      return false;
+    }
+    Path subpath = path;
+    while (pathDepth > subtreeDepth) {
+      subpath = subpath.getParent();
+      pathDepth -= 1;
+    }
+    return subtree.equals(subpath);
   }
 }

@@ -19,32 +19,125 @@
 
 package org.apache.iceberg.mr.hive;
 
+import java.io.IOException;
+import java.time.ZoneId;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.common.type.TimestampTZ;
+import org.apache.hadoop.hive.common.type.TimestampTZUtil;
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.metastore.IMetaStoreClient;
+import org.apache.hadoop.hive.metastore.Warehouse;
+import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
+import org.apache.hadoop.hive.metastore.utils.TableFetcher;
+import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.QueryState;
+import org.apache.hadoop.hive.ql.io.sarg.SearchArgument;
+import org.apache.hadoop.hive.ql.metadata.DummyPartition;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.metadata.HiveUtils;
+import org.apache.hadoop.hive.ql.metadata.Partition;
 import org.apache.hadoop.hive.ql.parse.AlterTableExecuteSpec;
-import org.apache.hadoop.hive.ql.parse.PartitionTransformSpec;
+import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.parse.TransformSpec;
+import org.apache.hadoop.hive.ql.parse.TransformSpec.TransformType;
+import org.apache.hadoop.hive.ql.plan.PlanUtils;
+import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.ql.session.SessionStateUtil;
+import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.util.Sets;
+import org.apache.iceberg.ContentFile;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.DeleteFiles;
+import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.FileScanTask;
 import org.apache.iceberg.ManageSnapshots;
+import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.ManifestFiles;
+import org.apache.iceberg.ManifestReader;
+import org.apache.iceberg.MetadataTableType;
+import org.apache.iceberg.MetadataTableUtils;
+import org.apache.iceberg.PartitionData;
+import org.apache.iceberg.PartitionField;
+import org.apache.iceberg.PartitionKey;
 import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Partitioning;
+import org.apache.iceberg.PartitionsTable;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.SnapshotRef;
+import org.apache.iceberg.SnapshotSummary;
+import org.apache.iceberg.StructLike;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableProperties;
+import org.apache.iceberg.TableScan;
+import org.apache.iceberg.Transaction;
 import org.apache.iceberg.UpdatePartitionSpec;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.data.GenericRecord;
+import org.apache.iceberg.data.InternalRecordWrapper;
+import org.apache.iceberg.data.Record;
+import org.apache.iceberg.expressions.Evaluator;
+import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.expressions.Expressions;
+import org.apache.iceberg.hive.IcebergCatalogProperties;
+import org.apache.iceberg.io.CloseableIterable;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.mr.Catalogs;
 import org.apache.iceberg.mr.InputFormatConfig;
+import org.apache.iceberg.mr.hive.serde.objectinspector.IcebergObjectInspector;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.relocated.com.google.common.collect.FluentIterable;
+import org.apache.iceberg.relocated.com.google.common.collect.Lists;
+import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.apache.iceberg.transforms.Transform;
+import org.apache.iceberg.types.Comparators;
+import org.apache.iceberg.types.Conversions;
+import org.apache.iceberg.types.Type;
+import org.apache.iceberg.types.Types;
+import org.apache.iceberg.util.PartitionUtil;
+import org.apache.iceberg.util.SnapshotUtil;
+import org.apache.iceberg.util.StructProjection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class IcebergTableUtil {
+import static org.apache.iceberg.RowLevelOperationMode.COPY_ON_WRITE;
+import static org.apache.iceberg.RowLevelOperationMode.MERGE_ON_READ;
+import static org.apache.iceberg.mr.InputFormatConfig.CATALOG_NAME;
 
+public class IcebergTableUtil {
   private static final Logger LOG = LoggerFactory.getLogger(IcebergTableUtil.class);
 
-  private IcebergTableUtil() {
+  public static final String PARTITION_TRANSFORM_SPEC_NOT_FOUND =
+      "Iceberg partition transform spec is not found in QueryState.";
 
+  public static final int SPEC_IDX = 1;
+  public static final int PART_IDX = 0;
+
+  private static final String SPEC_ID_FIELD = "spec_id";
+  private static final String NULL_VALUE = "null";
+
+
+  private IcebergTableUtil() {
   }
 
   /**
@@ -52,9 +145,11 @@ public class IcebergTableUtil {
    * hmsTable. It then calls {@link IcebergTableUtil#getTable(Configuration, Properties)} with these properties.
    * @param configuration a Hadoop configuration
    * @param hmsTable the HMS table
+   * @param skipCache if set to true there won't be an attempt to retrieve the table from SessionState
    * @return the Iceberg table
    */
-  static Table getTable(Configuration configuration, org.apache.hadoop.hive.metastore.api.Table hmsTable) {
+  static Table getTable(Configuration configuration, org.apache.hadoop.hive.metastore.api.Table hmsTable,
+      boolean skipCache) {
     Properties properties = new Properties();
     properties.setProperty(Catalogs.NAME, TableIdentifier.of(hmsTable.getDbName(), hmsTable.getTableName()).toString());
     properties.setProperty(Catalogs.LOCATION, hmsTable.getSd().getLocation());
@@ -63,7 +158,11 @@ public class IcebergTableUtil {
           properties.setProperty(k, v);
           return v;
         });
-    return getTable(configuration, properties);
+    return getTable(configuration, properties, skipCache);
+  }
+
+  public static Table getTable(Configuration configuration, org.apache.hadoop.hive.metastore.api.Table hmsTable) {
+    return getTable(configuration, hmsTable, false);
   }
 
   /**
@@ -72,77 +171,124 @@ public class IcebergTableUtil {
    * therefore we claim it through the Catalogs API and then store it in query state.
    * @param configuration a Hadoop configuration
    * @param properties controlling properties
+   * @param skipCache if set to true there won't be an attempt to retrieve the table from SessionState
    * @return an Iceberg table
    */
-  static Table getTable(Configuration configuration, Properties properties) {
-    String metaTable = properties.getProperty("metaTable");
-    String tableName = properties.getProperty(Catalogs.NAME);
-    if (metaTable != null) {
-      properties.setProperty(Catalogs.NAME, tableName + "." + metaTable);
-    }
+  static Table getTable(Configuration configuration, Properties properties, boolean skipCache) {
+    String metaTable = properties.getProperty(IcebergAcidUtil.META_TABLE_PROPERTY);
 
-    String tableIdentifier = properties.getProperty(Catalogs.NAME);
-    return SessionStateUtil.getResource(configuration, tableIdentifier).filter(o -> o instanceof Table)
-        .map(o -> (Table) o).orElseGet(() -> {
-          LOG.debug("Iceberg table {} is not found in QueryState. Loading table from configured catalog",
-              tableIdentifier);
-          Table tab = Catalogs.loadTable(configuration, properties);
+    Properties props = new Properties(properties); // use input properties as default
+    if (metaTable != null) {
+      // HiveCatalog, HadoopCatalog uses NAME to identify the metadata table
+      props.put(Catalogs.NAME, properties.get(Catalogs.NAME) + "." + metaTable);
+      // HadoopTable uses LOCATION to identify the metadata table
+      props.put(Catalogs.LOCATION, properties.get(Catalogs.LOCATION) + "#" + metaTable);
+    }
+    String tableIdentifier = props.getProperty(Catalogs.NAME);
+    Function<Void, Table> tableLoadFunc =
+        unused -> {
+          Table tab = Catalogs.loadTable(configuration, props);
           SessionStateUtil.addResource(configuration, tableIdentifier, tab);
           return tab;
-        });
+        };
+
+    if (skipCache) {
+      return tableLoadFunc.apply(null);
+    } else {
+      return SessionStateUtil.getResource(configuration, tableIdentifier)
+          .filter(Table.class::isInstance)
+          .map(Table.class::cast)
+          .map(tbl -> Optional.ofNullable(IcebergAcidUtil.getTransaction(tbl))
+              .map(Transaction::table)
+              .orElse(tbl))
+          .orElseGet(() -> {
+            LOG.debug("Iceberg table {} is not found in QueryState. Loading table from configured catalog",
+                tableIdentifier);
+            return tableLoadFunc.apply(null);
+          });
+    }
+  }
+
+  static Table getTable(Configuration configuration, Properties properties) {
+    return getTable(configuration, properties, false);
+  }
+
+  public static Snapshot getTableSnapshot(Table table, org.apache.hadoop.hive.ql.metadata.Table hmsTable) {
+    return getTableSnapshot(table, hmsTable.getAsOfTimestamp(), hmsTable.getAsOfVersion(), hmsTable.getSnapshotRef());
+  }
+
+  /**
+   * The snapshot a scan reads: as of a time, as of a version (a snapshot id or a ref name), the head of a branch or
+   * tag, or the current one.
+   */
+  static Snapshot getTableSnapshot(Table table, String asOfTimestamp, String asOfVersion, String snapshotRef) {
+    long snapshotId = -1;
+
+    if (asOfTimestamp != null) {
+      ZoneId timeZone = SessionState.get() == null ?
+          new HiveConf().getLocalTimeZone() : SessionState.get().getConf().getLocalTimeZone();
+      TimestampTZ time = TimestampTZUtil.parse(asOfTimestamp, timeZone);
+      snapshotId = SnapshotUtil.snapshotIdAsOfTime(table, time.toEpochMilli());
+
+    } else if (asOfVersion != null) {
+      try {
+        snapshotId = Long.parseLong(asOfVersion);
+      } catch (NumberFormatException e) {
+        SnapshotRef ref = table.refs().get(asOfVersion);
+        if (ref == null) {
+          throw new RuntimeException("Cannot find matching snapshot ID or reference name for version " +
+              asOfVersion);
+        }
+        snapshotId = ref.snapshotId();
+      }
+    }
+    if (snapshotId > 0) {
+      return table.snapshot(snapshotId);
+    }
+    return getTableSnapshot(table, snapshotRef);
+  }
+
+  public static Snapshot getTableSnapshot(Table table, String snapshotRef) {
+    if (snapshotRef != null) {
+      String ref = HiveUtils.getTableSnapshotRef(snapshotRef);
+      return table.snapshot(ref);
+    }
+    return table.currentSnapshot();
+  }
+
+  /** Whether the snapshot holds no rows. */
+  public static boolean isEmptySnapshot(Snapshot snapshot) {
+    return snapshot != null && snapshot.summary() != null &&
+        NumberUtils.toLong(snapshot.summary().get(SnapshotSummary.TOTAL_RECORDS_PROP), -1) == 0;
+  }
+
+  /** Whether the table's column statistics are maintained per partition, as the flag directs. */
+  public static boolean isPartitionStats(Table table, Configuration conf) {
+    return HiveConf.getBoolVar(conf, ConfVars.HIVE_ICEBERG_STATS_COLLECT_PART_LEVEL) && table.spec().isPartitioned();
   }
 
   /**
    * Create {@link PartitionSpec} based on the partition information stored in
-   * {@link PartitionTransformSpec}.
+   * {@link TransformSpec}.
    * @param configuration a Hadoop configuration
    * @param schema iceberg table schema
    * @return iceberg partition spec, always non-null
    */
   public static PartitionSpec spec(Configuration configuration, Schema schema) {
-    List<PartitionTransformSpec> partitionTransformSpecList = SessionStateUtil
-            .getResource(configuration, hive_metastoreConstants.PARTITION_TRANSFORM_SPEC)
-        .map(o -> (List<PartitionTransformSpec>) o).orElseGet(() -> null);
+    List<TransformSpec> partitionBy = TransformSpec.fromQueryState(configuration);
 
-    if (partitionTransformSpecList == null) {
-      LOG.debug("Iceberg partition transform spec is not found in QueryState.");
+    if (partitionBy == null) {
+      LOG.warn(PARTITION_TRANSFORM_SPEC_NOT_FOUND);
       return null;
     }
-
-    PartitionSpec.Builder builder = PartitionSpec.builderFor(schema);
-    partitionTransformSpecList.forEach(spec -> {
-      switch (spec.getTransformType()) {
-        case IDENTITY:
-          builder.identity(spec.getColumnName());
-          break;
-        case YEAR:
-          builder.year(spec.getColumnName());
-          break;
-        case MONTH:
-          builder.month(spec.getColumnName());
-          break;
-        case DAY:
-          builder.day(spec.getColumnName());
-          break;
-        case HOUR:
-          builder.hour(spec.getColumnName());
-          break;
-        case TRUNCATE:
-          builder.truncate(spec.getColumnName(), spec.getTransformParam().get());
-          break;
-        case BUCKET:
-          builder.bucket(spec.getColumnName(), spec.getTransformParam().get());
-          break;
-      }
-    });
-    return builder.build();
+    return SchemaUtils.createPartitionSpec(schema, partitionBy);
   }
 
   public static void updateSpec(Configuration configuration, Table table) {
     // get the new partition transform spec
     PartitionSpec newPartitionSpec = spec(configuration, table.schema());
     if (newPartitionSpec == null) {
-      LOG.debug("Iceberg Partition spec is not updated due to empty partition spec definition.");
+      LOG.warn("Iceberg partition spec is not updated due to empty partition spec definition.");
       return;
     }
 
@@ -150,41 +296,26 @@ public class IcebergTableUtil {
     UpdatePartitionSpec updatePartitionSpec = table.updateSpec().caseSensitive(false);
     table.spec().fields().forEach(field -> updatePartitionSpec.removeField(field.name()));
 
-    List<PartitionTransformSpec> partitionTransformSpecList = SessionStateUtil
+    List<TransformSpec> partitionTransformSpecList = SessionStateUtil
         .getResource(configuration, hive_metastoreConstants.PARTITION_TRANSFORM_SPEC)
-        .map(o -> (List<PartitionTransformSpec>) o).orElseGet(() -> null);
+        .map(o -> (List<TransformSpec>) o).orElse(null);
 
-    partitionTransformSpecList.forEach(spec -> {
-      switch (spec.getTransformType()) {
-        case IDENTITY:
-          updatePartitionSpec.addField(spec.getColumnName());
-          break;
-        case YEAR:
-          updatePartitionSpec.addField(Expressions.year(spec.getColumnName()));
-          break;
-        case MONTH:
-          updatePartitionSpec.addField(Expressions.month(spec.getColumnName()));
-          break;
-        case DAY:
-          updatePartitionSpec.addField(Expressions.day(spec.getColumnName()));
-          break;
-        case HOUR:
-          updatePartitionSpec.addField(Expressions.hour(spec.getColumnName()));
-          break;
-        case TRUNCATE:
-          updatePartitionSpec.addField(Expressions.truncate(spec.getColumnName(), spec.getTransformParam().get()));
-          break;
-        case BUCKET:
-          updatePartitionSpec.addField(Expressions.bucket(spec.getColumnName(), spec.getTransformParam().get()));
-          break;
-      }
-    });
-
+    if (partitionTransformSpecList == null) {
+      LOG.warn(PARTITION_TRANSFORM_SPEC_NOT_FOUND);
+      return;
+    }
+    partitionTransformSpecList.forEach(spec ->
+        updatePartitionSpec.addField(SchemaUtils.toTerm(spec)));
     updatePartitionSpec.commit();
   }
 
   public static boolean isBucketed(Table table) {
     return table.spec().fields().stream().anyMatch(f -> f.transform().toString().startsWith("bucket["));
+  }
+
+  public static boolean isBucket(TransformSpec spec) {
+    // Iceberg's bucket transform requires a bucket number to be specified
+    return spec.getTransformType() == TransformType.BUCKET && spec.getTransformParam() != null;
   }
 
   /**
@@ -203,5 +334,657 @@ public class IcebergTableUtil {
       manageSnapshots.rollbackTo(value);
     }
     manageSnapshots.commit();
+  }
+
+  /**
+   * Set the current snapshot for the iceberg table
+   * @param table the iceberg table
+   * @param value parameter of the rollback, that can be a snapshot id or a SnapshotRef name
+   */
+  public static void setCurrentSnapshot(Table table, String value) {
+    ManageSnapshots manageSnapshots = table.manageSnapshots();
+    long snapshotId;
+    try {
+      snapshotId = Long.parseLong(value);
+      LOG.debug("Rolling the iceberg table {} from snapshot id {} to snapshot ID {}", table.name(),
+          table.currentSnapshot().snapshotId(), snapshotId);
+    } catch (NumberFormatException e) {
+      String refName = PlanUtils.stripQuotes(value);
+      snapshotId = Optional.ofNullable(table.refs().get(refName)).map(SnapshotRef::snapshotId).orElseThrow(() ->
+          new IllegalArgumentException(String.format("SnapshotRef %s does not exist", refName)));
+      LOG.debug("Rolling the iceberg table {} from snapshot id {} to the snapshot ID {} of SnapshotRef {}",
+          table.name(), table.currentSnapshot().snapshotId(), snapshotId, refName);
+    }
+    manageSnapshots.setCurrentSnapshot(snapshotId);
+    manageSnapshots.commit();
+  }
+
+  /**
+   * Fast forwards a branch to another.
+   * @param table the iceberg table
+   * @param sourceBranch the source branch
+   * @param targetBranch the target branch
+   */
+  public static void fastForwardBranch(Table table, String sourceBranch, String targetBranch) {
+    LOG.debug("Fast Forwarding the iceberg table {} branch {} to {}", table.name(), sourceBranch, targetBranch);
+    table.manageSnapshots().fastForwardBranch(sourceBranch, targetBranch).commit();
+  }
+
+  public static void cherryPick(Table table, long snapshotId) {
+    LOG.debug("Cherry-Picking {} to {}", snapshotId, table.name());
+    table.manageSnapshots().cherrypick(snapshotId).commit();
+  }
+
+  public static boolean isV2TableOrAbove(Map<String, String> props) {
+    return IcebergTableUtil.formatVersion(props) >= 2;
+  }
+
+  public static boolean isV2TableOrAbove(BinaryOperator<String> props) {
+    return IcebergTableUtil.formatVersion(props) >= 2;
+  }
+
+  public static Integer formatVersion(Map<String, String> props) {
+    if (props == null) {
+      // TODO: switch to v3 once fully supported
+      return 2; // default to v2
+    }
+    return IcebergTableUtil.formatVersion(props::getOrDefault);
+  }
+
+  private static Integer formatVersion(BinaryOperator<String> props) {
+    String version = props.apply(TableProperties.FORMAT_VERSION, null);
+    if (version == null) {
+      // TODO: switch to v3 once fully supported
+      return 2; // default to v2
+    }
+    try {
+      return Integer.parseInt(version);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException("Invalid format version: " + version, e);
+    }
+  }
+
+  public static FileFormat defaultFileFormat(Table table) {
+    return defaultFileFormat(table.properties()::getOrDefault);
+  }
+
+  public static FileFormat defaultFileFormat(BinaryOperator<String> props) {
+    return FileFormat.fromString(
+        props.apply(
+            TableProperties.DEFAULT_FILE_FORMAT,
+            TableProperties.DEFAULT_FILE_FORMAT_DEFAULT));
+  }
+
+  private static String getWriteModeDefault(BinaryOperator<String> props) {
+    return (isV2TableOrAbove(props) ? MERGE_ON_READ : COPY_ON_WRITE).modeName();
+  }
+
+  public static boolean isCopyOnWriteMode(Context.Operation operation, BinaryOperator<String> props) {
+    final String mode = switch (operation) {
+      case DELETE -> props.apply(
+          TableProperties.DELETE_MODE, getWriteModeDefault(props));
+      case UPDATE -> props.apply(
+          TableProperties.UPDATE_MODE, getWriteModeDefault(props));
+      case MERGE -> props.apply(
+          TableProperties.MERGE_MODE, getWriteModeDefault(props));
+      default -> null;
+    };
+    return COPY_ON_WRITE.modeName().equalsIgnoreCase(mode);
+  }
+
+  public static boolean isFanoutEnabled(Map<String, String> props) {
+    return isFanoutEnabled(props::getOrDefault);
+  }
+
+  public static boolean isFanoutEnabled(BinaryOperator<String> props) {
+    return Boolean.parseBoolean(
+        props.apply(InputFormatConfig.WRITE_FANOUT_ENABLED, "true"));
+  }
+
+  public static void performMetadataDelete(Table icebergTable, String branchName, SearchArgument sarg) {
+    Expression exp = HiveIcebergFilterFactory.generateFilterExpression(sarg);
+    DeleteFiles deleteFiles = icebergTable.newDelete();
+    if (StringUtils.isNotEmpty(branchName)) {
+      deleteFiles = deleteFiles.toBranch(HiveUtils.getTableSnapshotRef(branchName));
+    }
+    deleteFiles.deleteFromRowFilter(exp).commit();
+  }
+
+  public static PartitionData toPartitionData(StructLike key, Types.StructType keyType) {
+    PartitionData keyTemplate = new PartitionData(keyType);
+    return keyTemplate.copyFor(key);
+  }
+
+  public static PartitionData toPartitionData(StructLike sourceKey, Types.StructType sourceKeyType,
+      Types.StructType targetKeyType) {
+    StructProjection projection = StructProjection.create(sourceKeyType, targetKeyType)
+        .wrap(sourceKey);
+    return toPartitionData(projection, targetKeyType);
+  }
+
+  /**
+   * Returns the partition name of the given tuple, or {@link DummyPartition#VOID} for the empty
+   * name an unpartitioned spec renders. Statistics and partition pruning join on this name, so both must
+   * render it the same way.
+   */
+  @SuppressWarnings("unchecked")
+  public static String toPartitionName(PartitionSpec spec, StructLike data) {
+    String path = spec.partitionToPath(data);
+    // an unpartitioned spec renders nothing: its rows belong to the table-level partition
+    if (path.isEmpty()) {
+      return DummyPartition.VOID;
+    }
+    // a field of no value renders as the text "null", which a value of that text renders as too,
+    // so the partition of no value takes the name Hive keeps for it and the two stay two
+    List<PartitionField> fields = spec.fields();
+    Class<?>[] javaClasses = spec.javaClasses();
+    String[] parts = path.split("/");
+
+    boolean renamed = false;
+    for (int i = 0; i < fields.size() && i < parts.length; i++) {
+      if (data.get(i, (Class<Object>) javaClasses[i]) == null) {
+        parts[i] = fields.get(i).name() + "=" + ConfVars.DEFAULT_PARTITION_NAME.defaultStrVal;
+        renamed = true;
+      }
+    }
+    return renamed ? String.join("/", parts) : path;
+  }
+
+  /**
+   * Returns a function naming the partition a row belongs to, where the row holds no more than the
+   * columns the spec partitions on. The spec derives the tuple itself, so a name matches the one a
+   * write gives the files it puts in that partition. Deriving one costs the same as writing a row,
+   * so the function holds on to what that takes and is worth reusing over rows an inspector reads.
+   */
+  public static Function<Object, String> partitionNameFunction(Table table, StructObjectInspector inspector) {
+    // the deserializer reads the row by position, so the schema has to follow the inspector rather
+    // than the table, and a name reaches here lowercased however the table spells it
+    Schema sourceSchema = new Schema(inspector.getAllStructFieldRefs().stream()
+        .map(field -> Preconditions.checkNotNull(table.schema().caseInsensitiveFindField(field.getFieldName()),
+            "Table %s partitions on %s, which it has no column for", table.name(), field.getFieldName()))
+        .toList());
+    Deserializer deserializer = new Deserializer.Builder()
+        .schema(sourceSchema)
+        .sourceInspector(inspector)
+        .writerInspector((StructObjectInspector) IcebergObjectInspector.create(sourceSchema))
+        .build();
+
+    // the whole schema, not the row's columns: PartitionKey needs an accessor for every field of
+    // the spec, including a void one, whose source column the row does not carry
+    GenericRecord record = GenericRecord.create(table.schema());
+    InternalRecordWrapper wrapper = new InternalRecordWrapper(table.schema().asStruct());
+    PartitionKey partitionKey = new PartitionKey(table.spec(), table.schema());
+
+    return row -> {
+      // a row whose every value is null is indistinguishable from no row at all once serialized
+      Record source = row == null ? null : deserializer.deserialize(row);
+      sourceSchema.columns().forEach(column ->
+          record.setField(column.name(), source == null ? null : source.getField(column.name())));
+      partitionKey.partition(wrapper.wrap(record));
+      return toPartitionName(table.spec(), partitionKey);
+    };
+  }
+
+  /**
+   * Builds a filter expression for data table operations (deleteFromRowFilter, FindFiles).
+   * Only supports identity transforms. Keys are partition field names.
+   */
+  static Expression buildPartitionExpr(Table table, Map<String, String> partitionSpec)
+      throws SemanticException {
+
+    Map<String, PartitionField> partitionFields = getPartitionFields(table, true).stream()
+        .collect(Collectors.toMap(
+            PartitionField::name, Function.identity())
+        );
+    return buildPartitionExpr(table, partitionSpec, partitionFields);
+  }
+
+  static Expression buildPartitionExpr(Table table, Map<String, String> partitionSpec,
+      Map<String, PartitionField> partitionFields) throws SemanticException {
+
+    Types.StructType partitionType = Partitioning.partitionType(table);
+
+    return buildExpression(partitionSpec,
+        (column, value) ->
+            buildIdentityFieldPredicate(partitionType, partitionFields.get(column), value),
+        partitionFields::containsKey);
+  }
+
+  /**
+   * Builds a filter expression for the PARTITIONS metadata table from source column names.
+   * Handles partition evolution by OR-ing predicates across different transforms on the same source column.
+   */
+  private static Expression buildPartitionsFilter(Table table, Map<String, String> partitionSpec,
+      boolean latestSpecOnly) throws SemanticException {
+
+    // Group partition fields by source column name to handle partition evolution
+    // where the same source column may have multiple transforms across different specs
+    Map<String, List<PartitionField>> bySourceColumn = getPartitionFields(table, latestSpecOnly).stream()
+        .collect(Collectors.groupingBy(pf ->
+            table.schema().findColumnName(pf.sourceId()))
+        );
+
+    return buildExpression(partitionSpec,
+        (column, value) ->
+            buildSourceValuePredicate(table, value, bySourceColumn.get(column)),
+        bySourceColumn::containsKey);
+  }
+
+  static List<PartitionField> getPartitionFields(Table table, boolean latestSpecOnly) {
+    if (latestSpecOnly) {
+      return table.spec().fields();
+    }
+    return table.specs().values().stream()
+        .flatMap(spec -> spec.fields().stream()
+            .filter(f -> !f.transform().isVoid()))
+        .distinct()
+        .toList();
+  }
+
+  @FunctionalInterface
+  private interface PartitionPredicateBuilder {
+    Expression build(String column, String value) throws SemanticException;
+  }
+
+  private static Expression buildExpression(Map<String, String> partitionSpec,
+      PartitionPredicateBuilder predicateBuilder, Predicate<String> fieldValidator) throws SemanticException {
+    Expression predicate = Expressions.alwaysTrue();
+    for (Map.Entry<String, String> entry : partitionSpec.entrySet()) {
+      String column = entry.getKey();
+      if (!fieldValidator.test(column)) {
+        throw new SemanticException("No partition column by the name: %s".formatted(column));
+      }
+      predicate = Expressions.and(predicate, predicateBuilder.build(column, entry.getValue()));
+    }
+    return predicate;
+  }
+
+  public static Object parsePartitionValue(Type type, String value) {
+    boolean isNullValue = NULL_VALUE.equalsIgnoreCase(value) &&
+        !Types.StringType.get().equals(type);
+    return isNullValue ?
+        null : Conversions.fromPartitionString(type, value);
+  }
+
+  private static Expression buildFieldPredicate(Types.StructType partitionType,
+      String fieldName, String value, String keyPrefix) {
+    String key = keyPrefix + fieldName;
+    Object columnValue = parsePartitionValue(partitionType.field(fieldName).type(), value);
+
+    return columnValue == null ?
+        Expressions.isNull(key) : Expressions.equal(key, columnValue);
+  }
+
+  private static Expression buildIdentityFieldPredicate(Types.StructType partitionType,
+      PartitionField field, String value) throws SemanticException {
+    if (!field.transform().isIdentity()) {
+      throw new SemanticException("Partition transforms are not supported here: %s".formatted(field.name()));
+    }
+    return buildFieldPredicate(partitionType, field.name(), value, "");
+  }
+
+  private static Expression buildSourceValuePredicate(Table table, String partitionValue,
+      List<PartitionField> partitionFields) {
+
+    // Get source field type from first partition field (all share same source)
+    Types.NestedField sourceField = table.schema().findField(
+        partitionFields.getFirst().sourceId());
+    Object columnValue = parsePartitionValue(sourceField.type(), partitionValue);
+
+    Expression partitionExpr = Expressions.alwaysFalse();
+
+    // Create OR expression for each transform on this source column
+    for (PartitionField partitionField : partitionFields) {
+      Expression predicate = buildTransformedFieldPredicate(partitionField, columnValue, sourceField);
+      partitionExpr = Expressions.or(partitionExpr, predicate);
+    }
+
+    return partitionExpr;
+  }
+
+  private static Expression buildTransformedFieldPredicate(
+      PartitionField partitionField, Object columnValue, Types.NestedField sourceField) {
+    String partitionKey = "partition." + partitionField.name();
+    if (columnValue == null) {
+      return Expressions.isNull(partitionKey);
+    }
+    // Apply the transform to the source value
+    @SuppressWarnings("unchecked")
+    Transform<Object, Object> transform = (Transform<Object, Object>) partitionField.transform();
+    Object transformedValue = transform.bind(sourceField.type()).apply(columnValue);
+
+    return Expressions.equal(partitionKey, transformedValue);
+  }
+
+  /**
+   * Returns a partition matching the given partition spec.
+   * With partition evolution, multiple partitions may match; returns the one from the highest spec ID.
+   * @param conf Configuration
+   * @param table Hive table
+   * @param partitionSpec Partition specification with source column names and values
+   * @return Partition matching the spec, or null if no match found
+   */
+  public static Partition getPartition(Configuration conf,
+      org.apache.hadoop.hive.ql.metadata.Table table, Map<String, String> partitionSpec)
+      throws SemanticException {
+    // Get partitions sorted by spec ID descending
+    List<String> partitionNames = getPartitionNames(conf, table, partitionSpec, false,
+        Map.Entry.comparingByValue(Comparator.reverseOrder()));
+
+    if (partitionNames.isEmpty()) {
+      return null;
+    }
+
+    // Find first partition with matching spec size (highest spec ID due to sort order)
+    Optional<String> partitionName = partitionNames.stream()
+        .filter(p -> hasMatchingSpecSize(p, partitionSpec.size()))
+        .findFirst();
+
+    return partitionName
+        .map(p -> new DummyPartition(table, p, partitionSpec))
+        .orElse(null);
+  }
+
+  /**
+   * Checks if a partition name has the expected number of fields.
+   */
+  private static boolean hasMatchingSpecSize(
+      String partitionName, int expectedSpecSize) {
+    try {
+      return Warehouse.makeSpecFromName(partitionName).size() == expectedSpecSize;
+    } catch (MetaException e) {
+      return false;
+    }
+  }
+
+  /**
+   * Returns partition names matching the provided partition spec.
+   * @param conf Configuration
+   * @param table Hive table
+   * @param partSpecMap Partition spec for filtering
+   * @param latestSpecOnly if true, return only partitions from latest spec; otherwise all specs
+   * @return List of partition names sorted by natural order
+   */
+  public static List<String> getPartitionNames(Configuration conf,
+      org.apache.hadoop.hive.ql.metadata.Table table, Map<String, String> partSpecMap,
+      boolean latestSpecOnly) throws SemanticException {
+    return getPartitionNames(conf, table, partSpecMap, latestSpecOnly, Map.Entry.comparingByKey());
+  }
+
+  /**
+   * Returns partition names matching the provided partition spec, sorted by the given comparator.
+   *
+   * @param specIdComparator Comparator for Entry&lt;partitionPath, specId&gt;
+   */
+  private static List<String> getPartitionNames(Configuration conf,
+      org.apache.hadoop.hive.ql.metadata.Table table, Map<String, String> partitionSpec, boolean latestSpecOnly,
+      Comparator<Map.Entry<String, Integer>> specIdComparator) throws SemanticException {
+    Table icebergTable = getTable(conf, table.getTTable());
+
+    Expression partitionExpr = buildPartitionsFilter(icebergTable, partitionSpec, latestSpecOnly);
+    Types.StructType partitionType = Partitioning.partitionType(icebergTable);
+
+    Snapshot snapshot = IcebergTableUtil.getTableSnapshot(icebergTable, table);
+    boolean readsCurrentSnapshot = snapshot != null && snapshot.equals(icebergTable.currentSnapshot());
+
+    if (latestSpecOnly && readsCurrentSnapshot) {
+      partitionExpr = Expressions.and(
+          partitionExpr, Expressions.equal(SPEC_ID_FIELD, icebergTable.spec().specId()));
+    }
+
+    PartitionsTable partitionsTable = (PartitionsTable) MetadataTableUtils.createMetadataTableInstance(
+        icebergTable, MetadataTableType.PARTITIONS);
+    Evaluator evaluator = new Evaluator(partitionsTable.schema().asStruct(), partitionExpr);
+
+    TableScan scan = partitionsTable.newScan().filter(partitionExpr);
+    if (snapshot != null) {
+      scan = scan.useSnapshot(snapshot.snapshotId());
+    }
+
+    try (CloseableIterable<FileScanTask> fileScanTasks = scan.planFiles()) {
+      return FluentIterable.from(fileScanTasks)
+          .transformAndConcat(task -> task.asDataTask().rows())
+          .filter(evaluator::eval)
+          .transform(row -> {
+            PartitionSpec spec = icebergTable.specs().get(row.get(SPEC_IDX, Integer.class));
+            // rows written before the table was partitioned: toPartitionName gives them the
+            // synthetic partition name
+            PartitionData data = toPartitionData(
+                row.get(PART_IDX, StructProjection.class), partitionType, spec.partitionType());
+            return Maps.immutableEntry(toPartitionName(spec, data), spec.specId());
+          })
+          .toSortedList(specIdComparator).stream()
+          .map(Map.Entry::getKey)
+          .toList();
+
+    } catch (IOException e) {
+      throw new SemanticException("Error while fetching the partitions", e);
+    }
+  }
+
+
+  public static PartitionSpec getPartitionSpec(Table icebergTable, String partitionPath)
+      throws MetaException, HiveException {
+    if (icebergTable == null || partitionPath == null || partitionPath.isEmpty()) {
+      throw new HiveException("Table and partitionPath must not be null or empty.");
+    }
+
+    // Extract field names from the path: "field1=val1/field2=val2" → [field1, field2]
+    List<String> fieldNames = Lists.newArrayList(Warehouse.makeSpecFromName(partitionPath).keySet());
+
+    List<PartitionSpec> matches = icebergTable.specs().values().stream()
+        .filter(spec -> {
+          List<String> specFieldNames = spec.fields().stream()
+              .map(PartitionField::name)
+              .toList();
+          return specFieldNames.equals(fieldNames);
+        })
+        .toList();
+
+    if (matches.size() > 1) {
+      throw new HiveException(String.format(
+          "Ambiguous partition spec for partition path %s: matched spec ids %s",
+          partitionPath,
+          matches.stream().map(PartitionSpec::specId).map(String::valueOf).collect(Collectors.joining(", "))));
+    }
+    if (matches.isEmpty()) {
+      throw new HiveException("No matching partition spec found for partition path: " + partitionPath);
+    }
+    return matches.get(0);
+  }
+
+  public static TransformSpec getTransformSpec(Table table, String transformName, int sourceId) {
+    TransformSpec spec = TransformSpec.fromString(transformName.toUpperCase(),
+        table.schema().findColumnName(sourceId));
+    return spec;
+  }
+
+  public static ExecutorService newDeleteThreadPool(String completeName, int numThreads) {
+    AtomicInteger deleteThreadsIndex = new AtomicInteger(0);
+    return Executors.newFixedThreadPool(numThreads, runnable -> {
+      Thread thread = new Thread(runnable);
+      thread.setName("remove-snapshot-" + completeName + "-" + deleteThreadsIndex.getAndIncrement());
+      return thread;
+    });
+  }
+
+  public static void rewriteManifests(Table table) {
+    // Skip empty tables that do not have a snapshot yet
+    if (table.currentSnapshot() == null) {
+      return;
+    }
+
+    // Unpartitioned tables can be safely clustered into a single bucket
+    if (!table.spec().isPartitioned()) {
+      table.rewriteManifests().clusterBy(file -> 0).commit();
+      return;
+    }
+
+    // Determine the target size for each new manifest file (defaults to 8MB)
+    long manifestTargetSizeBytes = TableProperties.MANIFEST_TARGET_SIZE_BYTES_DEFAULT;
+    if (table.properties().containsKey(TableProperties.MANIFEST_TARGET_SIZE_BYTES)) {
+      manifestTargetSizeBytes =
+          Long.parseLong(table.properties().get(TableProperties.MANIFEST_TARGET_SIZE_BYTES));
+    }
+
+    List<ManifestFile> dataManifests = table.currentSnapshot().dataManifests(table.io());
+    if (dataManifests.isEmpty()) {
+      return;
+    }
+
+    // Calculate ideal number of manifest files based on current total metadata size.
+    // We hard-cap the maximum number of clusters at 200 to prevent the JVM from
+    // opening too many concurrent file writers and causing OOM or OS ulimit (Too Many Open Files).
+    long totalManifestsSize = dataManifests.stream().mapToLong(ManifestFile::length).sum();
+    int targetClusters =
+        (int)
+            Math.min(
+                (totalManifestsSize + manifestTargetSizeBytes - 1) / manifestTargetSizeBytes, 200);
+
+    if (targetClusters <= 1) {
+      table.rewriteManifests().clusterBy(file -> 0).commit();
+      return;
+    }
+
+    // To cluster files efficiently, we want to group them naturally. We extract the native
+    // Type of the first partition column (e.g. Timestamp, String) and use Iceberg's native
+    // Comparators to maintain a sorted TreeSet of all unique partition values.
+    Type.PrimitiveType firstPartitionFieldType =
+        table.spec().partitionType().fields().getFirst().type().asPrimitiveType();
+    Set<Object> uniqueValues =
+        getUniquePartitionValues(table, dataManifests, firstPartitionFieldType);
+
+    if (uniqueValues.isEmpty()) {
+      table.rewriteManifests().clusterBy(file -> 0).commit();
+      return;
+    }
+
+    // Divide the naturally sorted unique values evenly into our calculated `targetClusters`
+    Object[] sortedValues = uniqueValues.toArray();
+    Map<Object, Integer> valueToBucket = Maps.newHashMap();
+    for (int i = 0; i < sortedValues.length; i++) {
+      // e.g. If we have 1000 sorted partition values and 200 clusters, this groups 5 values per
+      // bucket ID
+      valueToBucket.put(sortedValues[i], i * targetClusters / sortedValues.length);
+    }
+
+    // Rewrite manifests, telling Iceberg to group data files based on our pre-calculated bucket
+    // mapping
+    table
+        .rewriteManifests()
+        .clusterBy(
+            file -> {
+              StructLike partition =
+                  PartitionUtil.coercePartition(
+                      table.spec().partitionType(),
+                      table.specs().get(file.specId()),
+                      file.partition());
+              Object value = partition.get(0, Object.class);
+              return value != null ? valueToBucket.getOrDefault(value, 0) : 0;
+            })
+        .commit();
+  }
+
+  public static boolean hasUndergonePartitionEvolution(Table table) {
+    return table.specs().size() > 1;
+  }
+
+  private static Set<Object> getUniquePartitionValues(
+      Table table, List<ManifestFile> dataManifests, Type.PrimitiveType firstPartitionFieldType) {
+    Set<Object> uniqueValues = new TreeSet<>(Comparators.forType(firstPartitionFieldType));
+
+    for (ManifestFile manifestFile : dataManifests) {
+      try (ManifestReader<DataFile> reader =
+          ManifestFiles.read(manifestFile, table.io(), table.specs())
+              .select(List.of(DataFile.PARTITION_NAME))) {
+        for (DataFile dataFile : reader) {
+          // Coerce partition struct in case of partition evolution
+          StructLike partition =
+              PartitionUtil.coercePartition(
+                  table.spec().partitionType(),
+                  table.specs().get(dataFile.specId()),
+                  dataFile.partition());
+          // Only extract and sort by the FIRST partition column for read optimization
+          Object value = partition.get(0, Object.class);
+          if (value != null) {
+            uniqueValues.add(value);
+          }
+        }
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to read manifest file", e);
+      }
+    }
+    return uniqueValues;
+  }
+
+  public static boolean hasUndergonePartitionEvolution(Snapshot snapshot, FileIO io) {
+    if (snapshot == null) {
+      return false;
+    }
+    List<ManifestFile> manifests = snapshot.allManifests(io);
+    return manifests.stream()
+        .anyMatch(m -> m.partitionSpecId() != 0);
+  }
+
+  public static <T extends ContentFile<?>> Set<String> getPartitionNames(Table icebergTable, Iterable<T> files,
+      Boolean latestSpecOnly) {
+    Set<String> partitions = Sets.newHashSet();
+    int tableSpecId = icebergTable.spec().specId();
+    for (T file : files) {
+      if (latestSpecOnly == null || latestSpecOnly.equals(file.specId() == tableSpecId)) {
+        String partName = toPartitionName(
+            icebergTable.specs().get(file.specId()), file.partition());
+        partitions.add(partName);
+      }
+    }
+    return partitions;
+  }
+
+  public static List<Partition> convertNameToMetastorePartition(org.apache.hadoop.hive.ql.metadata.Table hmsTable,
+      Collection<String> partNames) {
+    List<Partition> partitions = Lists.newArrayList();
+    for (String partName : partNames) {
+      partitions.add(new DummyPartition(hmsTable, partName, specFromName(partName)));
+    }
+    return partitions;
+  }
+
+  /**
+   * The values a partition name encodes. The name is one this table rendered, so it always parses,
+   * which Warehouse.makeSpecFromName(String) does not get to assume.
+   */
+  static Map<String, String> specFromName(String partName) {
+    Map<String, String> partSpecMap = Maps.newLinkedHashMap();
+    Warehouse.makeSpecFromName(partSpecMap, new Path(partName), null);
+    return partSpecMap;
+  }
+
+  public static TableFetcher getTableFetcher(IMetaStoreClient msc, String catalogName, String dbPattern,
+      String tablePattern) {
+    return new TableFetcher.Builder(msc, catalogName, dbPattern, tablePattern).tableTypes(
+            "EXTERNAL_TABLE")
+        .tableCondition(
+            hive_metastoreConstants.HIVE_FILTER_FIELD_PARAMS + "table_type like \"ICEBERG\" ")
+        .build();
+  }
+
+  public static String defaultWarehouseLocation(TableIdentifier tableIdentifier,
+      Configuration conf, Properties catalogProperties) {
+    StringBuilder sb = new StringBuilder();
+    String warehouseLocation = conf.get(String.format(
+        IcebergCatalogProperties.CATALOG_WAREHOUSE_TEMPLATE, catalogProperties.getProperty(CATALOG_NAME))
+    );
+    sb.append(warehouseLocation).append('/');
+    for (String level : tableIdentifier.namespace().levels()) {
+      sb.append(level).append('/');
+    }
+    sb.append(tableIdentifier.name());
+    return sb.toString();
+  }
+
+  public static boolean supportsRowLineage(Map<String, String> tableProperties) {
+    return Optional.ofNullable(tableProperties).filter(
+        properties -> IcebergTableUtil.formatVersion(tableProperties) >= 3 &&
+            FileFormat.PARQUET == IcebergTableUtil.defaultFileFormat(properties::getOrDefault)).isPresent();
   }
 }

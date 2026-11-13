@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.physical;
@@ -53,7 +54,7 @@ import org.apache.hadoop.hive.ql.plan.OperatorDesc;
  *
  * For each map reduce task, attempts to infer bucketing and sorting metadata for the outputs.
  *
- * Currently only map reduce tasks which produce final output have there output metadata inferred,
+ * Currently, only map reduce tasks which produce final output have there output metadata inferred,
  * but it can be extended to intermediate tasks as well.
  *
  * This should be run as the last physical optimizer, as other physical optimizers may invalidate

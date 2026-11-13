@@ -9,20 +9,27 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.lineage;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
+import org.apache.commons.lang3.EnumUtils;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.QueryProperties.QueryFeature;
 import org.apache.hadoop.hive.ql.exec.CommonJoinOperator;
 import org.apache.hadoop.hive.ql.exec.FilterOperator;
 import org.apache.hadoop.hive.ql.exec.GroupByOperator;
@@ -59,11 +66,63 @@ public class Generator extends Transform {
 
   private static final Logger LOG = LoggerFactory.getLogger(Generator.class);
 
-  private final Set<String> hooks;
-  private static final String ATLAS_HOOK_CLASSNAME = "org.apache.atlas.hive.hook.HiveHook";
+  private final Predicate<ParseContext> statementFilter;
 
-  public Generator(Set<String> hooks) {
-    this.hooks = hooks;
+  enum LineageInfoFilter {
+    CREATE_TABLE(parseContext -> parseContext.getCreateTable() != null),
+    CREATE_TABLE_AS_SELECT(parseContext -> parseContext.getQueryProperties().hasFeature(QueryFeature.CTAS)),
+    CREATE_VIEW(parseContext -> parseContext.getQueryProperties().hasFeature(QueryFeature.VIEW)),
+    CREATE_MATERIALIZED_VIEW(parseContext ->
+        parseContext.getQueryProperties().hasFeature(QueryFeature.MATERIALIZED_VIEW)),
+    LOAD(parseContext -> !(parseContext.getLoadTableWork() == null || parseContext.getLoadTableWork().isEmpty())),
+    QUERY(parseContext -> parseContext.getQueryProperties().hasFeature(QueryFeature.QUERY)),
+    ALL(parseContext -> true),
+    NONE(parseContext -> false);
+
+    final Predicate<ParseContext> predicate;
+
+    LineageInfoFilter(Predicate<ParseContext> predicate) {
+      this.predicate = predicate;
+    }
+  }
+
+  public static Generator fromConf(HiveConf conf) {
+    return new Generator(createFilterPredicateFromConf(conf));
+  }
+
+  static Predicate<ParseContext> createFilterPredicateFromConf(Configuration conf) {
+    Set<LineageInfoFilter> operations = new HashSet<>();
+    boolean noneSpecified = false;
+    for (String valueText : conf.getTrimmedStringCollection(HiveConf.ConfVars.HIVE_LINEAGE_STATEMENT_FILTER.varname)) {
+      LineageInfoFilter enumValue = EnumUtils.getEnumIgnoreCase(LineageInfoFilter.class, valueText);
+      if (enumValue == null) {
+        throw new EnumConstantNotPresentException(LineageInfoFilter.class, valueText);
+      }
+
+      if (LineageInfoFilter.NONE == enumValue) {
+        noneSpecified = true;
+        continue;
+      }
+
+      operations.add(enumValue);
+    }
+
+    if (noneSpecified) {
+      if (!operations.isEmpty()) {
+        throw new IllegalArgumentException(
+            "No other value can be specified when " + LineageInfoFilter.NONE.name() + " is present!");
+      }
+      else {
+        return parseContext -> false;
+      }
+    }
+
+    return parseContext ->
+        operations.stream().anyMatch(lineageInfoFilter -> lineageInfoFilter.predicate.test(parseContext));
+  }
+
+  public Generator(Predicate<ParseContext> statementFilter) {
+    this.statementFilter = statementFilter;
   }
 
   /* (non-Javadoc)
@@ -72,18 +131,11 @@ public class Generator extends Transform {
   @Override
   public ParseContext transform(ParseContext pctx) throws SemanticException {
 
-    if (hooks != null && hooks.contains(ATLAS_HOOK_CLASSNAME)) {
-      // Atlas would be interested in lineage information for insert,load,create etc.
-      if (!pctx.getQueryProperties().isCTAS()
-          && !pctx.getQueryProperties().isMaterializedView()
-          && pctx.getQueryProperties().isQuery()
-          && pctx.getCreateTable() == null
-          && pctx.getCreateViewDesc() == null
-          && (pctx.getLoadTableWork() == null || pctx.getLoadTableWork().isEmpty())) {
-        LOG.debug("Not evaluating lineage");
-        return pctx;
-      }
+    if (!statementFilter.test(pctx)) {
+      LOG.debug("Not evaluating lineage");
+      return pctx;
     }
+
     Index index = pctx.getQueryState().getLineageState().getIndex();
     if (index == null) {
       index = new Index();
@@ -114,7 +166,7 @@ public class Generator extends Transform {
     opRules.put(new RuleRegExp("R9", LateralViewJoinOperator.getOperatorName() + "%"),
       OpProcFactory.getLateralViewJoinProc());
     opRules.put(new RuleRegExp("R10", PTFOperator.getOperatorName() + "%"),
-      OpProcFactory.getTransformProc());
+      OpProcFactory.getPTFProc());
     opRules.put(new RuleRegExp("R11", FilterOperator.getOperatorName() + "%"),
       OpProcFactory.getFilterProc());
 

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io.orc;
 
@@ -32,6 +33,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.orc.OrcConf;
 import org.apache.orc.OrcFile.WriterContext;
 import org.apache.orc.impl.OrcAcidUtils;
 import org.junit.Before;
@@ -45,6 +47,10 @@ import static org.junit.Assert.assertTrue;
 
 public class TestFixAcidKeyIndex {
   public final static Logger LOG = LoggerFactory.getLogger(TestFixAcidKeyIndex.class);
+  final static String typeStr = "struct<operation:int," +
+          "originalTransaction:bigint,bucket:int,rowId:bigint," +
+          "currentTransaction:bigint," +
+          "row:struct<a:int,b:struct<c:int>,d:string>>";
 
   @Rule
   public TestName testCaseName = new TestName();
@@ -72,13 +78,18 @@ public class TestFixAcidKeyIndex {
   }
 
   void createTestAcidFile(Path path, int numRows, TestKeyIndexBuilder indexBuilder) throws Exception {
+    createTestAcidFile(path, numRows, indexBuilder, typeStr);
+  }
+
+  void createTestAcidFile(Path path,
+                          int numRows,
+                          TestKeyIndexBuilder indexBuilder,
+                          String typeStr) throws Exception {
     FileSystem fs = path.getFileSystem(conf);
     fs.delete(path, true);
-    String typeStr = "struct<operation:int," +
-        "originalTransaction:bigint,bucket:int,rowId:bigint," +
-        "currentTransaction:bigint," +
-        "row:struct<a:int,b:struct<c:int>,d:string>>";
     TypeInfo typeInfo = TypeInfoUtils.getTypeInfoFromTypeString(typeStr);
+    OrcConf.STRIPE_SIZE_CHECKRATIO.setDouble(conf, 0);
+    OrcConf.STRIPE_ROW_COUNT.setLong(conf, 5000);
     Writer writer = OrcFile.createWriter(path,
         OrcFile.writerOptions(conf)
             .fileSystem(fs)
@@ -214,6 +225,28 @@ public class TestFixAcidKeyIndex {
 
     // Multiple stripes
     createTestAcidFile(testFilePath, 12000, new GoodKeyIndexBuilder());
+    checkValidKeyIndex(testFilePath);
+    // Attempting to fix a valid - should not result in a new file.
+    fixValidIndex(testFilePath);
+  }
+
+  @Test
+  public void testValidKeyIndexWithAcidMetadataLowerCase() throws Exception {
+    String lowerCaseTypeStr = typeStr.toLowerCase();
+    // Try with 0 row file.
+    createTestAcidFile(testFilePath, 0, new GoodKeyIndexBuilder(), lowerCaseTypeStr);
+    checkValidKeyIndex(testFilePath);
+    // Attempting to fix a valid - should not result in a new file.
+    fixValidIndex(testFilePath);
+
+    // Try single stripe
+    createTestAcidFile(testFilePath, 100, new GoodKeyIndexBuilder(), lowerCaseTypeStr);
+    checkValidKeyIndex(testFilePath);
+    // Attempting to fix a valid - should not result in a new file.
+    fixValidIndex(testFilePath);
+
+    // Multiple stripes
+    createTestAcidFile(testFilePath, 12000, new GoodKeyIndexBuilder(), lowerCaseTypeStr);
     checkValidKeyIndex(testFilePath);
     // Attempting to fix a valid - should not result in a new file.
     fixValidIndex(testFilePath);

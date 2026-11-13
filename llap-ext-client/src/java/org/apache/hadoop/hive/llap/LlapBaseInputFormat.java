@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap;
 
@@ -48,10 +50,8 @@ import org.apache.hadoop.hive.llap.daemon.rpc.LlapDaemonProtocolProtos.VertexOrB
 import org.apache.hadoop.hive.llap.ext.LlapDaemonInfo;
 import org.apache.hadoop.hive.llap.ext.LlapTaskUmbilicalExternalClient;
 import org.apache.hadoop.hive.llap.ext.LlapTaskUmbilicalExternalClient.LlapTaskUmbilicalExternalResponder;
-import org.apache.hadoop.hive.llap.registry.LlapServiceInstance;
 import org.apache.hadoop.hive.llap.security.LlapTokenIdentifier;
 import org.apache.hadoop.hive.llap.tez.Converters;
-import org.apache.hadoop.hive.ql.io.arrow.ArrowWrapperWritable;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.DataInputBuffer;
 import org.apache.hadoop.io.DataOutputBuffer;
@@ -62,7 +62,6 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
-import org.apache.arrow.memory.BufferAllocator;
 import org.apache.hadoop.mapreduce.MRJobConfig;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.hadoop.security.Credentials;
@@ -94,7 +93,6 @@ public class LlapBaseInputFormat<V extends WritableComparable<?>>
 
   private static final Logger LOG = LoggerFactory.getLogger(LlapBaseInputFormat.class);
 
-  private static String driverName = "org.apache.hive.jdbc.HiveDriver";
   private static final Object lock = new Object();
   private static final Map<String, List<Connection>> connectionMap = new HashMap<String, List<Connection>>();
 
@@ -102,9 +100,6 @@ public class LlapBaseInputFormat<V extends WritableComparable<?>>
   private String user; // "hive",
   private String pwd;  // ""
   private String query;
-  private boolean useArrow;
-  private long arrowAllocatorLimit;
-  private BufferAllocator allocator;
   private final Random rand = new Random();
 
   public static final String URL_KEY = "llap.if.hs2.connection";
@@ -118,29 +113,6 @@ public class LlapBaseInputFormat<V extends WritableComparable<?>>
   public static final Pattern SET_QUERY_PATTERN = Pattern.compile("^\\s*set\\s+.*=.+$", Pattern.CASE_INSENSITIVE);
 
   public static final String SPLIT_QUERY = "select get_llap_splits(\"%s\",%d)";
-
-  public LlapBaseInputFormat(String url, String user, String pwd, String query) {
-    this.url = url;
-    this.user = user;
-    this.pwd = pwd;
-    this.query = query;
-  }
-
-  //Exposed only for testing, clients should use LlapBaseInputFormat(boolean, BufferAllocator instead)
-  public LlapBaseInputFormat(boolean useArrow, long arrowAllocatorLimit) {
-    this.useArrow = useArrow;
-    this.arrowAllocatorLimit = arrowAllocatorLimit;
-  }
-
-  public LlapBaseInputFormat(boolean useArrow, BufferAllocator allocator) {
-    this.useArrow = useArrow;
-    this.allocator = allocator;
-  }
-
-  public LlapBaseInputFormat() {
-    this.useArrow = false;
-  }
-
 
   @SuppressWarnings("unchecked")
   @Override
@@ -220,25 +192,8 @@ public class LlapBaseInputFormat<V extends WritableComparable<?>>
     LOG.info("Registered id: " + fragmentId);
 
     @SuppressWarnings("rawtypes")
-    LlapBaseRecordReader recordReader;
-    if(useArrow) {
-      if(allocator != null) {
-        //Client provided their own allocator
-        recordReader = new LlapArrowBatchRecordReader(
-            socket.getInputStream(), llapSplit.getSchema(),
-            ArrowWrapperWritable.class, job, llapClient, socket,
-            allocator);
-      } else {
-        //Client did not provide their own allocator, use constructor for global allocator
-        recordReader = new LlapArrowBatchRecordReader(
-            socket.getInputStream(), llapSplit.getSchema(),
-            ArrowWrapperWritable.class, job, llapClient, socket,
-            arrowAllocatorLimit);
-      }
-    } else {
-      recordReader = new LlapBaseRecordReader(socket.getInputStream(),
-          llapSplit.getSchema(), BytesWritable.class, job, llapClient, (java.io.Closeable)socket);
-    }
+    LlapBaseRecordReader recordReader = new LlapBaseRecordReader(socket.getInputStream(),
+        llapSplit.getSchema(), BytesWritable.class, job, llapClient, socket);
     umbilicalResponder.setRecordReader(recordReader);
     return recordReader;
   }
@@ -265,12 +220,6 @@ public class LlapBaseInputFormat<V extends WritableComparable<?>>
     if (handleId == null) {
       handleId = UUID.randomUUID().toString();
       LOG.info("Handle ID not specified - generated handle ID {}", handleId);
-    }
-
-    try {
-      Class.forName(driverName);
-    } catch (ClassNotFoundException e) {
-      throw new IOException(e);
     }
 
     LOG.info("Handle ID {}: query={}", handleId, query);
@@ -466,8 +415,6 @@ public class LlapBaseInputFormat<V extends WritableComparable<?>>
     if (fragmentBytesSignature != null) {
       builder.setInitialEventSignature(ByteString.copyFrom(fragmentBytesSignature));
     }
-    builder.setJwt(llapInputSplit.getJwt());
-    builder.setIsExternalClientRequest(true);
     return builder.build();
   }
 

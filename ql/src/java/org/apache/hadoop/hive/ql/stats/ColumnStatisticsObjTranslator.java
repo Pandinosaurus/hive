@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.stats;
@@ -59,7 +60,7 @@ public class ColumnStatisticsObjTranslator {
       List<ColumnStatsField> columnStatsFields, int start, List<? extends StructField> fields,
       List<Object> values) throws HiveException {
     ColumnStatisticsObj statsObj = new ColumnStatisticsObj();
-    statsObj.setColName(columnName);
+    statsObj.setColName(columnName.toLowerCase());
     statsObj.setColType(columnType);
 
     int end = start + columnStatsFields.size();
@@ -128,6 +129,11 @@ public class ColumnStatisticsObjTranslator {
       byte[] buf = ((BinaryObjectInspector) poi).getPrimitiveJavaObject(o);
       statsObj.getStatsData().getDoubleStats().setBitVectors(buf);
       break;
+    case KLL_SKETCH:
+      PrimitiveObjectInspector poi2 = (PrimitiveObjectInspector) oi;
+      byte[] buf2 = ((BinaryObjectInspector) poi2).getPrimitiveJavaObject(o);
+      statsObj.getStatsData().getDoubleStats().setHistogram(buf2);
+      break;
     default:
       throw new RuntimeException("Unsupported column stat for DOUBLE : " + csf);
     }
@@ -156,6 +162,11 @@ public class ColumnStatisticsObjTranslator {
       PrimitiveObjectInspector poi = (PrimitiveObjectInspector) oi;
       byte[] buf = ((BinaryObjectInspector) poi).getPrimitiveJavaObject(o);
       statsObj.getStatsData().getDecimalStats().setBitVectors(buf);
+      break;
+    case KLL_SKETCH:
+      PrimitiveObjectInspector poi2 = (PrimitiveObjectInspector) oi;
+      byte[] buf2 = ((BinaryObjectInspector) poi2).getPrimitiveJavaObject(o);
+      statsObj.getStatsData().getDecimalStats().setHistogram(buf2);
       break;
     default:
       throw new RuntimeException("Unsupported column stat for DECIMAL : " + csf);
@@ -189,6 +200,11 @@ public class ColumnStatisticsObjTranslator {
       PrimitiveObjectInspector poi = (PrimitiveObjectInspector) oi;
       byte[] buf = ((BinaryObjectInspector) poi).getPrimitiveJavaObject(o);
       statsObj.getStatsData().getLongStats().setBitVectors(buf);
+      break;
+    case KLL_SKETCH:
+      PrimitiveObjectInspector poi2 = (PrimitiveObjectInspector) oi;
+      byte[] buf2 = ((BinaryObjectInspector) poi2).getPrimitiveJavaObject(o);
+      statsObj.getStatsData().getLongStats().setHistogram(buf2);
       break;
     default:
       throw new RuntimeException("Unsupported column stat for LONG : " + csf);
@@ -268,6 +284,11 @@ public class ColumnStatisticsObjTranslator {
       byte[] buf = ((BinaryObjectInspector) poi).getPrimitiveJavaObject(o);
       statsObj.getStatsData().getDateStats().setBitVectors(buf);
       break;
+    case KLL_SKETCH:
+      PrimitiveObjectInspector poi2 = (PrimitiveObjectInspector) oi;
+      byte[] buf2 = ((BinaryObjectInspector) poi2).getPrimitiveJavaObject(o);
+      statsObj.getStatsData().getDateStats().setHistogram(buf2);
+      break;
     default:
       throw new RuntimeException("Unsupported column stat for DATE : " + csf);
     }
@@ -296,6 +317,11 @@ public class ColumnStatisticsObjTranslator {
       PrimitiveObjectInspector poi = (PrimitiveObjectInspector) oi;
       byte[] buf = ((BinaryObjectInspector) poi).getPrimitiveJavaObject(o);
       statsObj.getStatsData().getTimestampStats().setBitVectors(buf);
+      break;
+    case KLL_SKETCH:
+      PrimitiveObjectInspector poi2 = (PrimitiveObjectInspector) oi;
+      byte[] buf2 = ((BinaryObjectInspector) poi2).getPrimitiveJavaObject(o);
+      statsObj.getStatsData().getTimestampStats().setHistogram(buf2);
       break;
     default:
       throw new RuntimeException("Unsupported column stat for TIMESTAMP : " + csf);

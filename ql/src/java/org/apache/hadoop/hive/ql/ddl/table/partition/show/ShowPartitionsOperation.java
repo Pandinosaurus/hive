@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.partition.show;
@@ -30,6 +31,7 @@ import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.ddl.DDLOperation;
 import org.apache.hadoop.hive.ql.ddl.DDLOperationContext;
 import org.apache.hadoop.hive.ql.ddl.ShowUtils;
+import org.apache.hadoop.hive.ql.metadata.DummyPartition;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
@@ -54,19 +56,19 @@ public class ShowPartitionsOperation extends DDLOperation<ShowPartitionsDesc> {
   @Override
   public int execute() throws HiveException {
     Table tbl = context.getDb().getTable(desc.getTabName());
-    if (!tbl.isPartitioned()) {
-      throw new HiveException(ErrorMsg.TABLE_NOT_PARTITIONED, desc.getTabName());
-    }
-
     List<String> parts;
-    if (desc.getCond() != null || desc.getOrder() != null) {
+    if (!tbl.isPartitioned()) {
+      context.getTask().setException(new HiveException(ErrorMsg.TABLE_NOT_PARTITIONED, desc.getTabName()));
+      return ErrorMsg.TABLE_NOT_PARTITIONED.getErrorCode();
+    } else if (desc.getCond() != null || desc.getOrder() != null) {
       parts = getPartitionNames(tbl);
     } else if (desc.getPartSpec() != null) {
-      parts = context.getDb().getPartitionNames(tbl.getDbName(), tbl.getTableName(),
-          desc.getPartSpec(), desc.getLimit());
+      parts = context.getDb().getPartitionNames(tbl, desc.getPartSpec(), desc.getLimit());
     } else {
-      parts = context.getDb().getPartitionNames(tbl.getDbName(), tbl.getTableName(), desc.getLimit());
+      parts = context.getDb().getPartitionNames(tbl, desc.getLimit());
     }
+
+    parts = parts.stream().filter(name -> !DummyPartition.isVoid(name)).toList();
 
     // write the results in the file
     try (DataOutputStream outStream = ShowUtils.getOutputStream(new Path(desc.getResFile()), context)) {
@@ -116,4 +118,6 @@ public class ShowPartitionsOperation extends DDLOperation<ShowPartitionsDesc> {
         desc.getOrder(), desc.getLimit());
     return partNames;
   }
+
 }
+

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -59,9 +60,9 @@ public abstract class AbstractTestAuthorizationApiAuthorizer {
     if (isRemoteMetastoreMode) {
       MetaStoreTestUtils.startMetaStoreWithRetry(hiveConf);
     }
-    hiveConf.setIntVar(HiveConf.ConfVars.METASTORETHRIFTCONNECTIONRETRIES, 3);
-    hiveConf.set(HiveConf.ConfVars.PREEXECHOOKS.varname, "");
-    hiveConf.set(HiveConf.ConfVars.POSTEXECHOOKS.varname, "");
+    hiveConf.setIntVar(HiveConf.ConfVars.METASTORE_THRIFT_CONNECTION_RETRIES, 3);
+    hiveConf.set(HiveConf.ConfVars.PRE_EXEC_HOOKS.varname, "");
+    hiveConf.set(HiveConf.ConfVars.POST_EXEC_HOOKS.varname, "");
     hiveConf.set(HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY.varname, "false");
 
     msc = new HiveMetaStoreClient(hiveConf);
@@ -86,11 +87,11 @@ public abstract class AbstractTestAuthorizationApiAuthorizer {
       } catch (RuntimeException e) {
         // A hack to verify that authorization check passed. Exception can be thrown be cause
         // the functions are not being called with valid params.
-        // verify that exception has come from ObjectStore code, which means that the
+        // verify that exception has come from RawStore code, which means that the
         // authorization checks passed.
         String exStackString = ExceptionUtils.getStackTrace(e);
         assertTrue("Verifying this exception came after authorization check",
-                exStackString.contains("org.apache.hadoop.hive.metastore.ObjectStore"));
+                exStackString.contains("org.apache.hadoop.hive.metastore.RawStore"));
         // If its not an exception caused by auth check, ignore it
       }
       assertFalse("Authz Exception should have been thrown in remote mode", isRemoteMetastoreMode);

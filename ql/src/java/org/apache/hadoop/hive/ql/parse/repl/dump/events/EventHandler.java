@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.repl.dump.events;
 
@@ -45,6 +46,7 @@ public interface EventHandler {
     final ReplScope replScope;
     final ReplScope oldReplScope;
     private Set<String> tablesForBootstrap;
+    private boolean dmdCreated;
 
     public Context(Path eventRoot, Path dumpRoot, Path cmRoot, Hive db, HiveConf hiveConf,
                    ReplicationSpec replicationSpec, ReplScope replScope, ReplScope oldReplScope,
@@ -77,6 +79,7 @@ public interface EventHandler {
     }
 
     DumpMetaData createDmd(EventHandler eventHandler) {
+      this.dmdCreated = true;
       return new DumpMetaData(
           eventRoot,
           eventHandler.dumpType(),
@@ -98,6 +101,9 @@ public interface EventHandler {
     boolean removeFromListOfTablesForBootstrap(String tableName) {
       assert tableName != null;
       return tablesForBootstrap.remove(tableName.toLowerCase());
+    }
+    public boolean isDmdCreated() {
+      return dmdCreated;
     }
   }
 }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service.cli.session;
@@ -105,7 +106,7 @@ public class TestSessionCleanup {
 
   private String[] getPipeoutFiles(HiveConf hiveConf) {
     File localScratchDir = new File(
-        hiveConf.getVar(HiveConf.ConfVars.LOCALSCRATCHDIR));
+        hiveConf.getVar(HiveConf.ConfVars.LOCAL_SCRATCH_DIR));
     String[] pipeoutFiles = localScratchDir.list(new FilenameFilter() {
       @Override
       public boolean accept(File dir, String name) {

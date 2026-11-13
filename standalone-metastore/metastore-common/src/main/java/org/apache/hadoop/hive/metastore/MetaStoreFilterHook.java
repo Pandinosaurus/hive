@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -62,10 +63,11 @@ public interface MetaStoreFilterHook {
 
   /**
    * Filter given list of databases
+   * @param catName
    * @param dbList
    * @return List of filtered Db names
    */
-  List<String> filterDatabases(List<String> dbList) throws MetaException;
+  List<String> filterDatabases(String catName, List<String> dbList) throws MetaException;
 
   /**
    * filter to given database object if applicable
@@ -85,15 +87,24 @@ public interface MetaStoreFilterHook {
   List<String> filterTableNames(String catName, String dbName, List<String> tableList)
       throws MetaException;
 
-  // Previously this was handled by filterTableNames.  But it can't be anymore because we can no
-  // longer depend on a 1-1 mapping between table name and entry in the list.
+  /**
+   * Filter given list of TableMeta objects
+   * @param catName catalog name
+   * @param dbName database name
+   * @param tableMetas list of table returned by the metastore
+   * @deprecated Replaced by {@link #filterTableMetas(List)}
+   * @return List of filtered table names
+   */
+  @Deprecated
+  List<TableMeta> filterTableMetas(String catName, String dbName, List<TableMeta> tableMetas) throws MetaException;
+
   /**
    * Filter a list of TableMeta objects.
    * @param tableMetas list of TableMetas to filter
    * @return filtered table metas
    * @throws MetaException something went wrong
    */
-  List<TableMeta> filterTableMetas(String catName,String dbName,List<TableMeta> tableMetas) throws MetaException;
+  List<TableMeta> filterTableMetas(List<TableMeta> tableMetas) throws MetaException;
 
   /**
    * filter to given table object if applicable
@@ -143,5 +154,23 @@ public interface MetaStoreFilterHook {
    */
   List<String> filterPartitionNames(String catName, String dbName, String tblName,
       List<String> partitionNames) throws MetaException;
+
+  /**
+   * Filter given list of data connectors
+   * @param dcList
+   * @return List of filtered Dc names
+   */
+  List<String> filterDataConnectors(List<String> dcList) throws MetaException;
+
+  /**
+   * Filter given list of database objects
+   *
+   * @param databases List of database objects
+   * @return List of filtered database objects
+   * @throws MetaException
+   */
+  default List<Database> filterDatabaseObjects(List<Database> databases) throws MetaException {
+    return databases;
+  }
 }
 

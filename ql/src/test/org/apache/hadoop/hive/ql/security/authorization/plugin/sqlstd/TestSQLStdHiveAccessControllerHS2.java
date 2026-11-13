@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd;
 
@@ -27,6 +28,7 @@ import java.util.List;
 
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.ql.security.HadoopDefaultAuthenticator;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.DisallowTransformHook;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAuthzPluginException;
@@ -62,7 +64,7 @@ public class TestSQLStdHiveAccessControllerHS2 {
 
     // check that hook to disable transforms has been added
     assertTrue("Check for transform query disabling hook",
-        processedConf.getVar(ConfVars.PREEXECHOOKS).contains(DisallowTransformHook.class.getName()));
+        processedConf.getVar(ConfVars.PRE_EXEC_HOOKS).contains(DisallowTransformHook.class.getName()));
 
     List<String> settableParams = getSettableParams();
     verifyParamSettability(settableParams, processedConf);
@@ -90,7 +92,7 @@ public class TestSQLStdHiveAccessControllerHS2 {
         "hive.optimize.index.filter.compact.maxsize", "hive.tez.dummy", "tez.task.dummy",
         "hive.exec.dynamic.partition", "hive.exec.dynamic.partition.mode",
         "hive.exec.max.dynamic.partitions", "hive.exec.max.dynamic.partitions.pernode",
-        "oozie.HadoopAccessorService.created", "tez.queue.name","hive.druid.select.distribute",
+        "oozie.HadoopAccessorService.created", "tez.queue.name",
         "distcp.options.px", "hive.materializedview.rewriting");
 
     // combine two lists
@@ -126,8 +128,8 @@ public class TestSQLStdHiveAccessControllerHS2 {
     assertConfModificationException(processedConf, "dummy.param");
     // does not make sense to have any of the metastore config variables to be
     // modifiable
-    for (ConfVars metaVar : HiveConf.metaVars) {
-      assertConfModificationException(processedConf, metaVar.varname);
+    for (MetastoreConf.ConfVars metaVar : MetastoreConf.metaVars) {
+      assertConfModificationException(processedConf, metaVar.getHiveName());
     }
   }
 

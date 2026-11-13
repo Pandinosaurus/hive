@@ -9,15 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.stats;
 
 
+import org.apache.calcite.rel.core.Spool;
 import org.apache.calcite.rel.metadata.BuiltInMetadata;
 import org.apache.calcite.rel.metadata.MetadataDef;
 import org.apache.calcite.rel.metadata.MetadataHandler;
@@ -56,6 +58,10 @@ public final class HiveRelMdColumnUniqueness
       RelOptHiveTable tbl = (RelOptHiveTable)rel.getTable();
       return tbl.isNonNullableKey(columns);
     }
+  }
+
+  public Boolean areColumnsUnique(Spool rel, RelMetadataQuery mq, ImmutableBitSet columns, boolean ignoreNulls) {
+    return mq.areColumnsUnique(rel.getInput(), columns, ignoreNulls);
   }
 }
 

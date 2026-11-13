@@ -9,16 +9,18 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service.cli.thrift;
 
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -43,30 +45,32 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveMetastoreClie
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveOperationType;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAuthzContext;
+import org.apache.hadoop.hive.common.IPStackUtils;
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.client5.http.cookie.CookieStore;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.protocol.RequestDefaultHeaders;
+import org.apache.hc.core5.http.EntityDetails;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.HttpRequest;
+import org.apache.hc.core5.http.message.BasicHeader;
+import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hive.jdbc.HttpBasicAuthInterceptor;
 import org.apache.hive.service.auth.HiveAuthConstants;
 import org.apache.hive.service.rpc.thrift.TCLIService;
 import org.apache.hive.service.rpc.thrift.TExecuteStatementReq;
 import org.apache.hive.service.rpc.thrift.TOpenSessionReq;
 import org.apache.hive.service.rpc.thrift.TOpenSessionResp;
-import org.apache.http.Header;
-import org.apache.http.HttpException;
-import org.apache.http.HttpRequest;
-import org.apache.http.client.CookieStore;
-import org.apache.http.client.protocol.RequestDefaultHeaders;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.protocol.HttpContext;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.THttpClient;
 import org.apache.thrift.transport.TTransport;
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Matchers;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 import com.google.common.base.Joiner;
@@ -77,7 +81,7 @@ import com.google.common.base.Joiner;
  * classes instead of jdbc.
  */
 
-public class TestThriftHttpCLIServiceFeatures  {
+public class TestThriftHttpCLIServiceFeatures extends AbstractThriftCLITest {
 
   private static String transportMode = "http";
   private static String thriftHttpPath = "cliservice";
@@ -100,21 +104,20 @@ public class TestThriftHttpCLIServiceFeatures  {
     }
 
     @Override
-    public void process(HttpRequest httpRequest, HttpContext httpContext)
+    public void process(HttpRequest httpRequest, EntityDetails entityDetails, HttpContext httpContext)
         throws HttpException, IOException {
-      super.process(httpRequest, httpContext);
+      super.process(httpRequest, entityDetails, httpContext);
 
       String currHeaders = "";
 
-      for (org.apache.http.Header h : httpRequest.getAllHeaders()) {
+      for (Header h : httpRequest.getHeaders()) {
         currHeaders += h.getName() + ":" + h.getValue() + " ";
       }
       requestHeaders.add(currHeaders);
 
       Header[] headers = httpRequest.getHeaders("Cookie");
-      cookieHeader = "";
       for (Header h : headers) {
-        cookieHeader = cookieHeader + h.getName() + ":" + h.getValue();
+        cookieHeader = (cookieHeader == null ? "" : cookieHeader) + h.getName() + ":" + h.getValue();
       }
     }
 
@@ -125,6 +128,10 @@ public class TestThriftHttpCLIServiceFeatures  {
     public String getCookieHeader() {
       return cookieHeader;
     }
+
+    public boolean hasCookieHeader() {
+      return cookieHeader != null;
+    }
   }
 
 
@@ -133,17 +140,15 @@ public class TestThriftHttpCLIServiceFeatures  {
    */
   @BeforeClass
   public static void setUpBeforeClass() throws Exception {
-    // Set up the base class
-    ThriftCLIServiceTest.setUpBeforeClass();
+    initConf(TestThriftHttpCLIServiceFeatures.class);
 
-    assertNotNull(ThriftCLIServiceTest.port);
-    assertNotNull(ThriftCLIServiceTest.hiveServer2);
-    assertNotNull(ThriftCLIServiceTest.hiveConf);
-    HiveConf hiveConf = ThriftCLIServiceTest.hiveConf;
+    assertNotNull(port);
+    assertNotNull(hiveServer2);
+    assertNotNull(hiveConf);
 
     hiveConf.setBoolVar(ConfVars.HIVE_SERVER2_ENABLE_DOAS, false);
-    hiveConf.setVar(ConfVars.HIVE_SERVER2_THRIFT_BIND_HOST, ThriftCLIServiceTest.host);
-    hiveConf.setIntVar(ConfVars.HIVE_SERVER2_THRIFT_HTTP_PORT, ThriftCLIServiceTest.port);
+    hiveConf.setVar(ConfVars.HIVE_SERVER2_THRIFT_BIND_HOST, host);
+    hiveConf.setIntVar(ConfVars.HIVE_SERVER2_THRIFT_HTTP_PORT, port);
     hiveConf.setVar(ConfVars.HIVE_SERVER2_AUTHENTICATION, HiveAuthConstants.AuthTypes.NOSASL.toString());
     hiveConf.setVar(ConfVars.HIVE_SERVER2_TRANSPORT_MODE, transportMode);
     hiveConf.setVar(ConfVars.HIVE_SERVER2_THRIFT_HTTP_PATH, thriftHttpPath);
@@ -153,19 +158,14 @@ public class TestThriftHttpCLIServiceFeatures  {
     hiveConf.setVar(ConfVars.HIVE_AUTHENTICATOR_MANAGER, SessionStateUserAuthenticator.class.getName());
     hiveConf.setBoolVar(ConfVars.HIVE_AUTHORIZATION_ENABLED, true);
 
-    ThriftCLIServiceTest.startHiveServer2WithConf(hiveConf);
+    // query history adds no value to this test
+    // this should be handled with HiveConfForTests when it's used here too
+    hiveConf.setBoolVar(HiveConf.ConfVars.HIVE_QUERY_HISTORY_ENABLED, false);
 
-    ThriftCLIServiceTest.client = ThriftCLIServiceTest.getServiceClientInternal();
+    startHiveServer2WithConf(hiveConf);
+
+    client = ThriftCLIServiceTest.getServiceClientInternal();
   }
-
-  /**
-   * @throws java.lang.Exception
-   */
-  @AfterClass
-  public static void tearDownAfterClass() throws Exception {
-    ThriftCLIServiceTest.tearDownAfterClass();
-  }
-
 
   @Test
   /**
@@ -221,22 +221,25 @@ public class TestThriftHttpCLIServiceFeatures  {
   }
 
   private TTransport getRawBinaryTransport() throws Exception {
-    return HiveAuthUtils.getSocketTransport(ThriftCLIServiceTest.host, ThriftCLIServiceTest.port, 0);
+    return HiveAuthUtils.getSocketTransport(host, port, 0);
   }
 
   private static TTransport getHttpTransport() throws Exception {
-    DefaultHttpClient httpClient = new DefaultHttpClient();
     String httpUrl = getHttpUrl();
-    httpClient.addRequestInterceptor(
-        new HttpBasicAuthInterceptor(ThriftCLIServiceTest.USERNAME, ThriftCLIServiceTest.PASSWORD,
-            null, null, false, null, null));
+
+    HttpClient httpClient = HttpClientBuilder.create()
+        .addRequestInterceptorLast(
+            new HttpBasicAuthInterceptor(ThriftCLIServiceTest.USERNAME, ThriftCLIServiceTest.PASSWORD,
+                null, null, false, null, null)
+        )
+        .build();
+
     return new THttpClient(httpUrl, httpClient);
   }
 
   private static String getHttpUrl() {
-    return transportMode + "://" + ThriftCLIServiceTest.host + ":"
-        + ThriftCLIServiceTest.port +
-        "/" + thriftHttpPath + "/";
+    return transportMode + "://" + IPStackUtils.concatHostPort(ThriftCLIServiceTest.host, ThriftCLIServiceTest.port)
+        + "/" + thriftHttpPath + "/";
   }
 
   /**
@@ -245,22 +248,10 @@ public class TestThriftHttpCLIServiceFeatures  {
    */
   @Test
   public void testAdditionalHttpHeaders() throws Exception {
-    TTransport transport;
-    DefaultHttpClient hClient = new DefaultHttpClient();
-    String httpUrl = getHttpUrl();
-    Map<String, String> additionalHeaders = new HashMap<String, String>();
+    Map<String, String> additionalHeaders = new HashMap<>();
     additionalHeaders.put("key1", "value1");
     additionalHeaders.put("key2", "value2");
-    HttpBasicAuthInterceptorWithLogging authInt =
-      new HttpBasicAuthInterceptorWithLogging(ThriftCLIServiceTest.USERNAME, ThriftCLIServiceTest.PASSWORD, null, null,
-      false, additionalHeaders, null);
-    hClient.addRequestInterceptor(authInt);
-    transport = new THttpClient(httpUrl, hClient);
-    TCLIService.Client httpClient = getClient(transport);
-
-    // Create a new open session request object
-    TOpenSessionReq openReq = new TOpenSessionReq();
-    httpClient.OpenSession(openReq).getSessionHandle();
+    HttpBasicAuthInterceptorWithLogging authInt = openSessionWithTestInterceptor(additionalHeaders, null);
     ArrayList<String> headers = authInt.getRequestHeaders();
 
     for (String h : headers) {
@@ -275,28 +266,43 @@ public class TestThriftHttpCLIServiceFeatures  {
    */
   @Test
   public void testCustomCookies() throws Exception {
-    TTransport transport;
-    DefaultHttpClient hClient = new DefaultHttpClient();
-    String httpUrl = getHttpUrl();
-    Map<String, String> additionalHeaders = new HashMap<String, String>();
-    Map<String, String> cookieHeaders = new HashMap<String, String>();
+
+    // test if request interceptor adds custom cookies
+    Map<String, String> additionalHeaders = new HashMap<>();
+    Map<String, String> cookieHeaders = new HashMap<>();
     cookieHeaders.put("key1", "value1");
     cookieHeaders.put("key2", "value2");
+    HttpBasicAuthInterceptorWithLogging authInt = openSessionWithTestInterceptor(additionalHeaders, cookieHeaders);
+    assertTrue(authInt.hasCookieHeader());
+    String cookieHeader = authInt.getCookieHeader();
+    assertTrue(cookieHeader.contains("key1=value1"));
+    assertTrue(cookieHeader.contains("key2=value2"));
+
+    // test if request interceptor does not add empty Cookie header
+    // when no custom cookies are defined
+    Map<String, String> emptyCookieHeaders = new HashMap<>();
+    HttpBasicAuthInterceptorWithLogging authInt2 = openSessionWithTestInterceptor(additionalHeaders, emptyCookieHeaders);
+    assertFalse(authInt2.hasCookieHeader());
+  }
+
+  public HttpBasicAuthInterceptorWithLogging openSessionWithTestInterceptor(
+          Map<String, String> additionalHeaders, Map<String, String> cookieHeaders) throws Exception {
+    TTransport transport;
+    String httpUrl = getHttpUrl();
     HttpBasicAuthInterceptorWithLogging authInt =
-      new HttpBasicAuthInterceptorWithLogging(ThriftCLIServiceTest.USERNAME, ThriftCLIServiceTest.PASSWORD, null, null,
-      false, additionalHeaders, cookieHeaders);
-    hClient.addRequestInterceptor(authInt);
+        new HttpBasicAuthInterceptorWithLogging(ThriftCLIServiceTest.USERNAME, ThriftCLIServiceTest.PASSWORD, null, null,
+            false, additionalHeaders, cookieHeaders);
+    HttpClient hClient = HttpClientBuilder.create()
+        .addRequestInterceptorLast(authInt)
+        .build();
     transport = new THttpClient(httpUrl, hClient);
     TCLIService.Client httpClient = getClient(transport);
 
     // Create a new open session request object
     TOpenSessionReq openReq = new TOpenSessionReq();
     httpClient.OpenSession(openReq).getSessionHandle();
-    String cookieHeader = authInt.getCookieHeader();
-    assertTrue(cookieHeader.contains("key1=value1"));
-    assertTrue(cookieHeader.contains("key2=value2"));
+    return authInt;
   }
-
 
   /**
    * This factory creates a mocked HiveAuthorizer class.
@@ -317,31 +323,33 @@ public class TestThriftHttpCLIServiceFeatures  {
    */
   @Test
   public void testForwardedHeaders() throws Exception {
-    verifyForwardedHeaders(new ArrayList<String>(Arrays.asList("127.0.0.1", "202.101.101.101")), "show tables");
-    verifyForwardedHeaders(new ArrayList<String>(Arrays.asList("202.101.101.101")), "fs -ls /");
+    verifyForwardedHeaders(new ArrayList<String>(Arrays.asList(IPStackUtils.resolveLoopbackAddress(),
+        IPStackUtils.transformToIPv6("202.101.101.101"))), "show tables");
+    verifyForwardedHeaders(new ArrayList<String>(Arrays.asList(
+        IPStackUtils.transformToIPv6("202.101.101.101"))), "fs -ls /");
     verifyForwardedHeaders(new ArrayList<String>(), "show databases");
   }
 
   private void verifyForwardedHeaders(ArrayList<String> headerIPs, String cmd) throws Exception {
     TTransport transport;
-    DefaultHttpClient hClient = new DefaultHttpClient();
     String httpUrl = getHttpUrl();
+    HttpClientBuilder hClient = HttpClientBuilder.create();
 
     // add an interceptor that adds the X-Forwarded-For header with given ips
     if (!headerIPs.isEmpty()) {
       Header xForwardHeader = new BasicHeader("X-Forwarded-For", Joiner.on(",").join(headerIPs));
       RequestDefaultHeaders headerInterceptor = new RequestDefaultHeaders(
           Arrays.asList(xForwardHeader));
-      hClient.addRequestInterceptor(headerInterceptor);
+      hClient.addRequestInterceptorLast(headerInterceptor);
     }
 
     // interceptor for adding username, pwd
-    HttpBasicAuthInterceptor authInt = new HttpBasicAuthInterceptor(ThriftCLIServiceTest.USERNAME,
-        ThriftCLIServiceTest.PASSWORD, null, null,
+    HttpBasicAuthInterceptor authInt = new HttpBasicAuthInterceptor(USERNAME,
+            PASSWORD, null, null,
         false, null, null);
-    hClient.addRequestInterceptor(authInt);
+    hClient.addRequestInterceptorLast(authInt);
 
-    transport = new THttpClient(httpUrl, hClient);
+    transport = new THttpClient(httpUrl, hClient.build());
     TCLIService.Client httpClient = getClient(transport);
 
     // Create a new open session request object
@@ -357,8 +365,8 @@ public class TestThriftHttpCLIServiceFeatures  {
         .forClass(HiveAuthzContext.class);
 
     verify(mockedAuthorizer).checkPrivileges(any(HiveOperationType.class),
-        Matchers.anyListOf(HivePrivilegeObject.class),
-        Matchers.anyListOf(HivePrivilegeObject.class), contextCapturer.capture());
+        ArgumentMatchers.<HivePrivilegeObject>anyList(),
+        ArgumentMatchers.<HivePrivilegeObject>anyList(), contextCapturer.capture());
 
     HiveAuthzContext context = contextCapturer.getValue();
     System.err.println("Forwarded IP Addresses " + context.getForwardedAddresses());

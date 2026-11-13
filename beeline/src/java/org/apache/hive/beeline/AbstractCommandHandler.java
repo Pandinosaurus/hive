@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 /*
@@ -26,8 +27,8 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-import jline.console.completer.Completer;
-import jline.console.completer.NullCompleter;
+import org.jline.reader.Completer;
+import org.jline.reader.impl.completer.NullCompleter;
 
 /**
  * An abstract implementation of CommandHandler.
@@ -43,15 +44,15 @@ public abstract class AbstractCommandHandler implements CommandHandler {
   protected transient Throwable lastException;
 
   public AbstractCommandHandler(BeeLine beeLine, String[] names, String helpText,
-                                Completer[] completors) {
+                                Completer[] completers) {
     this.beeLine = beeLine;
     name = names[0];
     this.names = names;
     this.helpText = helpText;
-    if (completors == null || completors.length == 0) {
+    if (completers == null || completers.length == 0) {
       parameterCompleters = new Completer[] { new NullCompleter() };
     } else {
-      List<Completer> c = new LinkedList<Completer>(Arrays.asList(completors));
+      List<Completer> c = new LinkedList<Completer>(Arrays.asList(completers));
       c.add(new NullCompleter());
       parameterCompleters = c.toArray(new Completer[0]);
     }
@@ -92,10 +93,6 @@ public abstract class AbstractCommandHandler implements CommandHandler {
       }
     }
     return null;
-  }
-
-  public void setParameterCompleters(Completer[] parameterCompleters) {
-    this.parameterCompleters = parameterCompleters;
   }
 
   @Override

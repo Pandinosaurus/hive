@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.io.decode;
 
@@ -21,10 +22,12 @@ import java.util.concurrent.Callable;
 
 import org.apache.hadoop.hive.llap.ConsumerFeedback;
 import org.apache.hadoop.hive.llap.io.api.impl.ColumnVectorBatch;
-import org.apache.orc.TypeDescription;
 import org.apache.orc.impl.SchemaEvolution;
 
 public interface ReadPipeline extends ConsumerFeedback<ColumnVectorBatch> {
-  public Callable<Void> getReadCallable();
-  SchemaEvolution getSchemaEvolution();
+  Callable<Void> getReadCallable();
+
+  default SchemaEvolution getSchemaEvolution() {
+    return null;
+  }
 }

@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.benchmark.vectorization.mapjoin.load;
 
@@ -31,6 +36,7 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.plan.MapJoinDesc;
 import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.tez.common.counters.TaskCounter;
 import org.apache.tez.common.counters.TezCounter;
 import org.apache.tez.runtime.api.AbstractLogicalInput;
 import org.apache.tez.runtime.api.Input;
@@ -56,7 +62,7 @@ public class LegacyVectorMapJoinFastHashTableLoader implements org.apache.hadoop
     this.hconf = hconf;
     this.desc = (MapJoinDesc)joinOp.getConf();
     this.cacheKey = joinOp.getCacheKey();
-    this.htLoadCounter = this.tezContext.getTezProcessorContext().getCounters().findCounter(HiveConf.getVar(hconf, HiveConf.ConfVars.HIVECOUNTERGROUP), hconf.get("__hive.context.name", ""));
+    this.htLoadCounter = this.tezContext.getTezProcessorContext().getCounters().findCounter(HiveConf.getVar(hconf, HiveConf.ConfVars.HIVE_COUNTER_GROUP), hconf.get("__hive.context.name", ""));
   }
 
   @Override
@@ -66,7 +72,7 @@ public class LegacyVectorMapJoinFastHashTableLoader implements org.apache.hadoop
     this.hconf = hconf;
     this.desc = joinOp.getConf();
     this.cacheKey = joinOp.getCacheKey();
-    String counterGroup = HiveConf.getVar(hconf, HiveConf.ConfVars.HIVECOUNTERGROUP);
+    String counterGroup = HiveConf.getVar(hconf, HiveConf.ConfVars.HIVE_COUNTER_GROUP);
     String vertexName = hconf.get(Operator.CONTEXT_NAME_KEY, "");
     String counterName = Utilities.getVertexCounterName(HashTableLoaderCounters.HASHTABLE_LOAD_TIME_MS.name(), vertexName);
     this.htLoadCounter = tezContext.getTezProcessorContext().getCounters().findCounter(counterGroup, counterName);
@@ -125,11 +131,8 @@ public class LegacyVectorMapJoinFastHashTableLoader implements org.apache.hadoop
 
         long inputRecords = -1;
         try {
-          //TODO : Need to use class instead of string.
-          // https://issues.apache.org/jira/browse/HIVE-23981
-          inputRecords = ((AbstractLogicalInput) input).getContext().getCounters().
-              findCounter("org.apache.tez.common.counters.TaskCounter",
-                  "APPROXIMATE_INPUT_RECORDS").getValue();
+          inputRecords = ((AbstractLogicalInput) input).getContext().getCounters()
+              .findCounter(TaskCounter.APPROXIMATE_INPUT_RECORDS).getValue();
         } catch (Exception e) {
           LOG.debug("Failed to get value for counter APPROXIMATE_INPUT_RECORDS", e);
         }

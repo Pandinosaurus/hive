@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.io.metadata;
 
@@ -24,6 +25,7 @@ import org.apache.orc.FileFormatException;
 import org.apache.orc.OrcFile;
 import org.apache.orc.OrcProto.CalendarKind;
 import org.apache.orc.OrcProto.Type;
+import org.apache.orc.StripeInformation;
 import org.apache.orc.TypeDescription;
 
 public interface ConsumerFileMetadata {
@@ -33,4 +35,7 @@ public interface ConsumerFileMetadata {
   TypeDescription getSchema() throws FileFormatException;
   OrcFile.Version getFileVersion();
   CalendarKind getCalendar();
+  /** Every stripe of the file in order, or empty when the data has no file positions (re-encoded input). */
+  List<StripeInformation> getStripes();
+  int getRowIndexStride();
 }

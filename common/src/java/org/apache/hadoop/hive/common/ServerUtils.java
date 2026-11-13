@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common;
@@ -38,7 +39,7 @@ public class ServerUtils {
 
   public static void cleanUpScratchDir(HiveConf hiveConf) {
     if (hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_START_CLEANUP_SCRATCHDIR)) {
-      String hiveScratchDir = hiveConf.get(HiveConf.ConfVars.SCRATCHDIR.varname);
+      String hiveScratchDir = hiveConf.get(HiveConf.ConfVars.SCRATCH_DIR.varname);
       try {
         Path jobScratchDir = new Path(hiveScratchDir);
         LOG.info("Cleaning scratchDir : " + hiveScratchDir);

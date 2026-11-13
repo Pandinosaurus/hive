@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -36,7 +37,6 @@ import static org.mockito.Mockito.when;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,9 +52,13 @@ import java.util.concurrent.Future;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hive.common.type.Timestamp;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.exec.mr.ExecDriver;
 import org.apache.hadoop.hive.ql.exec.tez.TezTask;
@@ -76,6 +80,8 @@ import org.apache.hadoop.hive.ql.udf.generic.GenericUDFFromUtcTimestamp;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapreduce.MRJobConfig;
+
+import com.google.common.io.Files;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -130,10 +136,10 @@ public class TestUtilities {
   }
 
   @Test
-  public void testgetDbTableName() throws HiveException{
+  public void testGetDbTableName() throws HiveException{
     String tablename;
     String [] dbtab;
-    SessionState.start(new HiveConf(this.getClass()));
+    SessionState.start(new HiveConfForTest(getClass()));
     String curDefaultdb = SessionState.get().getCurrentDatabase();
 
     //test table without db portion
@@ -247,7 +253,7 @@ public class TestUtilities {
 
   private List<Path> runRemoveTempOrDuplicateFilesTestCase(String executionEngine, boolean dPEnabled)
       throws Exception {
-    Configuration hconf = new HiveConf(this.getClass());
+    Configuration hconf = new HiveConfForTest(getClass());
     // do this to verify that Utilities.removeTempOrDuplicateFiles does not revert to default scheme information
     hconf.set("fs.defaultFS", "hdfs://should-not-be-used/");
     hconf.set(HiveConf.ConfVars.HIVE_EXECUTION_ENGINE.varname, executionEngine);
@@ -345,7 +351,7 @@ public class TestUtilities {
 
     List<Path> inputPaths = new ArrayList<>();
     try {
-      Path scratchDir = new Path(HiveConf.getVar(jobConf, HiveConf.ConfVars.LOCALSCRATCHDIR));
+      Path scratchDir = new Path(HiveConf.getVar(jobConf, HiveConf.ConfVars.LOCAL_SCRATCH_DIR));
 
       List<Path> inputPaths1 = Utilities.getInputPaths(jobConf, mapWork1, scratchDir,
               mock(Context.class), false);
@@ -414,7 +420,7 @@ public class TestUtilities {
     try {
       fs.mkdirs(testTablePath);
       List<Path> inputPaths = Utilities.getInputPaths(jobConf, mapWork,
-              new Path(HiveConf.getVar(jobConf, HiveConf.ConfVars.LOCALSCRATCHDIR)), mock(Context.class), false);
+              new Path(HiveConf.getVar(jobConf, HiveConf.ConfVars.LOCAL_SCRATCH_DIR)), mock(Context.class), false);
       assertEquals(inputPaths.size(), numPartitions);
 
       for (int i = 0; i < numPartitions; i++) {
@@ -542,7 +548,7 @@ public class TestUtilities {
 
   private void runTestGetInputPaths(JobConf jobConf, int numOfPartitions) throws Exception {
     MapWork mapWork = new MapWork();
-    Path scratchDir = new Path(HiveConf.getVar(jobConf, HiveConf.ConfVars.LOCALSCRATCHDIR));
+    Path scratchDir = new Path(HiveConf.getVar(jobConf, HiveConf.ConfVars.LOCAL_SCRATCH_DIR));
 
     Map<Path, List<String>> pathToAliasTable = new LinkedHashMap<>();
 
@@ -814,6 +820,55 @@ public class TestUtilities {
     List<Path> foundManifestFiles = Utilities.selectManifestFiles(manifestFiles);
     Set<String> resultPathes = getResultPathes(foundManifestFiles);
     assertEquals(expectedPathes, resultPathes);
+  }
+
+  @Test
+  public void testSetPermissionsOnExistingDir() throws IOException {
+    File tmpDir = Files.createTempDir();
+    Path path = new Path(tmpDir.getPath());
+    HiveConf conf = new HiveConf(this.getClass());
+    FileSystem fs = path.getFileSystem(conf);
+    fs.setPermission(path, new FsPermission((short) 00700));
+    Utilities.ensurePathIsWritable(path, conf);
+    Assert.assertEquals((short) 0733, fs.getFileStatus(path).getPermission().toShort());
+
+    // Test with more open permissions than required, but still not writable,
+    // it should just make the directory writable without restricting the existing permissions
+    fs.setPermission(path, new FsPermission((short) 00755));
+    Utilities.ensurePathIsWritable(path, conf);
+    Assert.assertEquals((short) 0777, fs.getFileStatus(path).getPermission().toShort());
+  }
+
+  @Test
+  public void testWritingManifestFile() throws HiveException, IOException {
+    String testTableName = "testWritingManifest";
+    JobConf jobConf = new JobConf();
+    FileSystem fs = FileSystem.getLocal(jobConf);
+    Path testTablePath = new Path(HiveConf.getVar(jobConf, HiveConf.ConfVars.LOCAL_SCRATCH_DIR) + "/" + testTableName);
+    try {
+      fs.mkdirs(testTablePath);
+      List<Path> commitPaths = new ArrayList<>();
+      commitPaths.add(new Path(testTableName + "/delta00001_00001/00000_0"));
+      Utilities.writeCommitManifest(commitPaths, testTablePath, fs,
+          "00001", 2L, 0, null, false,
+          false, null, null, false);
+
+      RemoteIterator<LocatedFileStatus> it = fs.listFiles(testTablePath, true);
+      List<Path> resultPaths = new ArrayList<>();
+      while(it.hasNext()) {
+        resultPaths.add(it.next().getPath());
+      }
+      assertEquals(1, resultPaths.size());
+      Path resultPath = resultPaths.get(0);
+      assertEquals("00001.manifest", resultPath.getName());
+      assertEquals("_tmp.delta_0000002_0000002_0000", resultPath.getParent().getName());
+      FileStatus[] files = fs.listStatus(testTablePath, AcidUtils.acidHiddenFileFilter);
+      assertEquals(0, files.length);
+    } finally {
+      if (fs.exists(testTablePath)) {
+        fs.delete(testTablePath, true);
+      }
+    }
   }
 
   private FileStatus[] generateTestNotEmptyFileStatuses(String... fileNames) {

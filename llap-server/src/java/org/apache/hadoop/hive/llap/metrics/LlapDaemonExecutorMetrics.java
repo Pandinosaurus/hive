@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.metrics;
 
@@ -236,7 +237,7 @@ public class LlapDaemonExecutorMetrics implements MetricsSource {
       int numExecutorsConfigured, int waitQueueSizeConfigured, final int[] intervals, int timedWindowAverageDataPoints,
       long timedWindowAverageWindowLength, int simpleAverageWindowDataSize) {
     MetricsSystem ms = LlapMetricsSystem.instance();
-    JvmMetrics jm = JvmMetrics.create(MetricsUtils.METRICS_PROCESS_NAME, sessionId, ms);
+    JvmMetrics jm = JvmMetrics.initSingleton(MetricsUtils.METRICS_PROCESS_NAME, sessionId, ms);
     return ms.register(displayName, "LlapDaemon Executor Metrics",
         new LlapDaemonExecutorMetrics(displayName, jm, sessionId, numExecutorsConfigured, waitQueueSizeConfigured,
             intervals, timedWindowAverageDataPoints, timedWindowAverageWindowLength, simpleAverageWindowDataSize));

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.storage.archive;
@@ -47,11 +48,11 @@ public abstract class AbstractAlterTableArchiveAnalyzer extends AbstractAlterTab
   }
 
   @Override
-  // partSpec coming from the input is not applicable here as archiver gets it's partitions from a different part of
+  // partSpec coming from the input is not applicable here as archiver gets its partitions from a different part of
   // the AST tree
   protected void analyzeCommand(TableName tableName, Map<String, String> partSpec, ASTNode command)
       throws SemanticException {
-    if (!conf.getBoolVar(HiveConf.ConfVars.HIVEARCHIVEENABLED)) {
+    if (!conf.getBoolVar(HiveConf.ConfVars.HIVE_ARCHIVE_ENABLED)) {
       throw new SemanticException(ErrorMsg.ARCHIVE_METHODS_DISABLED.getMsg());
     }
 

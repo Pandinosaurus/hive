@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.minikdc;
@@ -30,7 +31,6 @@ import javax.security.sasl.AuthenticationException;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hive.jdbc.HiveConnection;
-import org.apache.hive.jdbc.miniHS2.MiniHS2;
 import org.apache.hive.service.auth.PasswdAuthenticationProvider;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -42,7 +42,7 @@ public class TestJdbcNonKrbSASLWithMiniKdc extends TestJdbcWithMiniKdc{
 
   public static class CustomAuthenticator implements PasswdAuthenticationProvider {
     @Override
-    public void Authenticate(String user, String password) throws AuthenticationException {
+    public void authenticate(String user, String password) throws AuthenticationException {
       if (!(SASL_NONKRB_USER1.equals(user) && SASL_NONKRB_PWD.equals(password)) &&
           !(SASL_NONKRB_USER2.equals(user) && SASL_NONKRB_PWD.equals(password))) {
         throw new AuthenticationException("Authentication failed");
@@ -52,12 +52,14 @@ public class TestJdbcNonKrbSASLWithMiniKdc extends TestJdbcWithMiniKdc{
 
   @BeforeClass
   public static void beforeTest() throws Exception {
-    Class.forName(MiniHS2.getJdbcDriverName());
     confOverlay.put(ConfVars.HIVE_SERVER2_SESSION_HOOK.varname,
         SessionHookTest.class.getName());
     confOverlay.put(ConfVars.HIVE_SERVER2_CUSTOM_AUTHENTICATION_CLASS.varname,
         CustomAuthenticator.class.getName());
     confOverlay.put(ConfVars.HIVE_SCHEDULED_QUERIES_EXECUTOR_ENABLED.varname, "false");
+    // query history adds no value to this test, it would just bring iceberg handler dependency, which isn't worth
+    // this should be handled with HiveConfForTests when it's used here too
+    confOverlay.put(ConfVars.HIVE_QUERY_HISTORY_ENABLED.varname, "false");
     miniHiveKdc = new MiniHiveKdc();
     HiveConf hiveConf = new HiveConf();
     miniHS2 = MiniHiveKdc.getMiniHS2WithKerbWithRemoteHMS(miniHiveKdc, hiveConf, "CUSTOM");

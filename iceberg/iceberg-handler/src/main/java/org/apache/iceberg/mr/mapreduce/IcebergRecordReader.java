@@ -1,0 +1,304 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iceberg.mr.mapreduce;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.ql.exec.Utilities;
+import org.apache.hadoop.hive.ql.io.IOContext;
+import org.apache.hadoop.hive.ql.io.IOContextAwareRecordReader;
+import org.apache.hadoop.mapreduce.InputSplit;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hive.iceberg.org.apache.orc.OrcConf;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.DataTask;
+import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.MetadataColumns;
+import org.apache.iceberg.ScanTaskGroup;
+import org.apache.iceberg.Schema;
+import org.apache.iceberg.avro.Avro;
+import org.apache.iceberg.data.CachingDeleteLoader;
+import org.apache.iceberg.data.DeleteFilter;
+import org.apache.iceberg.data.DeleteLoader;
+import org.apache.iceberg.data.GenericDeleteFilter;
+import org.apache.iceberg.data.IdentityPartitionConverters;
+import org.apache.iceberg.data.Record;
+import org.apache.iceberg.data.avro.PlannedDataReader;
+import org.apache.iceberg.data.orc.GenericOrcReader;
+import org.apache.iceberg.data.parquet.GenericParquetReaders;
+import org.apache.iceberg.encryption.EncryptedFiles;
+import org.apache.iceberg.encryption.EncryptingFileIO;
+import org.apache.iceberg.expressions.Expression;
+import org.apache.iceberg.hive.HiveSchemaUtil;
+import org.apache.iceberg.io.CloseableIterable;
+import org.apache.iceberg.io.CloseableIterator;
+import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.mapping.NameMappingParser;
+import org.apache.iceberg.mr.hive.HiveIcebergInputFormat;
+import org.apache.iceberg.mr.hive.IcebergAcidUtil;
+import org.apache.iceberg.mr.hive.vector.HiveVectorizedReader;
+import org.apache.iceberg.orc.ORC;
+import org.apache.iceberg.parquet.Parquet;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.apache.iceberg.types.Type;
+import org.apache.iceberg.types.TypeUtil;
+import org.apache.iceberg.types.Types;
+import org.apache.iceberg.util.PartitionUtil;
+
+public final class IcebergRecordReader<T> extends AbstractIcebergRecordReader<T> implements IOContextAwareRecordReader {
+  private Iterator<FileScanTask> tasks;
+  private CloseableIterator<T> currentIterator;
+  private T current;
+  private IOContext ioContext;
+
+  @Override
+  public void initialize(InputSplit split, TaskAttemptContext newContext) {
+    // For now IcebergInputFormat does its own split planning and does not accept FileSplit instances
+    super.initialize(split, newContext);
+    ScanTaskGroup<FileScanTask> taskGroup = ((IcebergSplit) split).taskGroup();
+    this.tasks = taskGroup.tasks().iterator();
+    this.currentIterator = nextTask();
+  }
+
+  /**
+   * Sets the IOContext the virtual columns of each row are written into. MapredIcebergRecordReader passes on the
+   * IOContext its wrapper hands over after initialize() opened the first file, because HiveInputFormat handles an
+   * interrupt only while it creates the reader (HIVE-25751); each file's iterator therefore reads it per row.
+   */
+  @Override
+  public void setIOContext(IOContext ioCxt) {
+    this.ioContext = ioCxt;
+  }
+
+  private CloseableIterator<T> nextTask() {
+    FileScanTask task = tasks.next();
+    CloseableIterator<T> closeableIterator = open(task, expectedSchema).iterator();
+    if (!isFetchVirtualColumns() || Utilities.getIsVectorized(conf)) {
+      return closeableIterator;
+    }
+    return new IcebergAcidUtil.VirtualColumnAwareIterator<>(closeableIterator,
+        expectedSchema.columns(), task, () -> ioContext);
+  }
+
+  @Override
+  public boolean nextKeyValue() throws IOException {
+    while (!currentIterator.hasNext()) {
+      currentIterator.close();
+      if (!tasks.hasNext()) {
+        return false;
+      }
+      currentIterator = nextTask();
+    }
+    current = currentIterator.next();
+    return true;
+  }
+
+  @Override
+  public T getCurrentValue() {
+    return current;
+  }
+
+  @Override
+  public void close() throws IOException {
+    currentIterator.close();
+  }
+
+  private CloseableIterable<T> openVectorized(FileScanTask task, Schema readSchema) {
+    Preconditions.checkArgument(!task.file().format().equals(FileFormat.AVRO),
+        "Vectorized execution is not yet supported for Iceberg avro tables. " +
+        "Please turn off vectorization and retry the query.");
+
+    Path path = new Path(task.file().location());
+    Map<Integer, ?> idToConstant = constantsMap(task, HiveIdentityPartitionConverters::convertConstant);
+    Expression residual = HiveIcebergInputFormat.residualForTask(task, getContext().getConfiguration());
+
+    // TODO: We have to take care of the EncryptionManager when LLAP and vectorization is used
+    CloseableIterable<T> iterator = (CloseableIterable<T>) HiveVectorizedReader.reader(table, path, task,
+        idToConstant, getContext(), residual, readSchema);
+
+    return applyResidualFiltering(iterator, residual, readSchema);
+  }
+
+  @SuppressWarnings("unchecked")
+  private CloseableIterable<T> open(FileScanTask currentTask, Schema readSchema) {
+    switch (getInMemoryDataModel()) {
+      case HIVE:
+        return openVectorized(currentTask, readSchema);
+      case GENERIC:
+        DeleteFilter<Record> deletes = new GenericDeleteFilter(table.io(), currentTask, table.schema(), readSchema) {
+          @Override
+          protected DeleteLoader newDeleteLoader() {
+            return new CachingDeleteLoader(
+                deleteFile -> EncryptingFileIO.combine(table.io(), table.encryption()).newInputFile(deleteFile), conf);
+          }
+        };
+        Schema requiredSchema = deletes.requiredSchema();
+        return deletes.filter(openGeneric(currentTask, requiredSchema));
+      default:
+        throw new UnsupportedOperationException("Unsupported memory model");
+    }
+  }
+
+  private CloseableIterable openGeneric(FileScanTask task, Schema readSchema) {
+    if (task.isDataTask()) {
+      // When querying metadata tables, the currentTask is a DataTask and the data has to
+      // be fetched from the task instead of reading it from files.
+      IcebergInternalRecordWrapper wrapper =
+          new IcebergInternalRecordWrapper(readSchema.asStruct());
+      return CloseableIterable.transform(((DataTask) task).rows(), wrapper::wrap);
+    }
+
+    DataFile file = task.file();
+    InputFile inputFile = table.encryption().decrypt(
+        EncryptedFiles.encryptedInput(table.io().newInputFile(file.location()),
+        file.keyMetadata()));
+    Expression residual = HiveIcebergInputFormat.residualForTask(task, getContext().getConfiguration());
+
+    CloseableIterable<T> iterable = switch (file.format()) {
+      case AVRO -> newAvroIterable(inputFile, task, readSchema);
+      case ORC -> newOrcIterable(inputFile, task, residual, readSchema);
+      case PARQUET -> newParquetIterable(inputFile, task,
+          HiveIcebergInputFormat.residualForReaderPruning(task, getContext().getConfiguration()),
+          readSchema);
+      default -> throw new UnsupportedOperationException(
+          String.format("Cannot read %s file: %s", file.format().name(), file.location()));
+    };
+    return applyResidualFiltering(withStructInitialDefaultsBackfill(iterable, readSchema), residual, readSchema);
+  }
+
+  private CloseableIterable<T> withStructInitialDefaultsBackfill(CloseableIterable<T> iterable, Schema readSchema) {
+    Map<String, Record> initialDefaultStructsByColumn = Maps.newHashMap();
+    for (Types.NestedField column : readSchema.columns()) {
+      if (column.type().isStructType()) {
+        Record initialDefaultStruct = HiveSchemaUtil
+            .buildStructFromDefaults(column.type().asStructType(), Types.NestedField::initialDefault);
+        if (initialDefaultStruct != null) {
+          initialDefaultStructsByColumn.put(column.name(), initialDefaultStruct);
+        }
+      }
+    }
+    if (initialDefaultStructsByColumn.isEmpty()) {
+      return iterable;
+    }
+    return CloseableIterable.transform(iterable, row -> {
+      if (row instanceof Record curIceRecord) {
+        HiveSchemaUtil.backfillStructInitialDefaults(curIceRecord, initialDefaultStructsByColumn);
+      }
+      return row;
+    });
+  }
+
+  private CloseableIterable<T> newAvroIterable(
+      InputFile inputFile, FileScanTask task, Schema readSchema) {
+    Avro.ReadBuilder avroReadBuilder = Avro.read(inputFile)
+        .project(readSchema)
+        .split(task.start(), task.length());
+
+    if (isReuseContainers()) {
+      avroReadBuilder.reuseContainers();
+    }
+    if (getNameMapping() != null) {
+      avroReadBuilder.withNameMapping(NameMappingParser.fromJson(getNameMapping()));
+    }
+    avroReadBuilder.createResolvingReader(
+        schema -> PlannedDataReader.create(schema,
+            constantsMap(task, IdentityPartitionConverters::convertConstant)));
+    return avroReadBuilder.build();
+  }
+
+  private CloseableIterable<T> newParquetIterable(
+      InputFile inputFile, FileScanTask task, Expression residual, Schema readSchema) {
+    Parquet.ReadBuilder parquetReadBuilder = Parquet.read(inputFile)
+        .project(readSchema)
+        .filter(residual)
+        .caseSensitive(isCaseSensitive())
+        .split(task.start(), task.length());
+
+    if (isReuseContainers()) {
+      parquetReadBuilder.reuseContainers();
+    }
+    if (getNameMapping() != null) {
+      parquetReadBuilder.withNameMapping(NameMappingParser.fromJson(getNameMapping()));
+    }
+    parquetReadBuilder.createReaderFunc(
+        fileSchema -> GenericParquetReaders.buildReader(readSchema, fileSchema,
+            constantsMap(task, IdentityPartitionConverters::convertConstant)));
+    return parquetReadBuilder.build();
+  }
+
+  private CloseableIterable<T> newOrcIterable(
+      InputFile inputFile, FileScanTask task, Expression residual, Schema readSchema) {
+    Map<Integer, ?> idToConstant =
+        constantsMap(task, IdentityPartitionConverters::convertConstant);
+    Schema readSchemaWithoutConstantAndMetadataFields =
+        schemaWithoutConstantsAndMeta(readSchema, idToConstant);
+    // ORC does not support reuse containers yet
+    ORC.ReadBuilder orcReadBuilder = ORC.read(inputFile)
+        .project(readSchemaWithoutConstantAndMetadataFields)
+        .filter(residual)
+        // Row positions are derived from the batch index, and ORC's row-level filter can drop rows and whole batches.
+        .config(OrcConf.ALLOW_SARG_TO_FILTER.getHiveConfName(), "false")
+        .caseSensitive(isCaseSensitive())
+        .split(task.start(), task.length());
+
+    if (getNameMapping() != null) {
+      orcReadBuilder.withNameMapping(NameMappingParser.fromJson(getNameMapping()));
+    }
+    orcReadBuilder.createReaderFunc(
+        fileSchema -> GenericOrcReader.buildReader(readSchema, fileSchema, idToConstant));
+    return orcReadBuilder.build();
+  }
+
+  private Map<Integer, ?> constantsMap(FileScanTask task, BiFunction<Type, Object, Object> converter) {
+    boolean projectsIdentityPartitionColumns = !TypeUtil.select(expectedSchema, task.spec().identitySourceIds())
+        .columns().isEmpty();
+    if (expectedSchema.findField(MetadataColumns.SPEC_ID.fieldId()) != null || projectsIdentityPartitionColumns) {
+      return PartitionUtil.constantsMap(task, converter);
+    }
+    return Collections.emptyMap();
+  }
+
+  private static Schema schemaWithoutConstantsAndMeta(Schema readSchema, Map<Integer, ?> idToConstant) {
+    // remove the nested fields of the partition struct
+    Set<Integer> partitionFields = Optional.ofNullable(readSchema.findField(MetadataColumns.PARTITION_COLUMN_ID))
+        .map(Types.NestedField::type)
+        .map(Type::asStructType)
+        .map(Types.StructType::fields)
+        .map(fields -> fields.stream().map(Types.NestedField::fieldId).collect(Collectors.toSet()))
+        .orElseGet(Collections::emptySet);
+
+        // remove constants and meta columns too
+    Set<Integer> collect = Stream.of(idToConstant.keySet(), MetadataColumns.metadataFieldIds(), partitionFields)
+        .flatMap(Set::stream)
+        .collect(Collectors.toSet());
+
+    return TypeUtil.selectNot(readSchema, collect);
+  }
+}

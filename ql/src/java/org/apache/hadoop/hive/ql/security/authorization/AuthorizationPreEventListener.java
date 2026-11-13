@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.security.authorization;
@@ -23,6 +24,8 @@ import java.util.List;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
+
+import org.apache.hadoop.hive.metastore.api.GetTableRequest;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -466,8 +469,9 @@ public class AuthorizationPreEventListener extends MetaStorePreEventListener {
       org.apache.hadoop.hive.metastore.api.Partition wrapperApiPart = mapiPart.deepCopy();
       String catName = mapiPart.isSetCatName() ? mapiPart.getCatName() :
           MetaStoreUtils.getDefaultCatalog(context.getHandler().getConf());
-      org.apache.hadoop.hive.metastore.api.Table t = context.getHandler().get_table_core(
-          catName, mapiPart.getDbName(), mapiPart.getTableName());
+      GetTableRequest getTableRequest = new GetTableRequest(mapiPart.getDbName(), mapiPart.getTableName());
+      getTableRequest.setCatName(catName);
+      org.apache.hadoop.hive.metastore.api.Table t = context.getHandler().get_table_core(getTableRequest);
       if (wrapperApiPart.getSd() == null){
         // In the cases of create partition, by the time this event fires, the partition
         // object has not yet come into existence, and thus will not yet have a

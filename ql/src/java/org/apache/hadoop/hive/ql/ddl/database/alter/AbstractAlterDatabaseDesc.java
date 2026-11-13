@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.database.alter;
@@ -31,12 +32,19 @@ import org.apache.hadoop.hive.ql.plan.Explain.Level;
 public abstract class AbstractAlterDatabaseDesc implements DDLDesc, Serializable {
   private static final long serialVersionUID = 1L;
 
+  private final String catalogName;
   private final String databaseName;
   private final ReplicationSpec replicationSpec;
 
-  public AbstractAlterDatabaseDesc(String databaseName, ReplicationSpec replicationSpec) {
+  public AbstractAlterDatabaseDesc(String catalogName, String databaseName, ReplicationSpec replicationSpec) {
+    this.catalogName = catalogName;
     this.databaseName = databaseName;
     this.replicationSpec = replicationSpec;
+  }
+
+  @Explain(displayName="catalogName", explainLevels = {Level.USER, Level.DEFAULT, Level.EXTENDED })
+  public String getCatalogName() {
+    return catalogName;
   }
 
   @Explain(displayName="name", explainLevels = {Level.USER, Level.DEFAULT, Level.EXTENDED })

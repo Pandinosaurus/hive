@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -85,7 +86,7 @@ public class TestMetaStoreEventListenerWithOldConf {
     assertEquals(event.getOldValue(), metaConfVal);
     assertEquals(event.getNewValue(), "[test pattern modified]");
     // This should also trigger meta listener notification via TServerEventHandler#deleteContext
-    nonClosingClient.getTTransport().close();
+    nonClosingClient.getThriftClient().getTTransport().close();
 
     Thread.sleep(2 * 1000);
 

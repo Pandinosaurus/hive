@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.view.create;
@@ -63,18 +64,20 @@ public class AlterViewAsAnalyzer extends AbstractCreateViewAnalyzer {
     schema = new ArrayList<FieldSchema>(analyzer.getResultSchema());
     ParseUtils.validateColumnNameUniqueness(
         analyzer.getOriginalResultSchema() == null ? schema : analyzer.getOriginalResultSchema());
-
+    setColumnAccessInfo(analyzer.getColumnAccessInfo());
     String expandedText = ctx.getTokenRewriteStream().toString(select.getTokenStartIndex(), select.getTokenStopIndex());
 
     AlterViewAsDesc desc = new AlterViewAsDesc(fqViewName, schema, originalText, expandedText);
-    validateCreateView(desc, analyzer);
+    Table oldView = validateCreateView(desc, analyzer);
+    oldView.setDbName(viewName.getDb());
+    oldView.setTableName(viewName.getTable());
+    oldView.setTableType(TableType.VIRTUAL_VIEW);
 
     rootTasks.add(TaskFactory.get(new DDLWork(getInputs(), getOutputs(), desc)));
-    DDLUtils.addDbAndTableToOutputs(getDatabase(viewName.getDb()), viewName, TableType.VIRTUAL_VIEW, false,
-        null, outputs);
+    DDLUtils.addDbAndTableToOutputs(getDatabase(viewName.getDb()), oldView, outputs);
   }
 
-  private void validateCreateView(AlterViewAsDesc desc, SemanticAnalyzer analyzer) throws SemanticException {
+  private Table validateCreateView(AlterViewAsDesc desc, SemanticAnalyzer analyzer) throws SemanticException {
     validateTablesUsed(analyzer);
 
     Table oldView = null;
@@ -90,5 +93,6 @@ public class AlterViewAsAnalyzer extends AbstractCreateViewAnalyzer {
     }
 
     validateReplaceWithPartitions(desc.getViewName(), oldView, null);
+    return oldView;
   }
 }

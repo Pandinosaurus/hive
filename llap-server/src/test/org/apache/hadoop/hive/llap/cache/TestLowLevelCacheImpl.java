@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.cache;
 
@@ -22,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -39,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.hadoop.hive.common.io.CacheTag;
+import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.common.io.DiskRange;
 import org.apache.hadoop.hive.common.io.DiskRangeList;
 import org.apache.hadoop.hive.common.io.DataCache.DiskRangeListFactory;
@@ -290,6 +293,47 @@ Example code to test specific scenarios:
 
   }
 
+  /**
+   * A put that collides with a cached buffer of a different length throws, and leaves neither buffer
+   * locked. Both are locked when the check runs - the incoming one since it entered putFileData, the
+   * cached one so the lengths can be compared - and the caller is handed an exception rather than the
+   * usual collision bitmask, so it has no way to learn which buffers to release. Left locked, the
+   * cached buffer can never be evicted again and the new one is pinned memory nobody owns: two leaks
+   * per collision, for as long as the daemon lives.
+   */
+  @Test
+  public void testCollisionWithDifferentLengthUnlocksBothBuffers() {
+    LowLevelCacheImpl cache = new LowLevelCacheImpl(
+        LlapDaemonCacheMetrics.create("test", "1"), new DummyCachePolicy(),
+        new DummyAllocator(), true, -1); // no cleanup thread
+
+    long fileKey = 1;
+    LlapDataBuffer cached = fb();
+    LlapDataBuffer colliding = fb();
+
+    assertNull(cache.putFileData(fileKey, new DiskRange[] {new DiskRange(0, 1) },
+        new LlapDataBuffer[] {cached }, 0, Priority.NORMAL, null, null));
+    // Refcounts rather than isLocked: both buffers legitimately hold a reference at this point - the
+    // cached one is in the cache, and fb() takes the one a caller would - so what has to be true of
+    // a failed put is that it changed neither.
+    int cachedRefs = cached.getRefCount();
+    int collidingRefs = colliding.getRefCount();
+
+    // Same offset, two bytes rather than one: the "most basic check" in putFileData.
+    RuntimeException collision = assertThrows(RuntimeException.class,
+        () -> cache.putFileData(fileKey, new DiskRange[] {new DiskRange(0, 2) },
+            new LlapDataBuffer[] {colliding }, 0, Priority.NORMAL, null, null));
+    assertTrue(collision.getMessage(),
+        collision.getMessage().startsWith("Found a block with different length at the same offset"));
+
+    assertEquals("the cached buffer was left locked, so it can never be evicted",
+        cachedRefs, cached.getRefCount());
+    assertEquals("the rejected buffer was left locked", collidingRefs, colliding.getRefCount());
+    // Not freed along with the unlock: it is still the caller's raw allocation, and the caller's own
+    // cleanup deallocates it. Freeing it here as well would be a double free.
+    assertEquals(LlapDataBuffer.UNKNOWN_CACHED_LENGTH, colliding.declaredCachedLength);
+  }
+
   @Test
   public void testProactiveEvictionMark() {
     _testProactiveEvictionMark(false);
@@ -309,13 +353,14 @@ Example code to test specific scenarios:
 
     LlapDataBuffer[] buffs1 = IntStream.range(0, 4).mapToObj(i -> fb()).toArray(LlapDataBuffer[]::new);
     DiskRange[] drs1 = drs(IntStream.range(1, 5).toArray());
-    CacheTag tag1 = CacheTag.build("default.table1");
+    CacheTag tag1 = CacheTag.build(Warehouse.DEFAULT_CATALOG_NAME, "default.table1");
 
     LlapDataBuffer[] buffs2 = IntStream.range(0, 41).mapToObj(i -> fb()).toArray(LlapDataBuffer[]::new);
     DiskRange[] drs2 = drs(IntStream.range(1, 42).toArray());
-    CacheTag tag2 = CacheTag.build("default.table2");
+    CacheTag tag2 = CacheTag.build(Warehouse.DEFAULT_CATALOG_NAME, "default.table2");
 
-    Predicate<CacheTag> predicate = tag -> "default.table1".equals(tag.getTableName());
+    Predicate<CacheTag> predicate = tag ->
+        (Warehouse.DEFAULT_CATALOG_NAME + "." + "default.table1").equals(tag.getTableName());
 
     cache.putFileData(fn1, drs1, buffs1, 0, Priority.NORMAL, null, tag1);
     cache.putFileData(fn2, drs2, buffs2, 0, Priority.NORMAL, null, tag2);

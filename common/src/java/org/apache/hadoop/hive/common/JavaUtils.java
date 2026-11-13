@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common;
@@ -70,8 +71,8 @@ public final class JavaUtils {
       try {
         closeClassLoader(current);
       } catch (IOException e) {
-        String detailedMessage = current instanceof URLClassLoader ?
-            Arrays.toString(((URLClassLoader) current).getURLs()) :
+        String detailedMessage = (current instanceof URLClassLoader urlcl) ?
+            Arrays.toString(urlcl.getURLs()) :
             "";
         LOG.info("Failed to close class loader " + current + " " + detailedMessage, e);
       }
@@ -90,8 +91,8 @@ public final class JavaUtils {
   }
 
   public static void closeClassLoader(ClassLoader loader) throws IOException {
-    if (loader instanceof Closeable) {
-      ((Closeable) loader).close();
+    if (loader instanceof Closeable closeable) {
+      closeable.close();
     } else {
       LOG.warn("Ignoring attempt to close class loader ({}) -- not instance of UDFClassLoader.",
           loader == null ? "mull" : loader.getClass().getSimpleName());

@@ -9,15 +9,15 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.antlr.runtime.tree.Tree;
+import org.apache.calcite.sql.SqlKind;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.TableName;
 import org.apache.hadoop.hive.metastore.Warehouse;
@@ -34,6 +35,7 @@ import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
 import org.apache.hadoop.hive.ql.Context;
+import org.apache.hadoop.hive.ql.QueryProperties;
 import org.apache.hadoop.hive.ql.TaskQueue;
 import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.ddl.DDLTask;
@@ -50,6 +52,7 @@ import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.ql.metadata.Table;
+import org.apache.hadoop.hive.ql.parse.ParseUtils.ReparseResult;
 import org.apache.hadoop.hive.ql.plan.ExportWork;
 import org.apache.hadoop.hive.ql.session.SessionState;
 
@@ -58,9 +61,9 @@ import org.apache.hadoop.hive.ql.session.SessionState;
  * acid export statements. It works by rewriting the acid export into insert statements into a temporary table,
  * and then export it from there.
  */
-public class AcidExportSemanticAnalyzer extends RewriteSemanticAnalyzer {
+public class AcidExportSemanticAnalyzer extends RewriteSemanticAnalyzer<Object> {
   AcidExportSemanticAnalyzer(QueryState queryState) throws SemanticException {
-    super(queryState);
+    super(queryState, null);
   }
 
   @Override
@@ -173,8 +176,9 @@ public class AcidExportSemanticAnalyzer extends RewriteSemanticAnalyzer {
     //now generate insert statement
     //insert into newTableName select * from ts <where partition spec>
     StringBuilder rewrittenQueryStr = generateExportQuery(
-            newTable.getPartCols(), tokRefOrNameExportTable, (ASTNode) tokRefOrNameExportTable.parent, newTableName);
-    ReparseResult rr = parseRewrittenQuery(rewrittenQueryStr, ctx.getCmd());
+        newTable.getPartCols(),
+        tokRefOrNameExportTable, (ASTNode) tokRefOrNameExportTable.parent, newTableName);
+    ReparseResult rr = ParseUtils.parseRewrittenQuery(ctx, rewrittenQueryStr);
     Context rewrittenCtx = rr.rewrittenCtx;
     rewrittenCtx.setIsUpdateDeleteMerge(false); //it's set in parseRewrittenQuery()
     ASTNode rewrittenTree = rr.rewrittenTree;
@@ -300,5 +304,16 @@ public class AcidExportSemanticAnalyzer extends RewriteSemanticAnalyzer {
       }
     }
     return statsTasks;
+  }
+
+  @Override
+  public void setQueryType(ASTNode tree) {
+    queryProperties.setQueryType(QueryProperties.QueryType.DDL);
+  }
+
+  @Override
+  protected void setSqlKind(SqlKind sqlKind) {
+    // NO-OP: prevent Semantic Analyzer to turn this query to a simple SqlKind=INSERT
+    // we classify acid export as HiveOperation.EXPORT
   }
 }

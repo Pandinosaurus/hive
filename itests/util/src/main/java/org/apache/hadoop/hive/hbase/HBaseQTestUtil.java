@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.hbase;
 
@@ -38,17 +39,15 @@ public class HBaseQTestUtil extends QTestUtil {
   /** A handle to this harness's cluster */
   private final Connection conn;
 
-  public HBaseQTestUtil(
-    String outDir, String logDir, MiniClusterType miniMr, HBaseTestSetup setup,
-    String initScript, String cleanupScript)
-    throws Exception {
+  public HBaseQTestUtil(String outDir, String logDir, MiniClusterType miniMr, HBaseTestSetup setup, String hiveConfDir,
+      String initScript, String cleanupScript) throws Exception {
 
     super(
         QTestArguments.QTestArgumentsBuilder.instance()
           .withOutDir(outDir)
           .withLogDir(logDir)
           .withClusterType(miniMr)
-          .withConfDir(null)
+          .withConfDir(hiveConfDir)
           .withInitScript(initScript)
           .withCleanupScript(cleanupScript)
           .withLlapIo(false)

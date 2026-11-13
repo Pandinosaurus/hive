@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.rules;
 
@@ -36,8 +37,8 @@ import org.apache.calcite.rex.RexShuttle;
 import org.apache.calcite.rex.RexWindow;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlAggFunction;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.hadoop.hive.ql.optimizer.calcite.translator.SqlFunctionConverter;
+import org.apache.calcite.sql.fun.SqlBasicAggFunction;
+import org.apache.commons.collections4.CollectionUtils;
 
 /**
  * Rule to rewrite a window function containing a last value clause.
@@ -103,9 +104,8 @@ public class HiveWindowingLastValueRewrite extends RelOptRule {
           newOrderKeys.add(new RexFieldCollation(orderKey.left, flags));
         }
         SqlAggFunction s = (SqlAggFunction) over.op;
-        SqlFunctionConverter.CalciteUDAF newSqlAggFunction = new SqlFunctionConverter.CalciteUDAF(
-            over.isDistinct(), FIRST_VALUE_FUNC, s.getReturnTypeInference(), s.getOperandTypeInference(),
-            s.getOperandTypeChecker());
+        SqlAggFunction newSqlAggFunction = SqlBasicAggFunction.create(
+            FIRST_VALUE_FUNC, SqlKind.OTHER_FUNCTION, s.getReturnTypeInference(), s.getOperandTypeChecker());
         List<RexNode> clonedOperands = visitList(over.operands, new boolean[] {false});
         RexWindow window = visitWindow(over.getWindow());
         return rexBuilder.makeOver(over.type, newSqlAggFunction, clonedOperands,

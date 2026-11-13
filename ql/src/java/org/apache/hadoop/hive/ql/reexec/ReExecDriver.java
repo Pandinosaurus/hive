@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.reexec;
@@ -81,6 +82,11 @@ public class ReExecDriver implements IDriver {
   @VisibleForTesting
   public int compile(String command, boolean resetTaskIds) {
     return coreDriver.compile(command, resetTaskIds);
+  }
+
+  @VisibleForTesting
+  public List<IReExecutionPlugin> getPlugins() {
+    return plugins;
   }
 
   private boolean firstExecution() {
@@ -194,6 +200,8 @@ public class ReExecDriver implements IDriver {
       boolean shouldReExecute = explainReOptimization && executionIndex==1;
       shouldReExecute |= cpr == null && plugins.stream().anyMatch(p -> p.shouldReExecute(executionIndex));
 
+      LOG.info("Re-execution decision is made according to: executionIndex: {}, maxExecutions: {}, shouldReExecute: {}",
+          executionIndex, maxExecutions, shouldReExecute);
       if (executionIndex >= maxExecutions || !shouldReExecute) {
         if (cpr != null) {
           return cpr;

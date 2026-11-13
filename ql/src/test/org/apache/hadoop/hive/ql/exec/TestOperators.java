@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -29,6 +30,7 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.CompilationOpContext;
 import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.exec.vector.VectorSelectOperator;
@@ -200,11 +202,11 @@ public class TestOperators {
       hconf.set("name", hugeEnvVar);
       Map<String, String> env = new HashMap<String, String>();
 
-      HiveConf.setBoolVar(hconf, HiveConf.ConfVars.HIVESCRIPTTRUNCATEENV, false);
+      HiveConf.setBoolVar(hconf, HiveConf.ConfVars.HIVE_SCRIPT_TRUNCATE_ENV, false);
       scriptOperator.addJobConfToEnvironment(hconf, env);
       assertEquals(20*1024+1, env.get("name").length());
 
-      HiveConf.setBoolVar(hconf, HiveConf.ConfVars.HIVESCRIPTTRUNCATEENV, true);
+      HiveConf.setBoolVar(hconf, HiveConf.ConfVars.HIVE_SCRIPT_TRUNCATE_ENV, true);
       scriptOperator.addJobConfToEnvironment(hconf, env);
       assertEquals(20*1024, env.get("name").length());
 
@@ -223,7 +225,7 @@ public class TestOperators {
 
     Map<String, String> env = new HashMap<String, String>();
 
-    HiveConf.setVar(hconf, HiveConf.ConfVars.HIVESCRIPT_ENV_BLACKLIST, "foobar");
+    HiveConf.setVar(hconf, HiveConf.ConfVars.HIVE_SCRIPT_ENV_BLACKLIST, "foobar");
     hconf.set("foobar", "foobar");
     hconf.set("barfoo", "barfoo");
     scriptOperator.addJobConfToEnvironment(hconf, env);
@@ -421,9 +423,9 @@ public class TestOperators {
 
   @Test
   public void testFetchOperatorContext() throws Exception {
-    HiveConf conf = new HiveConf();
+    HiveConf conf = new HiveConfForTest(getClass());
     conf.set("hive.support.concurrency", "false");
-    conf.setVar(HiveConf.ConfVars.HIVEMAPREDMODE, "nonstrict");
+    conf.setVar(HiveConf.ConfVars.HIVE_MAPRED_MODE, "nonstrict");
     conf.setVar(HiveConf.ConfVars.HIVE_AUTHORIZATION_MANAGER,
         "org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd.SQLStdHiveAuthorizerFactory");
     SessionState.start(conf);
@@ -459,7 +461,7 @@ public class TestOperators {
     ConvertJoinMapJoin convertJoinMapJoin = new ConvertJoinMapJoin();
     long defaultNoConditionalTaskSize = 1024L * 1024L * 1024L;
     HiveConf hiveConf = new HiveConf();
-    hiveConf.setLongVar(HiveConf.ConfVars.HIVECONVERTJOINNOCONDITIONALTASKTHRESHOLD, defaultNoConditionalTaskSize);
+    hiveConf.setLongVar(HiveConf.ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONAL_TASK_THRESHOLD, defaultNoConditionalTaskSize);
 
     LlapClusterStateForCompile llapInfo = null;
     if ("llap".equalsIgnoreCase(hiveConf.getVar(HiveConf.ConfVars.HIVE_EXECUTION_MODE))) {
@@ -577,7 +579,7 @@ public class TestOperators {
 
     // 5. Configure hive conf and  Build group by operator
     HiveConf hconf = new HiveConf();
-    HiveConf.setIntVar(hconf, HiveConf.ConfVars.HIVEGROUPBYMAPINTERVAL, 1);
+    HiveConf.setIntVar(hconf, HiveConf.ConfVars.HIVE_GROUPBY_MAP_INTERVAL, 1);
 
     // 6. test hash aggr without grouping sets
     System.out.println("---------------Begin to test hash group by without grouping sets-------------");

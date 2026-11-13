@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -298,7 +300,7 @@ public class MapOperator extends AbstractMapOperator {
       for (Path onefile : conf.getPathToAliases().keySet()) {
         PartitionDesc pd = conf.getPathToPartitionInfo().get(onefile);
         TableDesc tableDesc = pd.getTableDesc();
-        Configuration hconf = tableToConf.get(tableDesc.getFullTableName());
+        Configuration hconf = tableToConf.get(tableDesc.getTableName());
         Deserializer partDeserializer = pd.getDeserializer(hconf);
         StructObjectInspector partRawRowObjectInspector;
         boolean isAcid = AcidUtils.isTablePropertyTransactional(tableDesc.getProperties());
@@ -388,7 +390,9 @@ public class MapOperator extends AbstractMapOperator {
       }
     }
 
-    for (PartitionDesc pd: conf.getAliasToPartnInfo().values()) {
+    Iterator<PartitionDesc> partitionIterator = conf.getPartitionDescs();
+    while (partitionIterator.hasNext()) {
+      PartitionDesc pd = partitionIterator.next();
       if (!tableNameToConf.containsKey(pd.getTableName())) {
         tableNameToConf.put(pd.getTableName(), hconf);
       }
@@ -413,7 +417,7 @@ public class MapOperator extends AbstractMapOperator {
     for (Operator<?> child : children) {
       TableScanOperator tsOp = (TableScanOperator) child;
       StructObjectInspector soi = null;
-      PartitionDesc partDesc = conf.getAliasToPartnInfo().get(tsOp.getConf().getAlias());
+      PartitionDesc partDesc = conf.getPartitionDesc(tsOp.getConf().getAlias());
       Configuration newConf = tableNameToConf.get(partDesc.getTableDesc().getTableName());
       AbstractSerDe serde = partDesc.getTableDesc().getSerDe();
       partDesc.setProperties(partDesc.getProperties());
@@ -439,7 +443,7 @@ public class MapOperator extends AbstractMapOperator {
       List<String> aliases = entry.getValue();
       PartitionDesc partDesc = conf.getPathToPartitionInfo().get(onefile);
       TableDesc tableDesc = partDesc.getTableDesc();
-      Configuration newConf = tableNameToConf.get(tableDesc.getFullTableName());
+      Configuration newConf = tableNameToConf.get(tableDesc.getTableName());
 
       for (String alias : aliases) {
         Operator<? extends OperatorDesc> op = conf.getAliasToWork().get(alias);
@@ -635,19 +639,6 @@ public class MapOperator extends AbstractMapOperator {
           }
         }
         break;
-        case ROWOFFSET: {
-          long current = ctx.getIoCxt().getCurrentRow();
-          LongWritable old = (LongWritable) vcValues[i];
-          if (old == null) {
-            old = new LongWritable(current);
-            vcValues[i] = old;
-            continue;
-          }
-          if (current != old.get()) {
-            old.set(current);
-          }
-        }
-        break;
         case RAWDATASIZE:
           long current = 0L;
           SerDeStats stats = deserializer.getSerDeStats();
@@ -689,6 +680,12 @@ public class MapOperator extends AbstractMapOperator {
             vcValues[i] = new LongWritable(ctx.getIoCxt().getPositionDeleteInfo().getPartitionHash());
           }
           break;
+        case PARTITION_NAME:
+          vcValues[i] = null;
+          if (ctx.getIoCxt().getPartitionName() != null) {
+            vcValues[i] = new Text(ctx.getIoCxt().getPartitionName());
+          }
+          break;
         case FILE_PATH:
           vcValues[i] = null;
           if (ctx.getIoCxt().getPositionDeleteInfo() != null) {
@@ -703,6 +700,20 @@ public class MapOperator extends AbstractMapOperator {
           break;
         case ROWISDELETED:
           vcValues[i] = new BooleanWritable(ctx.getIoCxt().isDeletedRecord());
+          break;
+        case ROW_LINEAGE_ID:
+          vcValues[i] = null;
+          if (ctx.getIoCxt().getRowLineageInfo() != null &&
+              ctx.getIoCxt().getRowLineageInfo().getBaseRowId() != null) {
+            vcValues[i] = new LongWritable(ctx.getIoCxt().getRowLineageInfo().getBaseRowId());
+          }
+          break;
+        case LAST_UPDATED_SEQUENCE_NUMBER:
+          vcValues[i] = null;
+          if (ctx.getIoCxt().getRowLineageInfo() != null &&
+              ctx.getIoCxt().getRowLineageInfo().getLastUpdatedSequenceNumber() != null) {
+            vcValues[i] = new LongWritable(ctx.getIoCxt().getRowLineageInfo().getLastUpdatedSequenceNumber());
+          }
           break;
       }
     }

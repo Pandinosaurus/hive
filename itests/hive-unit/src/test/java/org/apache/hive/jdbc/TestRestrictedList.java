@@ -6,12 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc;
@@ -46,16 +49,14 @@ public class TestRestrictedList {
 
   @BeforeClass
   public static void startServices() throws Exception {
-    Class.forName(MiniHS2.getJdbcDriverName());
-
     oldHiveSiteURL = HiveConf.getHiveSiteLocation();
     oldHiveMetastoreSiteURL = HiveConf.getMetastoreSiteLocation();
     String confDir = "../../data/conf/rlist/";
     HiveConf.setHiveSiteLocation(
         new URL("file://" + new File(confDir).toURI().getPath() + "/hive-site.xml"));
     System.out.println("Setting hive-site: " + HiveConf.getHiveSiteLocation());
-    HiveConf.setHivemetastoreSiteUrl(
-        new URL("file://" + new File(confDir).toURI().getPath() + "/hivemetastore-site.xml"));
+    HiveConf.setMetastoreSiteLocation(
+        new URL("file://" + new File(confDir).toURI().getPath() + "/metastore-site.xml"));
     System.out.println("Setting hive-site: " + HiveConf.getHiveSiteLocation());
 
     hiveConf = new HiveConf();
@@ -76,6 +77,7 @@ public class TestRestrictedList {
     addToExpectedRestrictedMap("hive.security.metastore.authenticator.manager");
     addToExpectedRestrictedMap("hive.users.in.admin.role");
     addToExpectedRestrictedMap("hive.server2.xsrf.filter.enabled");
+    addToExpectedRestrictedMap("hive.server2.csrf.filter.enabled");
     addToExpectedRestrictedMap("hive.security.authorization.enabled");
     addToExpectedRestrictedMap("hive.distcp.privileged.doAs");
     addToExpectedRestrictedMap("hive.server2.authentication.ldap.baseDN");
@@ -90,9 +92,8 @@ public class TestRestrictedList {
     addToExpectedRestrictedMap("hive.server2.authentication.ldap.groupClassKey");
     addToExpectedRestrictedMap("hive.server2.authentication.ldap.customLDAPQuery");
     addToExpectedRestrictedMap("hive.server2.service.users");
+    addToExpectedRestrictedMap("hive.server2.graceful.stop.timeout");
     addToExpectedRestrictedMap("hive.query.max.length");
-    addToExpectedRestrictedMap("hive.druid.broker.address.default");
-    addToExpectedRestrictedMap("hive.druid.coordinator.address.default");
     addToExpectedRestrictedMap("hikaricp.test");
     addToExpectedRestrictedMap("hadoop.bin.path");
     addToExpectedRestrictedMap("yarn.bin.path");
@@ -103,8 +104,15 @@ public class TestRestrictedList {
     addToExpectedRestrictedMap("hive.driver.parallel.compilation.global.limit");
     addToExpectedRestrictedMap("hive.zookeeper.ssl.keystore.location");
     addToExpectedRestrictedMap("hive.zookeeper.ssl.keystore.password");
+    addToExpectedRestrictedMap("hive.zookeeper.ssl.keystore.type");
     addToExpectedRestrictedMap("hive.zookeeper.ssl.truststore.location");
     addToExpectedRestrictedMap("hive.zookeeper.ssl.truststore.password");
+    addToExpectedRestrictedMap("hive.zookeeper.ssl.truststore.type");
+    addToExpectedRestrictedMap("hive.iceberg.allow.datafiles.in.table.location.only");
+    addToExpectedRestrictedMap("hive.hook.proto.base-directory");
+    addToExpectedRestrictedMap("hive.rewrite.data.policy");
+    addToExpectedRestrictedMap("hive.query.history.enabled");
+    addToExpectedRestrictedMap("hive.llap.cluster.routing.rules");
 
     checkRestrictedListMatch();
   }
@@ -114,7 +122,7 @@ public class TestRestrictedList {
     if (miniHS2 != null && miniHS2.isStarted()) {
       miniHS2.stop();
     }
-    HiveConf.setHivemetastoreSiteUrl(oldHiveMetastoreSiteURL);
+    HiveConf.setMetastoreSiteLocation(oldHiveMetastoreSiteURL);
     HiveConf.setHiveSiteLocation(oldHiveSiteURL);
   }
 

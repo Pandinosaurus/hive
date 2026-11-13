@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.shufflehandler;
@@ -50,6 +55,8 @@ import java.util.regex.Pattern;
 
 import javax.crypto.SecretKey;
 
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.LocalDirAllocator;
 import org.apache.hadoop.fs.Path;
@@ -297,7 +304,7 @@ public class ShuffleHandler implements AttemptRegistrationListener {
 
     final String BOSS_THREAD_NAME_PREFIX = "ShuffleHandler Netty Boss #";
     AtomicInteger bossThreadCounter = new AtomicInteger(0);
-    bossGroup = new NioEventLoopGroup(maxShuffleThreads, new ThreadFactory() {
+    bossGroup = new NioEventLoopGroup(1, new ThreadFactory() {
       @Override
       public Thread newThread(Runnable r) {
         return new Thread(r, BOSS_THREAD_NAME_PREFIX + bossThreadCounter.incrementAndGet());
@@ -326,7 +333,7 @@ public class ShuffleHandler implements AttemptRegistrationListener {
             DEFAULT_SHUFFLE_MAPOUTPUT_META_INFO_CACHE_SIZE));
 
     userRsrc = new ConcurrentHashMap<>();
-    secretManager = new JobTokenSecretManager();
+    secretManager = new JobTokenSecretManager(conf);
     shuffle = new Shuffle(conf);
     if (conf.getBoolean(SHUFFLE_DIR_WATCHER_ENABLED, SHUFFLE_DIR_WATCHER_ENABLED_DEFAULT)) {
       LOG.info("Attempting to start dirWatcher");
@@ -389,6 +396,9 @@ public class ShuffleHandler implements AttemptRegistrationListener {
         ChannelPipeline pipeline = ch.pipeline();
         if (sslFactory != null) {
           pipeline.addLast("ssl", new SslHandler(sslFactory.createSSLEngine()));
+        }
+        if (LOG.isDebugEnabled()) {
+          pipeline.addLast("loggingHandler", new LoggingHandler(LogLevel.DEBUG));
         }
         pipeline.addLast("decoder", new HttpRequestDecoder());
         pipeline.addLast("aggregator", new HttpObjectAggregator(1 << 16));

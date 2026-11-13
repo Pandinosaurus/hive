@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service.auth.saml;
@@ -64,7 +65,7 @@ public class HiveSamlHttpServlet extends HttpServlet {
       } else {
         LOG.error("SAML response could not be validated", e);
       }
-      generateFormData(response, HiveSamlUtils.getLoopBackAddress(port), null, false,
+      generateFormData(response, HiveSamlUtils.resolveLoopbackAddress(port), null, false,
           "SAML assertion could not be validated. Check server logs for more details.");
       return;
     }
@@ -72,7 +73,7 @@ public class HiveSamlHttpServlet extends HttpServlet {
     LOG.info(
         "Successfully validated saml response for user {}. Forwarding the token to port {}",
         nameId, port);
-    generateFormData(response, HiveSamlUtils.getLoopBackAddress(port),
+    generateFormData(response, HiveSamlUtils.resolveLoopbackAddress(port),
         tokenGenerator.get(nameId, relayState), true, "");
   }
 

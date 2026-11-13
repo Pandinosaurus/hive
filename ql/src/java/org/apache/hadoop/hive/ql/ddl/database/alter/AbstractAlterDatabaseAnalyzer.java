@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.database.alter;
@@ -35,7 +36,7 @@ public abstract class AbstractAlterDatabaseAnalyzer extends BaseSemanticAnalyzer
   }
 
   protected void addAlterDatabaseDesc(AbstractAlterDatabaseDesc alterDesc) throws SemanticException {
-    Database database = getDatabase(alterDesc.getDatabaseName());
+    Database database = getDatabase(alterDesc.getCatalogName(), alterDesc.getDatabaseName(), true);
     outputs.add(new WriteEntity(database, WriteEntity.WriteType.DDL_NO_LOCK));
     rootTasks.add(TaskFactory.get(new DDLWork(getInputs(), getOutputs(), alterDesc)));
   }

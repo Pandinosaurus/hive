@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.repl.metric.event;
 
@@ -36,6 +37,12 @@ public class StageMapper {
   private long startTime = 0;
 
   private long endTime = 0;
+
+  private long endTimeOnSrc = 0;
+
+  private long endTimeOnTgt = 0;
+
+  private long lastSuccessfulDumpId = 0;
 
   private List<Metric> metrics = new ArrayList<>();
 
@@ -62,6 +69,30 @@ public class StageMapper {
 
   public long getEndTime() {
     return endTime;
+  }
+
+  public long getEndTimeOnSrc() {
+    return endTimeOnSrc;
+  }
+
+  public void setEndTimeOnSrc(long endTimeOnSrc) {
+    this.endTimeOnSrc = endTimeOnSrc;
+  }
+
+  public long getEndTimeOnTgt() {
+    return endTimeOnTgt;
+  }
+
+  public void setEndTimeOnTgt(long endTimeOnTgt) {
+    this.endTimeOnTgt = endTimeOnTgt;
+  }
+
+  public long getLastSuccessfulDumpId() {
+    return lastSuccessfulDumpId;
+  }
+
+  public void setLastSuccessfulDumpId(long lastSuccessfulDumpId) {
+    this.lastSuccessfulDumpId = lastSuccessfulDumpId;
   }
 
   public List<Metric> getMetrics() {

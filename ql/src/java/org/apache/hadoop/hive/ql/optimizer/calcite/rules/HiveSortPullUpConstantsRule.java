@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.rules;
 
@@ -42,6 +43,7 @@ import org.apache.calcite.rex.RexUtil;
 import org.apache.calcite.tools.RelBuilder;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.mapping.Mappings;
+import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelDistribution;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelFactories;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSortExchange;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSortLimit;
@@ -50,7 +52,7 @@ import com.google.common.collect.ImmutableList;
 
 /**
  * Planner rule that pulls up constant keys through a SortLimit or SortExchange operator.
- *
+ * <p>
  * This rule is only applied on SortLimit operators that are not the root
  * of the plan tree. This is done because the interaction of this rule
  * with the AST conversion may cause some optimizations to not kick in
@@ -67,7 +69,7 @@ public final class HiveSortPullUpConstantsRule {
   private static final class HiveSortLimitPullUpConstantsRule
       extends HiveSortPullUpConstantsRuleBase<HiveSortLimit> {
 
-    protected HiveSortLimitPullUpConstantsRule() {
+    private HiveSortLimitPullUpConstantsRule() {
       super(HiveSortLimit.class);
     }
 
@@ -87,15 +89,30 @@ public final class HiveSortPullUpConstantsRule {
   private static final class HiveSortExchangePullUpConstantsRule
       extends HiveSortPullUpConstantsRuleBase<HiveSortExchange> {
 
-    protected HiveSortExchangePullUpConstantsRule() {
+    private HiveSortExchangePullUpConstantsRule() {
       super(HiveSortExchange.class);
     }
 
     @Override
     protected void buildSort(RelBuilder relBuilder, HiveSortExchange sortNode, Mappings.TargetMapping mapping) {
       List<RelFieldCollation> fieldCollations = applyToFieldCollations(sortNode.getCollation(), mapping);
-      RelDistribution distribution = sortNode.getDistribution().apply(mapping);
+      RelDistribution distribution = applyToDistribution(sortNode.getDistribution(), mapping);
       relBuilder.sortExchange(distribution, RelCollations.of(fieldCollations));
+    }
+    
+    private RelDistribution applyToDistribution(
+        RelDistribution distribution, Mappings.TargetMapping mapping) {
+      List<Integer> newKeys = new ArrayList<>();
+      for (int key : distribution.getKeys()) {
+        final int target = mapping.getTargetOpt(key);
+        if (target < 0) {
+          // It is a constant, we can ignore it
+          continue;
+        }
+        newKeys.add(target);
+      }
+      
+      return new HiveRelDistribution(distribution.getType(), newKeys);
     }
   }
 
@@ -125,8 +142,8 @@ public final class HiveSortPullUpConstantsRule {
         return;
       }
 
-      Map<RexNode, RexNode> conditionsExtracted = HiveReduceExpressionsRule.predicateConstants(
-          RexNode.class, rexBuilder, predicates);
+      Map<RexNode, RexNode> conditionsExtracted =
+          RexUtil.predicateConstants(RexNode.class, rexBuilder, predicates.pulledUpPredicates);
       Map<RexNode, RexNode> constants = new HashMap<>();
       for (int i = 0; i < count; i++) {
         RexNode expr = rexBuilder.makeInputRef(sortNode.getInput(), i);
@@ -154,10 +171,14 @@ public final class HiveSortPullUpConstantsRule {
         RexNode expr = rexBuilder.makeInputRef(sortNode.getInput(), i);
         RelDataTypeField field = fields.get(i);
         if (constants.containsKey(expr)) {
-          topChildExprs.add(constants.get(expr));
+          if (constants.get(expr).getType().equals(field.getType())) {
+            topChildExprs.add(constants.get(expr));
+          } else {
+            topChildExprs.add(rexBuilder.makeCast(field.getType(), constants.get(expr), true));
+          }
           topChildExprsFields.add(field.getName());
         } else {
-          newChildExprs.add(Pair.<RexNode, String>of(expr, field.getName()));
+          newChildExprs.add(Pair.of(expr, field.getName()));
           topChildExprs.add(expr);
           topChildExprsFields.add(field.getName());
         }
@@ -199,7 +220,7 @@ public final class HiveSortPullUpConstantsRule {
           // It is a constant, we can ignore it
           continue;
         }
-        fieldCollations.add(fc.copy(target));
+        fieldCollations.add(fc.withFieldIndex(target));
       }
       return fieldCollations;
     }

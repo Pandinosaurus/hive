@@ -7,13 +7,14 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse.repl.metric;
@@ -87,7 +88,7 @@ public class TestReplicationMetricUpdateOnFailure {
   public void testReplDumpFailure() throws Exception {
     String dumpDir = TEST_PATH + Path.SEPARATOR + testName.getMethodName();
     IncrementalDumpMetricCollector metricCollector =
-            new IncrementalDumpMetricCollector(null, TEST_PATH, conf);
+            new IncrementalDumpMetricCollector(null, TEST_PATH, conf, 0L);
     ReplDumpWork replDumpWork = Mockito.mock(ReplDumpWork.class);
     Mockito.when(replDumpWork.getCurrentDumpPath()).thenReturn(new Path(dumpDir));
     Mockito.when(replDumpWork.getMetricCollector()).thenReturn(metricCollector);
@@ -109,7 +110,7 @@ public class TestReplicationMetricUpdateOnFailure {
     String dumpDir = TEST_PATH + Path.SEPARATOR + testName.getMethodName();
     MetricCollector.getInstance().deinit();
     BootstrapDumpMetricCollector metricCollector =
-            new BootstrapDumpMetricCollector(null, TEST_PATH, conf);
+            new BootstrapDumpMetricCollector(null, TEST_PATH, conf, 0L);
     ReplDumpWork replDumpWork = Mockito.mock(ReplDumpWork.class);
     Mockito.when(replDumpWork.getMetricCollector()).thenReturn(metricCollector);
     Mockito.when(replDumpWork.getCurrentDumpPath()).thenReturn(new Path(dumpDir));
@@ -128,7 +129,7 @@ public class TestReplicationMetricUpdateOnFailure {
     String dumpDir = TEST_PATH + Path.SEPARATOR + testName.getMethodName();
     MetricCollector.getInstance().deinit();
     IncrementalDumpMetricCollector metricCollector =
-            new IncrementalDumpMetricCollector(null, TEST_PATH, conf);
+            new IncrementalDumpMetricCollector(null, TEST_PATH, conf, 0L);
     ReplDumpWork replDumpWork = Mockito.mock(ReplDumpWork.class);
     Mockito.when(replDumpWork.getCurrentDumpPath()).thenReturn(new Path(dumpDir));
     Mockito.when(replDumpWork.getMetricCollector()).thenReturn(metricCollector);

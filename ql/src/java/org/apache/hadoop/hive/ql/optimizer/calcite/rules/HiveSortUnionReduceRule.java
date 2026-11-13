@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.rules;
 
@@ -66,7 +67,7 @@ public class HiveSortUnionReduceRule extends RelOptRule {
     // We only apply this rule if Union.all is true.
     // And Sort.fetch is not null and it is more than 0.
     return union.all && sort.fetch != null
-        // Calite bug CALCITE-987
+        // Calcite bug CALCITE-987
         && RexLiteral.intValue(sort.fetch) > 0;
   }
 
@@ -74,7 +75,7 @@ public class HiveSortUnionReduceRule extends RelOptRule {
     final HiveSortLimit sort = call.rel(0);
     final HiveUnion union = call.rel(1);
     List<RelNode> inputs = new ArrayList<>();
-    // Thus we use 'finishPushSortPastUnion' as a flag to identify if we have finished pushing the
+    // Thus, we use 'finishPushSortPastUnion' as a flag to identify if we have finished pushing the
     // sort past a union.
     boolean finishPushSortPastUnion = true;
     final int offset = sort.offset == null ? 0 : RexLiteral.intValue(sort.offset);

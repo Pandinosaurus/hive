@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
@@ -44,6 +45,8 @@ public class LoadTableDesc extends LoadDesc implements Serializable {
   private Long currentWriteId;
   private boolean isInsertOverwrite;
   private boolean isDirectInsert;
+
+  private boolean useAppendForLoad;
 
   // TODO: the below seem like they should just be combined into partitionDesc
   private Table mdTable;
@@ -155,6 +158,20 @@ public class LoadTableDesc extends LoadDesc implements Serializable {
     } else {
       init(table, new LinkedHashMap<String, String>(), lft, writeId);
     }
+  }
+
+  public LoadTableDesc(Path path, Table tableHandle, boolean isOverWrite, boolean useAppendForLoad,
+      Map<String, String> partitionSpec) {
+    super(path, AcidUtils.Operation.NOT_ACID);
+    this.mdTable = tableHandle;
+    this.useAppendForLoad = useAppendForLoad;
+    this.loadFileType = isOverWrite ? LoadFileType.REPLACE_ALL : LoadFileType.KEEP_EXISTING;
+    this.table = Utilities.getTableDesc(tableHandle);
+    this.partitionSpec = partitionSpec;
+  }
+
+  public boolean isUseAppendForLoad() {
+    return useAppendForLoad;
   }
 
   private void init(

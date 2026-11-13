@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.conf;
 
@@ -36,7 +37,7 @@ public class TestHiveConfRestrictList {
   public void setUp() throws Exception {
 
     System.setProperty(ConfVars.HIVE_CONF_RESTRICTED_LIST.varname,
-        ConfVars.HIVETESTMODEPREFIX.varname);
+        ConfVars.HIVE_TEST_MODE_PREFIX.varname);
     conf = new HiveConf();
   }
 
@@ -46,7 +47,7 @@ public class TestHiveConfRestrictList {
    */
   @Test
   public void testRestriction() throws Exception {
-    verifyRestriction(ConfVars.HIVETESTMODEPREFIX.varname, "foo");
+    verifyRestriction(ConfVars.HIVE_TEST_MODE_PREFIX.varname, "foo");
     conf.verifyAndSet(ConfVars.HIVE_AM_SPLIT_GENERATION.varname, "false");
   }
 
@@ -56,7 +57,7 @@ public class TestHiveConfRestrictList {
    */
   @Test
   public void testMultipleRestrictions() throws Exception {
-    verifyRestriction(ConfVars.HIVETESTMODEPREFIX.varname, "foo");
+    verifyRestriction(ConfVars.HIVE_TEST_MODE_PREFIX.varname, "foo");
     verifyRestriction(ConfVars.HIVE_IN_TEST.varname, "true");
   }
 
@@ -75,25 +76,25 @@ public class TestHiveConfRestrictList {
    */
   @Test
   public void testAppendRestriction() throws Exception {
-    String appendListStr = ConfVars.SCRATCHDIR.varname + "," +
-        ConfVars.LOCALSCRATCHDIR.varname + "," +
-        ConfVars.METASTOREURIS.varname;
+    String appendListStr = ConfVars.SCRATCH_DIR.varname + "," +
+        ConfVars.LOCAL_SCRATCH_DIR.varname + "," +
+        ConfVars.METASTORE_URIS.varname;
 
     conf.addToRestrictList(appendListStr);
     // check if the new configs are added to HIVE_CONF_RESTRICTED_LIST
     String newRestrictList = conf.getVar(ConfVars.HIVE_CONF_RESTRICTED_LIST);
-    assertTrue(newRestrictList.contains(ConfVars.SCRATCHDIR.varname));
-    assertTrue(newRestrictList.contains(ConfVars.LOCALSCRATCHDIR.varname));
-    assertTrue(newRestrictList.contains(ConfVars.METASTOREURIS.varname));
+    assertTrue(newRestrictList.contains(ConfVars.SCRATCH_DIR.varname));
+    assertTrue(newRestrictList.contains(ConfVars.LOCAL_SCRATCH_DIR.varname));
+    assertTrue(newRestrictList.contains(ConfVars.METASTORE_URIS.varname));
 
     // check if the old values are still there in HIVE_CONF_RESTRICTED_LIST
-    assertTrue(newRestrictList.contains(ConfVars.HIVETESTMODEPREFIX.varname));
+    assertTrue(newRestrictList.contains(ConfVars.HIVE_TEST_MODE_PREFIX.varname));
 
     // verify that the new configs are in effect
-    verifyRestriction(ConfVars.HIVETESTMODEPREFIX.varname, "foo");
+    verifyRestriction(ConfVars.HIVE_TEST_MODE_PREFIX.varname, "foo");
     verifyRestriction(ConfVars.HIVE_CONF_RESTRICTED_LIST.varname, "foo");
-    verifyRestriction(ConfVars.LOCALSCRATCHDIR.varname, "foo");
-    verifyRestriction(ConfVars.METASTOREURIS.varname, "foo");
+    verifyRestriction(ConfVars.LOCAL_SCRATCH_DIR.varname, "foo");
+    verifyRestriction(ConfVars.METASTORE_URIS.varname, "foo");
   }
 
   private void verifyRestriction(String varName, String newVal) {

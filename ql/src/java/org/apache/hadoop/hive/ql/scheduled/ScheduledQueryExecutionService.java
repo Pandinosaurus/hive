@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.scheduled;
 
@@ -80,7 +81,7 @@ public class ScheduledQueryExecutionService implements Closeable {
     synchronized (ScheduledQueryExecutionService.class) {
       if (INSTANCE != null) {
         throw new IllegalStateException(
-            "There is already a ScheduledQueryExecutionService in service; check it and close it explicitly if neccessary");
+            "There is already a ScheduledQueryExecutionService in service; check it and close it explicitly if necessary");
       }
       INSTANCE = new ScheduledQueryExecutionService(ctx);
       return INSTANCE;
@@ -227,7 +228,7 @@ public class ScheduledQueryExecutionService implements Closeable {
         conf.set(Constants.SCHEDULED_QUERY_SCHEDULENAME, q.getScheduleKey().getScheduleName());
         conf.set(Constants.SCHEDULED_QUERY_USER, q.getUser());
         conf.set(Constants.SCHEDULED_QUERY_EXECUTIONID, Long.toString(q.getExecutionId()));
-        conf.unset(HiveConf.ConfVars.HIVESESSIONID.varname);
+        conf.unset(HiveConf.ConfVars.HIVE_SESSION_ID.varname);
         state = new SessionState(conf, q.getUser());
         state.setIsHiveServerQuery(true);
         SessionState.start(state);

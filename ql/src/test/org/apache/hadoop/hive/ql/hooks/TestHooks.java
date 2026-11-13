@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.hooks;
 
 import static org.junit.Assert.assertEquals;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.junit.Before;
@@ -31,7 +33,7 @@ public class TestHooks {
 
   @BeforeClass
   public static void onetimeSetup() throws Exception {
-    HiveConf conf = new HiveConf(TestHooks.class);
+    HiveConf conf = new HiveConfForTest(TestHooks.class);
     conf
     .setVar(HiveConf.ConfVars.HIVE_AUTHORIZATION_MANAGER,
         "org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd.SQLStdHiveAuthorizerFactory");
@@ -41,7 +43,7 @@ public class TestHooks {
 
   @AfterClass
   public static void onetimeTeardown() throws Exception {
-    HiveConf conf = new HiveConf(TestHooks.class);
+    HiveConf conf = new HiveConfForTest(TestHooks.class);
     Driver driver = createDriver(conf);
     driver.run("drop table t1");
   }
@@ -52,10 +54,10 @@ public class TestHooks {
 
   @Test
   public void testRedactLogString() throws Exception {
-    HiveConf conf = new HiveConf(TestHooks.class);
+    HiveConf conf = new HiveConfForTest(TestHooks.class);
     String str;
 
-    HiveConf.setVar(conf, HiveConf.ConfVars.QUERYREDACTORHOOKS, SimpleQueryRedactor.class.getName());
+    HiveConf.setVar(conf, HiveConf.ConfVars.QUERY_REDACTOR_HOOKS, SimpleQueryRedactor.class.getName());
 
     str = HookUtils.redactLogString(null, null);
     assertEquals(str, null);
@@ -69,8 +71,8 @@ public class TestHooks {
 
   @Test
   public void testQueryRedactor() throws Exception {
-    HiveConf conf = new HiveConf(TestHooks.class);
-    HiveConf.setVar(conf, HiveConf.ConfVars.QUERYREDACTORHOOKS,
+    HiveConf conf = new HiveConfForTest(TestHooks.class);
+    HiveConf.setVar(conf, HiveConf.ConfVars.QUERY_REDACTOR_HOOKS,
       SimpleQueryRedactor.class.getName());
     conf
     .setVar(HiveConf.ConfVars.HIVE_AUTHORIZATION_MANAGER,

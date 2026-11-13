@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -23,6 +24,7 @@ import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.common.ValidReadTxnList;
 import org.apache.hadoop.hive.metastore.annotation.MetastoreUnitTest;
 import org.apache.hadoop.hive.metastore.api.CompactionInfoStruct;
+import org.apache.hadoop.hive.metastore.api.CompactionRequest;
 import org.apache.hadoop.hive.metastore.api.CompactionType;
 import org.apache.hadoop.hive.metastore.api.DataOperationType;
 import org.apache.hadoop.hive.metastore.api.Database;
@@ -222,6 +224,7 @@ public class TestHiveMetaStoreTxns {
   public void testLocks() throws Exception {
     LockRequestBuilder rqstBuilder = new LockRequestBuilder();
     rqstBuilder.addLockComponent(new LockComponentBuilder()
+        .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
         .setDbName("mydb")
         .setTableName("mytable")
         .setPartitionName("MyPartition=MyValue")
@@ -229,12 +232,14 @@ public class TestHiveMetaStoreTxns {
         .setOperationType(DataOperationType.NO_TXN)
         .build());
     rqstBuilder.addLockComponent(new LockComponentBuilder()
+        .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
         .setDbName("mydb")
         .setTableName("yourtable")
         .setSharedWrite()
         .setOperationType(DataOperationType.NO_TXN)
         .build());
     rqstBuilder.addLockComponent(new LockComponentBuilder()
+        .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
         .setDbName("yourdb")
         .setOperationType(DataOperationType.NO_TXN)
         .setSharedRead()
@@ -261,6 +266,7 @@ public class TestHiveMetaStoreTxns {
     LockRequestBuilder rqstBuilder = new LockRequestBuilder();
     rqstBuilder.setTransactionId(txnid)
       .addLockComponent(new LockComponentBuilder()
+        .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
         .setDbName("mydb")
         .setTableName("mytable")
         .setPartitionName("MyPartition=MyValue")
@@ -268,12 +274,14 @@ public class TestHiveMetaStoreTxns {
         .setOperationType(DataOperationType.UPDATE)
         .build())
       .addLockComponent(new LockComponentBuilder()
+        .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
         .setDbName("mydb")
         .setTableName("yourtable")
         .setSharedWrite()
         .setOperationType(DataOperationType.UPDATE)
         .build())
       .addLockComponent(new LockComponentBuilder()
+        .setCatName(Warehouse.DEFAULT_CATALOG_NAME)
         .setDbName("yourdb")
         .setSharedRead()
         .setOperationType(DataOperationType.SELECT)
@@ -296,27 +304,27 @@ public class TestHiveMetaStoreTxns {
   @Test
   public void stringifyValidTxns() throws Exception {
     // Test with just high water mark
-    ValidTxnList validTxns = new ValidReadTxnList("1:" + Long.MAX_VALUE + "::");
+    ValidTxnList validTxns = ValidReadTxnList.fromValue("1:" + Long.MAX_VALUE + "::");
     String asString = validTxns.toString();
     Assert.assertEquals("1:" + Long.MAX_VALUE + "::", asString);
-    validTxns = new ValidReadTxnList(asString);
+    validTxns = ValidReadTxnList.fromValue(asString);
     Assert.assertEquals(1, validTxns.getHighWatermark());
     Assert.assertNotNull(validTxns.getInvalidTransactions());
     Assert.assertEquals(0, validTxns.getInvalidTransactions().length);
     asString = validTxns.toString();
     Assert.assertEquals("1:" + Long.MAX_VALUE + "::", asString);
-    validTxns = new ValidReadTxnList(asString);
+    validTxns = ValidReadTxnList.fromValue(asString);
     Assert.assertEquals(1, validTxns.getHighWatermark());
     Assert.assertNotNull(validTxns.getInvalidTransactions());
     Assert.assertEquals(0, validTxns.getInvalidTransactions().length);
 
     // Test with open transactions
-    validTxns = new ValidReadTxnList("10:3:5:3");
+    validTxns = ValidReadTxnList.fromValue("10:3:5:3");
     asString = validTxns.toString();
     if (!asString.equals("10:3:3:5") && !asString.equals("10:3:5:3")) {
       Assert.fail("Unexpected string value " + asString);
     }
-    validTxns = new ValidReadTxnList(asString);
+    validTxns = ValidReadTxnList.fromValue(asString);
     Assert.assertEquals(10, validTxns.getHighWatermark());
     Assert.assertNotNull(validTxns.getInvalidTransactions());
     Assert.assertEquals(2, validTxns.getInvalidTransactions().length);
@@ -418,7 +426,11 @@ public class TestHiveMetaStoreTxns {
     client.createTable(tbl);
     tbl = client.getTable(dbName, tblName);
 
-    client.compact2(tbl.getDbName(), tbl.getTableName(), null, CompactionType.MINOR, new HashMap<>());
+    CompactionRequest compactionRequest = new CompactionRequest();
+    compactionRequest.setDbname(tbl.getDbName());
+    compactionRequest.setTablename(tbl.getTableName());
+    compactionRequest.setType(CompactionType.MINOR);
+    client.compact2(compactionRequest);
     FindNextCompactRequest compactRequest = new FindNextCompactRequest();
     compactRequest.setWorkerId("myworker");
     OptionalCompactionInfoStruct optionalCi = client.findNextCompact(compactRequest);

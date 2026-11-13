@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.auth.ldap;
 
@@ -105,6 +106,38 @@ final class QueryFactory {
         .map("classes", USER_OBJECT_CLASSES)
         .map("userName", userName)
         .limit(2)
+        .build();
+  }
+
+  /**
+   * Returns a query for finding user DN based on user RDN.
+   * @param user user RDN that will replace {0} in the search filter
+   * @param userSearchFilter search query that user filter conditions.
+   * @return an instance of {@link Query}
+   */
+  public Query findUserDnBySearch(String user, String userSearchFilter) {
+    if (userSearchFilter != null) {
+      userSearchFilter = userSearchFilter.replaceAll("\\{0\\}", user);
+    }
+    return Query.builder()
+        .filter(userSearchFilter)
+        .build();
+  }
+
+  /**
+   * Returns a query for finding matches based on user and group filter query.
+   * @param user user RDN to replace {0}
+   * @param userDn user DN to replace {1}}
+   * @param groupSearchFilter search query that includes any group filter conditions.
+   * @return an instance of {@link Query}
+   */
+  public Query findDnByUserAndGroupSearch(String user, String userDn, String groupSearchFilter) {
+    if (groupSearchFilter != null) {
+      groupSearchFilter = groupSearchFilter.replaceAll("\\{0\\}", userDn);
+      groupSearchFilter = groupSearchFilter.replaceAll("\\{1\\}", user);
+    }
+    return Query.builder()
+        .filter(groupSearchFilter)
         .build();
   }
 

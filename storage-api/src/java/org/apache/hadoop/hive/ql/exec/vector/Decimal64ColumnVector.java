@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.vector;
 
@@ -23,7 +24,7 @@ import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
 /**
 
  */
-public class Decimal64ColumnVector extends LongColumnVector {
+public class Decimal64ColumnVector extends LongColumnVector implements IDecimalColumnVector {
 
   public short scale;
   public short precision;
@@ -41,6 +42,13 @@ public class Decimal64ColumnVector extends LongColumnVector {
     scratchHiveDecWritable = new HiveDecimalWritable();
   }
 
+  // Fill the vector entries with provided value
+  public void fill(HiveDecimal value) {
+    isRepeating = true;
+    isNull[0] = false;
+    set(0, value);
+  }
+
   /**
    * Set a Decimal64 field from a HiveDecimalWritable.
    *
@@ -56,13 +64,26 @@ public class Decimal64ColumnVector extends LongColumnVector {
    */
   public void set(int elementNum, HiveDecimalWritable writable) {
     scratchHiveDecWritable.set(writable);
-    scratchHiveDecWritable.mutateEnforcePrecisionScale(precision, scale);
-    if (!scratchHiveDecWritable.isSet()) {
-      noNulls = false;
-      isNull[elementNum] = true;
-    } else {
-      vector[elementNum] = scratchHiveDecWritable.serialize64(scale);
-    }
+    enforceScaleAndSet(elementNum);
+  }
+
+  /**
+   * Set a Decimal64 field straight from the unscaled big-integer {@code bigIntegerBytes} (encoded at
+   * {@code valueScale}), without materializing a HiveDecimal per row.
+   *
+   * {@code valueScale} may differ from this vector's {@link #scale} under schema evolution (e.g.
+   * reading a DECIMAL(38,37) file column as DECIMAL(16,8)); the stored long is always at this
+   * vector's scale, where the value fits the 64-bit backing store and downstream consumers read it.
+   *
+   * FAST version: assumes elementNum is already adjusted for isRepeating and the isNull entry is set.
+   *
+   * @param elementNum
+   * @param bigIntegerBytes
+   * @param valueScale
+   */
+  public void set(int elementNum, byte[] bigIntegerBytes, int valueScale) {
+    scratchHiveDecWritable.set(bigIntegerBytes, valueScale);
+    enforceScaleAndSet(elementNum);
   }
 
   /**
@@ -80,6 +101,14 @@ public class Decimal64ColumnVector extends LongColumnVector {
    */
   public void set(int elementNum, HiveDecimal hiveDec) {
     scratchHiveDecWritable.set(hiveDec);
+    enforceScaleAndSet(elementNum);
+  }
+
+  /**
+   * Apply this vector's precision/scale to the value in scratchHiveDecWritable and store it as a
+   * Decimal64 long, marking the entry NULL if out of range.
+   */
+  private void enforceScaleAndSet(int elementNum) {
     scratchHiveDecWritable.mutateEnforcePrecisionScale(precision, scale);
     if (!scratchHiveDecWritable.isSet()) {
       noNulls = false;
@@ -136,12 +165,12 @@ public class Decimal64ColumnVector extends LongColumnVector {
           decimal64ColVector.vector[inputElementNum], decimal64ColVector.scale);
       scratchHiveDecWritable.mutateEnforcePrecisionScale(precision, scale);
       if (scratchHiveDecWritable.isSet()) {
-        vector[inputElementNum] = scratchHiveDecWritable.serialize64(scale);
+        vector[outputElementNum] = scratchHiveDecWritable.serialize64(scale);
       } else {
 
         // In effect, the input is NULL because of out-of-range precision/scale.
         noNulls = false;
-        isNull[inputElementNum] = true;
+        isNull[outputElementNum] = true;
       }
     } else {
 

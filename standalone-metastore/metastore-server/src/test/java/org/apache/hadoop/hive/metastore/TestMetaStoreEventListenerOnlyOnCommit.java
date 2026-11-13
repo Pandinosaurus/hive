@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -23,7 +24,6 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.annotation.MetastoreUnitTest;
 import org.apache.hadoop.hive.metastore.api.Database;
-import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.client.builder.DatabaseBuilder;
 import org.apache.hadoop.hive.metastore.client.builder.PartitionBuilder;
@@ -49,6 +49,22 @@ public class TestMetaStoreEventListenerOnlyOnCommit {
 
   private Configuration conf;
   private HiveMetaStoreClient msc;
+
+  public static class DummyRawStoreControlledCommit extends ObjectStore {
+    private static boolean shouldCommitSucceed = true;
+    public static void setCommitSucceed(boolean flag) {
+      shouldCommitSucceed = flag;
+    }
+
+    @Override
+    public boolean commitTransaction() {
+      if (shouldCommitSucceed) {
+        return super.commitTransaction();
+      } else {
+        return false;
+      }
+    }
+  }
 
   @Before
   public void setUp() throws Exception {

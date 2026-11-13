@@ -9,16 +9,18 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.plan;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -26,9 +28,10 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.metastore.Warehouse;
+import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
@@ -52,6 +55,8 @@ public class DynamicPartitionCtx implements Serializable {
   private String defaultPartName; // default partition name in case of null or empty value
   private int maxPartsPerNode;    // maximum dynamic partitions created per mapper/reducer
   private Pattern whiteListPattern;
+  private boolean hasCustomPartitionOrSortExpr = false;
+  private transient List<Function<List<ExprNodeDesc>, ExprNodeDesc>> customPartitionExpressions;
   /**
    * Expressions describing a custom way of sorting the table before write. Expressions can reference simple
    * column descriptions or a tree of expressions containing more columns and UDFs.
@@ -60,6 +65,8 @@ public class DynamicPartitionCtx implements Serializable {
    * schema and returns a single expression. Example for simply just referencing column 3: cols -> cols.get(3).clone()
    */
   private transient List<Function<List<ExprNodeDesc>, ExprNodeDesc>> customSortExpressions;
+  private transient List<Integer> customSortOrder;
+  private transient List<Integer> customSortNullOrder;
 
   public DynamicPartitionCtx() {
   }
@@ -87,19 +94,21 @@ public class DynamicPartitionCtx implements Serializable {
     this.spPath = null;
     String confVal;
     try {
-      confVal = Hive.get().getMetaConf(ConfVars.METASTORE_PARTITION_NAME_WHITELIST_PATTERN.varname);
+      confVal = Hive.get().getMetaConf(ConfVars.PARTITION_NAME_WHITELIST_PATTERN.getVarname());
     } catch (HiveException e) {
       throw new SemanticException(e);
     }
     this.whiteListPattern = confVal == null || confVal.isEmpty() ? null : Pattern.compile(confVal);
     this.customSortExpressions = new LinkedList<>();
+    this.customSortOrder = new LinkedList<>();
+    this.customSortNullOrder = new LinkedList<>();
   }
 
   public DynamicPartitionCtx(Map<String, String> partSpec, String defaultPartName,
       int maxParts) throws SemanticException {
     this.partSpec = partSpec;
-    this.spNames = new ArrayList<String>();
-    this.dpNames = new ArrayList<String>();
+    this.spNames = new ArrayList<>();
+    this.dpNames = new ArrayList<>();
     this.numBuckets = 0;
     this.maxPartsPerNode = maxParts;
     this.defaultPartName = defaultPartName;
@@ -120,12 +129,15 @@ public class DynamicPartitionCtx implements Serializable {
     }
     String confVal;
     try {
-      confVal = Hive.get().getMetaConf(ConfVars.METASTORE_PARTITION_NAME_WHITELIST_PATTERN.varname);
+      confVal = Hive.get().getMetaConf(ConfVars.PARTITION_NAME_WHITELIST_PATTERN.getVarname());
     } catch (HiveException e) {
       throw new SemanticException(e);
     }
     this.whiteListPattern = confVal == null || confVal.isEmpty() ? null : Pattern.compile(confVal);
+    this.customPartitionExpressions = new LinkedList<>();
     this.customSortExpressions = new LinkedList<>();
+    this.customSortOrder = new LinkedList<>();
+    this.customSortNullOrder = new LinkedList<>();
   }
 
   public DynamicPartitionCtx(DynamicPartitionCtx dp) {
@@ -140,7 +152,12 @@ public class DynamicPartitionCtx implements Serializable {
     this.defaultPartName = dp.defaultPartName;
     this.maxPartsPerNode = dp.maxPartsPerNode;
     this.whiteListPattern = dp.whiteListPattern;
-    this.customSortExpressions = dp.customSortExpressions;
+    this.customPartitionExpressions = new LinkedList<>();
+    addCustomPartitionExpressions(dp.customPartitionExpressions);
+    this.customSortExpressions = new LinkedList<>();
+    addCustomSortExpressions(dp.customSortExpressions);
+    this.customSortOrder = dp.customSortOrder;
+    this.customSortNullOrder = dp.customSortNullOrder;
   }
 
   public Pattern getWhiteListPattern() {
@@ -227,11 +244,54 @@ public class DynamicPartitionCtx implements Serializable {
     return this.spPath;
   }
 
-  public List<Function<List<ExprNodeDesc>, ExprNodeDesc>> getCustomSortExpressions() {
-    return customSortExpressions;
+  public List<Function<List<ExprNodeDesc>, ExprNodeDesc>> getCustomPartitionExpressions() {
+    return customPartitionExpressions == null
+        ? Collections.emptyList()
+        : customPartitionExpressions;
   }
 
-  public void setCustomSortExpressions(List<Function<List<ExprNodeDesc>, ExprNodeDesc>> customSortExpressions) {
-    this.customSortExpressions = customSortExpressions;
+  public void addCustomPartitionExpressions(
+          List<Function<List<ExprNodeDesc>, ExprNodeDesc>> customPartitionExpressions) {
+    if (!org.apache.commons.collections.CollectionUtils.isEmpty(customPartitionExpressions)) {
+      this.customPartitionExpressions.addAll(customPartitionExpressions);
+    }
+  }
+
+  public List<Function<List<ExprNodeDesc>, ExprNodeDesc>> getCustomSortExpressions() {
+    return customSortExpressions == null
+        ? Collections.emptyList()
+        : customSortExpressions;
+  }
+
+  public void addCustomSortExpressions(
+          List<Function<List<ExprNodeDesc>, ExprNodeDesc>> customSortExpressions) {
+    if (!CollectionUtils.isEmpty(customSortExpressions)) {
+      this.hasCustomPartitionOrSortExpr = true;
+      this.customSortExpressions.addAll(customSortExpressions);
+    }
+  }
+
+  public List<Integer> getCustomSortOrder() {
+    return customSortOrder;
+  }
+
+  public void setCustomSortOrder(List<Integer> customSortOrder) {
+    this.customSortOrder = customSortOrder;
+  }
+
+  public List<Integer> getCustomSortNullOrder() {
+    return customSortNullOrder;
+  }
+
+  public void setCustomSortNullOrder(List<Integer> customSortNullOrder) {
+    this.customSortNullOrder = customSortNullOrder;
+  }
+
+  public boolean hasCustomPartitionOrSortExpression() {
+    return hasCustomPartitionOrSortExpr;
+  }
+
+  public void setHasCustomPartitionOrSortExpression(boolean hasCustomPartitionOrSortExpr) {
+    this.hasCustomPartitionOrSortExpr = hasCustomPartitionOrSortExpr;
   }
 }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.client;
@@ -588,8 +589,11 @@ public class TestGetPartitions extends MetaStoreClientTest {
     Assert.assertEquals(catName, fetched.getCatName());
     Assert.assertEquals("a0", fetched.getValues().get(0));
 
-    List<Partition> fetchedParts = client.getPartitionsByNames(catName, dbName, tableName,
+    GetPartitionsByNamesRequest req = MetaStoreUtils.convertToGetPartitionsByNamesRequest(
+        MetaStoreUtils.prependCatalogToDbName(catName, dbName, metaStore.getConf()),
+        tableName,
         Arrays.asList("partcol=a0", "partcol=a1"));
+    List<Partition> fetchedParts = client.getPartitionsByNames(req).getPartitions();
     Assert.assertEquals(2, fetchedParts.size());
     Set<String> vals = new HashSet<>(fetchedParts.size());
     for (Partition part : fetchedParts) {
@@ -626,8 +630,11 @@ public class TestGetPartitions extends MetaStoreClientTest {
   @ConditionalIgnoreOnSessionHiveMetastoreClient
   public void getPartitionsByNamesBogusCatalog() throws TException {
     createTable3PartCols1Part(client);
-    client.getPartitionsByNames("bogus", DB_NAME, TABLE_NAME,
+    GetPartitionsByNamesRequest req = MetaStoreUtils.convertToGetPartitionsByNamesRequest(
+        MetaStoreUtils.prependCatalogToDbName("bogus", DB_NAME, metaStore.getConf()),
+        TABLE_NAME,
         Collections.singletonList("yyyy=1997/mm=05/dd=16"));
+    client.getPartitionsByNames(req);
   }
 
 }

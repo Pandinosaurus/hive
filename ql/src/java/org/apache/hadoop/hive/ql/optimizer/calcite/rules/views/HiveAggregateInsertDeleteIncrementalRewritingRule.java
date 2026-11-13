@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to you under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.rules.views;
 
@@ -30,15 +32,16 @@ import org.apache.calcite.sql.SqlAggFunction;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.tools.RelBuilder;
+import org.apache.hadoop.hive.ql.ddl.view.materialized.alter.rebuild.AlterMaterializedViewRebuildAnalyzer;
+import org.apache.hadoop.hive.ql.optimizer.calcite.HiveCalciteUtil;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelFactories;
-
-import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveHepExtractRelNodeRule;
 
 /**
  * This rule will perform a rewriting to prepare the plan for incremental
  * view maintenance in case there exist aggregation operator, so we can
  * avoid the INSERT OVERWRITE and use a MERGE statement instead.
- *
+ * <br>
+ * <pre>
  * In particular, the INSERT OVERWRITE maintenance will look like this
  * (in SQL):
  * INSERT OVERWRITE mv
@@ -52,8 +55,9 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveHepExtractRelNodeRu
  *   WHERE TAB_A.ROW_ID &gt; 5
  *   GROUP BY a, b) inner_subq
  * GROUP BY a, b;
- *
+ * </pre>
  * We need to transform that into:
+ * <pre>
  * MERGE INTO mv
  * USING (
  *   SELECT a, b, SUM(x) AS s, COUNT(*) AS c --NEW DATA
@@ -67,8 +71,9 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveHepExtractRelNodeRu
  * WHEN MATCHED AND countStar = 0 THEN DELETE
  * WHEN NOT MATCHED
  *   THEN INSERT VALUES (source.a, source.b, s, c);
- *
+ * </pre>
  * To be precise, we need to convert it into a MERGE rewritten as:
+ * <pre>
  * FROM (select *, true flag from mv) mv right outer join _source_ source
  * ON (mv.a &lt;=&gt; source.a AND mv.b &lt;=&gt; source.b)
  * INSERT INTO TABLE mv                                       &lt;- (insert new rows into the view)
@@ -90,8 +95,9 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.rules.HiveHepExtractRelNodeRu
  *   SELECT mv.ROW__ID
  *   WHERE mv.flag AND countStar = 0
  *   SORT BY mv.ROW__ID;
+ * </pre>
  *
- * @see org.apache.hadoop.hive.ql.parse.CalcitePlanner
+ * @see AlterMaterializedViewRebuildAnalyzer
  */
 public class HiveAggregateInsertDeleteIncrementalRewritingRule extends HiveAggregateIncrementalRewritingRuleBase<
         HiveAggregateInsertDeleteIncrementalRewritingRule.IncrementalComputePlanWithDeletedRows> {
@@ -113,10 +119,13 @@ public class HiveAggregateInsertDeleteIncrementalRewritingRule extends HiveAggre
     RelNode aggInput = aggregate.getInput();
 
     // Propagate rowIsDeleted column
-    aggInput = HiveHepExtractRelNodeRule.execute(aggInput);
+    aggInput = HiveCalciteUtil.stripHepVertices(aggInput);
     aggInput = new HiveRowIsDeletedPropagator(relBuilder).propagate(aggInput);
 
-    int rowIsDeletedIdx = aggInput.getRowType().getFieldCount() - 1;
+    // The row schema has two additional columns after propagation:
+    // rowIsDeleted is the last but one
+    // col0 ... coln, _any_deleted, _any_inserted
+    int rowIsDeletedIdx = aggInput.getRowType().getFieldCount() - 2;
     RexNode rowIsDeletedNode = rexBuilder.makeInputRef(
             aggInput.getRowType().getFieldList().get(rowIsDeletedIdx).getType(), rowIsDeletedIdx);
 
@@ -130,7 +139,7 @@ public class HiveAggregateInsertDeleteIncrementalRewritingRule extends HiveAggre
     List<RelBuilder.AggCall> newAggregateCalls = new ArrayList<>(aggregate.getAggCallList().size());
     for (int i = 0; i < aggregate.getAggCallList().size(); ++i) {
       AggregateCall aggregateCall = aggregate.getAggCallList().get(i);
-      if (aggregateCall.getAggregation().getKind() == SqlKind.COUNT && aggregateCall.getArgList().size() == 0) {
+      if (aggregateCall.getAggregation().getKind() == SqlKind.COUNT && aggregateCall.getArgList().isEmpty()) {
         countIdx = i + aggregate.getGroupCount();
       }
 

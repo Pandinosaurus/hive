@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.processors;
@@ -37,7 +38,8 @@ public enum HiveCommand {
   LLAP_CACHE(),
   RELOAD(),
   DELETE(),
-  COMPILE();
+  COMPILE(),
+  PROCESSLIST();
 
   public static final boolean ONLY_FOR_TESTING = true;
   private boolean usedOnlyForTesting;
@@ -82,13 +84,16 @@ public enum HiveCommand {
         return null;//don't want set autocommit true|false to get mixed with set hive.foo.bar...
       } else if (command.length > 1 && "llap".equalsIgnoreCase(command[0])) {
         return getLlapSubCommand(command);
+      } else if (command.length > 1 && "show".equalsIgnoreCase(command[0]) &&
+          "processlist".equalsIgnoreCase(command[1])) {
+        return PROCESSLIST;
+      } else if (command.length > 1 && "set".equalsIgnoreCase(command[0]) && "catalog".equalsIgnoreCase(command[1])) {
+        return null;// set catalog catalog_name should be a SQLOperation instead of a HiveCommandOperation
       } else if (COMMANDS.contains(cmd)) {
         HiveCommand hiveCommand = HiveCommand.valueOf(cmd);
-
         if (findOnlyForTesting == hiveCommand.isOnlyForTesting()) {
           return hiveCommand;
         }
-
         return null;
       }
     }

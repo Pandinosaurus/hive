@@ -9,15 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.externalDB;
 
-public class Oracle extends AbstractExternalDB {
+public class Oracle extends DockerizedDatabase {
   @Override
   public String getRootUser() {
     return "SYS as SYSDBA";
@@ -30,7 +31,7 @@ public class Oracle extends AbstractExternalDB {
 
   @Override
   public String getJdbcUrl() {
-    return "jdbc:oracle:thin:@//" + getContainerHostAddress() + ":1521/xe";
+    return "jdbc:oracle:thin:@//" + getContainerHostAddress() + ":" + getPort() + "/xe";
   }
 
   @Override
@@ -39,13 +40,18 @@ public class Oracle extends AbstractExternalDB {
   }
 
   @Override
+  protected int getPort() {
+    return 1521;
+  }
+
+  @Override
   protected String getDockerImageName() {
-    return "pvargacl/oracle-xe-18.4.0";
+    return "abstractdog/oracle-xe:18.4.0-slim";
   }
 
   @Override
   protected String[] getDockerAdditionalArgs() {
-    return new String[] { "-p", "1521:1521", "-d" };
+    return new String[] { "-p", getPort() + ":1521", "-d", "-e", "ORACLE_PASSWORD=" + getRootPassword() };
   }
 
   @Override

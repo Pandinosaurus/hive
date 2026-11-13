@@ -29,13 +29,16 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.HMSHandler;
+import org.apache.hadoop.hive.metastore.HMSHandlerProxyFactory;
 import org.apache.hadoop.hive.metastore.IHMSHandler;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
-import org.apache.hadoop.hive.metastore.RetryingHMSHandler;
 import org.apache.hadoop.hive.metastore.TSetIpAddressProcessor;
+import org.apache.hadoop.hive.metastore.TUGIBasedProcessor;
 import org.apache.hadoop.hive.metastore.api.GetTableRequest;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
+import org.apache.hadoop.hive.metastore.security.TUGIContainingTransport;
 import org.apache.hadoop.hive.metastore.utils.TestTxnDbUtil;
 import org.apache.iceberg.ClientPool;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -43,16 +46,17 @@ import org.apache.iceberg.common.DynConstructors;
 import org.apache.iceberg.common.DynMethods;
 import org.apache.iceberg.hadoop.Util;
 import org.apache.thrift.TException;
+import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportFactory;
-import org.junit.Assert;
 
 import static java.nio.file.Files.createTempDirectory;
 import static java.nio.file.attribute.PosixFilePermissions.asFileAttribute;
 import static java.nio.file.attribute.PosixFilePermissions.fromString;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestHiveMetastore {
 
@@ -67,8 +71,8 @@ public class TestHiveMetastore {
           .build();
 
   private static final DynMethods.StaticMethod GET_BASE_HMS_HANDLER = DynMethods.builder("getProxy")
-          .impl(RetryingHMSHandler.class, Configuration.class, IHMSHandler.class, boolean.class)
-          .impl(RetryingHMSHandler.class, HiveConf.class, IHMSHandler.class, boolean.class)
+          .impl(HMSHandlerProxyFactory.class, Configuration.class, IHMSHandler.class, boolean.class)
+          .impl(HMSHandlerProxyFactory.class, HiveConf.class, IHMSHandler.class, boolean.class)
           .buildStatic();
 
   // Hive3 introduces background metastore tasks (MetastoreTaskThread) for performing various cleanup duties. These
@@ -103,7 +107,7 @@ public class TestHiveMetastore {
         FileSystem fs = Util.getFs(localDirPath, new Configuration());
         String errMsg = "Failed to delete " + localDirPath;
         try {
-          Assert.assertTrue(errMsg, fs.delete(localDirPath, true));
+          assertThat(fs.delete(localDirPath, true)).as(errMsg).isTrue();
         } catch (IOException e) {
           throw new RuntimeException(errMsg, e);
         }
@@ -140,10 +144,21 @@ public class TestHiveMetastore {
    * @param poolSize The number of threads in the executor pool
    */
   public void start(HiveConf conf, int poolSize) {
+    start(conf, poolSize, false);
+  }
+
+  /**
+   * Starts a TestHiveMetastore with a provided connection pool size and HiveConf.
+   *
+   * @param conf The hive configuration to use
+   * @param poolSize The number of threads in the executor pool
+   * @param directSql Used to turn on directSql
+   */
+  public void start(HiveConf conf, int poolSize, boolean directSql) {
     try {
       TServerSocket socket = new TServerSocket(0);
       int port = socket.getServerSocket().getLocalPort();
-      initConf(conf, port);
+      initConf(conf, port, directSql);
 
       this.hiveConf = conf;
       this.server = newThriftServer(socket, poolSize, hiveConf);
@@ -151,7 +166,7 @@ public class TestHiveMetastore {
       this.executorService.submit(() -> server.serve());
 
       // in Hive3, setting this as a system prop ensures that it will be picked up whenever a new HiveConf is created
-      System.setProperty(HiveConf.ConfVars.METASTOREURIS.varname, hiveConf.getVar(HiveConf.ConfVars.METASTOREURIS));
+      System.setProperty(HiveConf.ConfVars.METASTORE_URIS.varname, hiveConf.getVar(HiveConf.ConfVars.METASTORE_URIS));
 
       this.clientPool = new HiveClientPool(1, hiveConf);
     } catch (Exception e) {
@@ -229,13 +244,22 @@ public class TestHiveMetastore {
 
   private TServer newThriftServer(TServerSocket socket, int poolSize, HiveConf conf) throws Exception {
     HiveConf serverConf = new HiveConf(conf);
-    serverConf.set(HiveConf.ConfVars.METASTORECONNECTURLKEY.varname, "jdbc:derby:" + DERBY_PATH + ";create=true");
+    serverConf.set(HiveConf.ConfVars.METASTORE_CONNECT_URL_KEY.varname, "jdbc:derby:" + DERBY_PATH + ";create=true");
     baseHandler = HMS_HANDLER_CTOR.newInstance("new db based metaserver", serverConf);
     IHMSHandler handler = GET_BASE_HMS_HANDLER.invoke(serverConf, baseHandler, false);
 
+    TProcessor processor;
+    TTransportFactory transportFactory;
+    if (MetastoreConf.getBoolVar(conf, ConfVars.EXECUTE_SET_UGI)) {
+      processor = new TUGIBasedProcessor<>(handler);
+      transportFactory = new TUGIContainingTransport.Factory();
+    } else {
+      processor = new TSetIpAddressProcessor<>(handler);
+      transportFactory = new TTransportFactory();
+    }
     TThreadPoolServer.Args args = new TThreadPoolServer.Args(socket)
-        .processor(new TSetIpAddressProcessor<>(handler))
-        .transportFactory(new TTransportFactory())
+        .processor(processor)
+        .transportFactory(transportFactory)
         .protocolFactory(new TBinaryProtocol.Factory())
         .minWorkerThreads(poolSize)
         .maxWorkerThreads(poolSize);
@@ -243,12 +267,12 @@ public class TestHiveMetastore {
     return new TThreadPoolServer(args);
   }
 
-  private void initConf(HiveConf conf, int port) {
-    conf.set(HiveConf.ConfVars.METASTOREURIS.varname, "thrift://localhost:" + port);
-    conf.set(HiveConf.ConfVars.METASTOREWAREHOUSE.varname, "file:" + HIVE_WAREHOUSE_DIR.getAbsolutePath());
+  private void initConf(HiveConf conf, int port, boolean directSql) {
+    conf.set(HiveConf.ConfVars.METASTORE_URIS.varname, "thrift://localhost:" + port);
+    conf.set(HiveConf.ConfVars.METASTORE_WAREHOUSE.varname, "file:" + HIVE_WAREHOUSE_DIR.getAbsolutePath());
     conf.set(HiveConf.ConfVars.HIVE_METASTORE_WAREHOUSE_EXTERNAL.varname,
         "file:" + HIVE_EXTERNAL_WAREHOUSE_DIR.getAbsolutePath());
-    conf.set(HiveConf.ConfVars.METASTORE_TRY_DIRECT_SQL.varname, "false");
+    conf.set(HiveConf.ConfVars.METASTORE_TRY_DIRECT_SQL.varname, String.valueOf(directSql));
     conf.set(HiveConf.ConfVars.METASTORE_DISALLOW_INCOMPATIBLE_COL_TYPE_CHANGES.varname, "false");
     conf.set("iceberg.hive.client-pool-size", "2");
     // set to false so that TxnManager#checkLock does not throw exception when using UNSET data type operation

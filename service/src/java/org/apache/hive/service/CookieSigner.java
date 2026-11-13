@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service;
@@ -76,10 +77,8 @@ public class CookieSigner {
     String rawValue = signedStr.substring(0, index);
     String currentSignature = getSignature(rawValue);
 
-    LOG.debug("Signature generated for {} inside verify is {}", rawValue, currentSignature);
     if (!MessageDigest.isEqual(originalSignature.getBytes(), currentSignature.getBytes())) {
-      throw new IllegalArgumentException("Invalid sign, original = " + originalSignature +
-        " current = " + currentSignature);
+      throw new IllegalArgumentException("Invalid sign= " + originalSignature);
     }
     return rawValue;
   }

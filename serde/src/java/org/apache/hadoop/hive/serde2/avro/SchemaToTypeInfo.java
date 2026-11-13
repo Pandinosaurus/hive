@@ -7,13 +7,14 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.serde2.avro;
 
@@ -179,8 +180,7 @@ class SchemaToTypeInfo {
       return TypeInfoFactory.dateTypeInfo;
     }
 
-    if (type == LONG &&
-      AvroSerDe.TIMESTAMP_TYPE_NAME.equals(schema.getProp(AvroSerDe.AVRO_PROP_LOGICAL_TYPE))) {
+    if (type == LONG && isTimestampType(schema)) {
       return TypeInfoFactory.timestampTypeInfo;
     }
 
@@ -195,6 +195,25 @@ class SchemaToTypeInfo {
       value = Integer.parseInt((String)obj);
     }
     return value;
+  }
+
+  /**
+   * Checks if the given Avro schema represents a timestamp type
+   * based on its logical type property.
+   */
+  public static boolean isTimestampType(Schema schema) {
+    if (schema == null) {
+      return false;
+    }
+
+    String logicalType = schema.getProp(AvroSerDe.AVRO_PROP_LOGICAL_TYPE);
+    if (logicalType == null) {
+      return false;
+    }
+
+    // Supported timestamp logical types (extend this set as needed)
+    return AvroSerDe.TIMESTAMP_TYPE_NAME_MILLIS.equalsIgnoreCase(logicalType) ||
+            AvroSerDe.TIMESTAMP_TYPE_NAME_MICROS.equalsIgnoreCase(logicalType);
   }
 
   private static TypeInfo generateTypeInfoWorker(Schema schema,

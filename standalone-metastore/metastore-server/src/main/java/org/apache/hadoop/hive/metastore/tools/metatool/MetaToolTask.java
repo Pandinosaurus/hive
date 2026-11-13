@@ -9,28 +9,29 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.tools.metatool;
 
-import org.apache.hadoop.hive.metastore.ObjectStore;
+import org.apache.hadoop.hive.metastore.tools.MetaToolObjectStore;
 
 abstract class MetaToolTask {
-  private ObjectStore objectStore;
+  private MetaToolObjectStore objectStore;
   private HiveMetaToolCommandLine cl;
 
   abstract void execute();
 
-  void setObjectStore(ObjectStore objectStore) {
+  void setObjectStore(MetaToolObjectStore objectStore) {
     this.objectStore = objectStore;
   }
 
-  protected ObjectStore getObjectStore() {
+  protected MetaToolObjectStore getObjectStore() {
     return objectStore;
   }
 

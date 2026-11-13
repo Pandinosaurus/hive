@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.model;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MPartition {
-
+  private long id;
   private String partitionName; // partitionname ==>  (key=value/)*(key=value)
   private MTable table; 
   private List<String> values;
@@ -31,7 +32,6 @@ public class MPartition {
   private MStorageDescriptor sd;
   private Map<String, String> parameters;
   private long writeId;
-  
   public MPartition() {}
   
   /**
@@ -158,5 +158,9 @@ public class MPartition {
 
   public void setWriteId(long writeId) {
     this.writeId = writeId;
+  }
+
+  public long getId() {
+    return id;
   }
 }

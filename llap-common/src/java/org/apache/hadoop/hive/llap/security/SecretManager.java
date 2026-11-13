@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.security;
 
@@ -24,15 +25,12 @@ import java.security.PrivilegedAction;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.curator.ensemble.fixed.FixedEnsembleProvider;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.RetryOneTime;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.ZooKeeperHiveHelper;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.llap.LlapUtil;
-import org.apache.hadoop.hive.llap.security.LlapTokenIdentifier;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.security.SecurityUtil;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -165,13 +163,20 @@ public class SecretManager extends ZKDelegationTokenSecretManager<LlapTokenIdent
 
   private static LlapZkConf createLlapZkConf(
       Configuration conf, String llapPrincipal, String llapKeytab, String clusterId) {
-     // Override the default delegation token lifetime for LLAP.
-     // Also set all the necessary ZK settings to defaults and LLAP configs, if not set.
-     final Configuration zkConf = new Configuration(conf);
+    // Override the default delegation token lifetime for LLAP.
+    // Also set all the necessary ZK settings to defaults and LLAP configs, if not set.
+    final Configuration zkConf = new Configuration(conf);
     long tokenLifetime = HiveConf.getTimeVar(
         conf, ConfVars.LLAP_DELEGATION_TOKEN_LIFETIME, TimeUnit.SECONDS);
     zkConf.setLong(DelegationTokenManager.MAX_LIFETIME, tokenLifetime);
-    zkConf.setLong(DelegationTokenManager.RENEW_INTERVAL, tokenLifetime);
+
+    long tokenRenewInterval = HiveConf.getTimeVar(
+        conf, ConfVars.LLAP_DELEGATION_TOKEN_RENEW_INTERVAL, TimeUnit.SECONDS);
+    zkConf.setLong(DelegationTokenManager.RENEW_INTERVAL, tokenRenewInterval);
+
+    LOG.info("SecretManager ZkConf created: tokenLifetime {}, tokenRenewInterval: {}", tokenLifetime,
+        tokenRenewInterval);
+
     try {
       zkConf.set(ZK_DTSM_ZK_KERBEROS_PRINCIPAL,
           SecurityUtil.getServerPrincipal(llapPrincipal, "0.0.0.0"));
@@ -195,6 +200,19 @@ public class SecretManager extends ZKDelegationTokenSecretManager<LlapTokenIdent
     setZkConfIfNotSet(zkConf, ZK_DTSM_ZK_CONNECTION_STRING,
         HiveConf.getVar(zkConf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_STRING));
 
+    if (HiveConf.getBoolVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_ENABLED)) {
+      setZkConfIfNotSet(zkConf, ZK_DTSM_ZK_SSL_ENABLED,
+              HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_ENABLED));
+      setZkConfIfNotSet(zkConf, ZK_DTSM_ZK_SSL_KEYSTORE_LOCATION,
+              HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_KEYSTORE_LOCATION));
+      setZkConfIfNotSet(zkConf, ZK_DTSM_ZK_SSL_KEYSTORE_PASSWORD,
+              HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_KEYSTORE_PASSWORD));
+      setZkConfIfNotSet(zkConf, ZK_DTSM_ZK_SSL_TRUSTSTORE_LOCATION,
+              HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_TRUSTSTORE_LOCATION));
+      setZkConfIfNotSet(zkConf, ZK_DTSM_ZK_SSL_TRUSTSTORE_PASSWORD,
+              HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_TRUSTSTORE_PASSWORD));
+    }
+    
     UserGroupInformation zkUgi = null;
     try {
       zkUgi = LlapUtil.loginWithKerberos(llapPrincipal, llapKeytab);
@@ -248,7 +266,6 @@ public class SecretManager extends ZKDelegationTokenSecretManager<LlapTokenIdent
     }
     LlapTokenIdentifier llapId = new LlapTokenIdentifier(
         new Text(user), renewer, realUser, clusterId, appId, isSignatureRequired);
-    // TODO: note that the token is not renewable right now and will last for 2 weeks by default.
     Token<LlapTokenIdentifier> token = new Token<LlapTokenIdentifier>(llapId, this);
     LOG.info("Created LLAP token {}", token);
     return token;
@@ -262,10 +279,23 @@ public class SecretManager extends ZKDelegationTokenSecretManager<LlapTokenIdent
   private static void checkRootAcls(Configuration conf, String path, String user) {
     int stime = conf.getInt(ZK_DTSM_ZK_SESSION_TIMEOUT, ZK_DTSM_ZK_SESSION_TIMEOUT_DEFAULT),
         ctime = conf.getInt(ZK_DTSM_ZK_CONNECTION_TIMEOUT, ZK_DTSM_ZK_CONNECTION_TIMEOUT_DEFAULT);
-    CuratorFramework zkClient = CuratorFrameworkFactory.builder().namespace(null)
-        .retryPolicy(new RetryOneTime(10)).sessionTimeoutMs(stime).connectionTimeoutMs(ctime)
-        .ensembleProvider(new FixedEnsembleProvider(conf.get(ZK_DTSM_ZK_CONNECTION_STRING)))
-        .build();
+
+    CuratorFramework zkClient = null;
+    if (HiveConf.getBoolVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_ENABLED)) {
+      zkClient = ZooKeeperHiveHelper.builder().quorum(conf.get(ZK_DTSM_ZK_CONNECTION_STRING))
+              .maxRetries(1).baseSleepTime(10).sessionTimeout(stime).connectionTimeout(ctime)
+              .sslEnabled(HiveConf.getBoolVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_ENABLED))
+              .keyStoreLocation(HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_KEYSTORE_LOCATION))
+              .keyStorePassword(HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_KEYSTORE_PASSWORD))
+              .trustStoreLocation(HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_TRUSTSTORE_LOCATION))
+              .trustStorePassword(HiveConf.getVar(conf, ConfVars.LLAP_ZKSM_ZK_CONNECTION_SSL_TRUSTSTORE_PASSWORD))
+              .build().getNewZookeeperClient();
+    } else {
+      zkClient = ZooKeeperHiveHelper.builder().quorum(conf.get(ZK_DTSM_ZK_CONNECTION_STRING))
+              .maxRetries(1).baseSleepTime(10).sessionTimeout(stime).connectionTimeout(ctime)
+              .build().getNewZookeeperClient();
+    }
+
     // Hardcoded from a private field in ZKDelegationTokenSecretManager.
     // We need to check the path under what it sets for namespace, since the namespace is
     // created with world ACLs.

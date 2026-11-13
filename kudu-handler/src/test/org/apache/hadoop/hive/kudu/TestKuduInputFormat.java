@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.kudu;
 
@@ -39,13 +40,15 @@ import org.apache.kudu.Schema;
 import org.apache.kudu.Type;
 import org.apache.kudu.client.CreateTableOptions;
 import org.apache.kudu.client.Insert;
+import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduSession;
 import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.PartialRow;
 import org.apache.kudu.client.RowResult;
-import org.apache.kudu.test.KuduTestHarness;
+import org.apache.kudu.test.cluster.MiniKuduCluster;
+
+import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import java.math.BigDecimal;
@@ -99,30 +102,40 @@ public class TestKuduInputFormat {
     // Not setting the "default" column.
   }
 
-  @Rule
-  public KuduTestHarness harness = new KuduTestHarness();
+  private MiniKuduCluster cluster;
+  private KuduClient client;
 
   @Before
   public void setUp() throws Exception {
+    cluster = new MiniKuduCluster.MiniKuduClusterBuilder().numMasterServers(3).numTabletServers(3).build();
+    client = new KuduClient.KuduClientBuilder(cluster.getMasterAddressesAsString()).build();
     // Set the base configuration values.
-    BASE_CONF.set(KUDU_MASTER_ADDRS_KEY, harness.getMasterAddressesAsString());
+    BASE_CONF.set(KUDU_MASTER_ADDRS_KEY, cluster.getMasterAddressesAsString());
     BASE_CONF.set(KUDU_TABLE_NAME_KEY, TABLE_NAME);
     BASE_CONF.set(FileInputFormat.INPUT_DIR, "dummy");
 
     // Create the test Kudu table.
     CreateTableOptions options = new CreateTableOptions()
         .setRangePartitionColumns(ImmutableList.of("key"));
-    harness.getClient().createTable(TABLE_NAME, SCHEMA, options);
+    client.createTable(TABLE_NAME, SCHEMA, options);
 
     // Insert a test row.
-    KuduTable table = harness.getClient().openTable(TABLE_NAME);
-    KuduSession session = harness.getClient().newSession();
+    KuduTable table = client.openTable(TABLE_NAME);
+    KuduSession session = client.newSession();
     Insert insert = table.newInsert();
     PartialRow insertRow = insert.getRow();
     // Use KuduWritable, to populate the insert row.
     new KuduWritable(ROW).populateRow(insertRow);
     session.apply(insert);
     session.close();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    if (client != null)
+      client.close();
+    if (cluster != null)
+      cluster.shutdown();
   }
 
   @Test
@@ -143,7 +156,7 @@ public class TestKuduInputFormat {
         (KuduRecordReader) input.getRecordReader(split, jobConf, null);
     assertTrue(reader.nextKeyValue());
     RowResult value = reader.getCurrentValue().getRowResult();
-    verfiyRow(value);
+    verifyRow(value);
     assertFalse(reader.nextKeyValue());
   }
 
@@ -226,11 +239,11 @@ public class TestKuduInputFormat {
     ));
     CreateTableOptions options = new CreateTableOptions()
         .addHashPartitions(Collections.singletonList("key"), 2);
-    harness.getClient().createTable(tableName, schema, options);
+    client.createTable(tableName, schema, options);
 
     // Insert multiple test rows.
-    KuduTable table = harness.getClient().openTable(tableName);
-    KuduSession session = harness.getClient().newSession();
+    KuduTable table = client.openTable(tableName);
+    KuduSession session = client.newSession();
     Insert insert1 = table.newInsert();
     PartialRow row1 = insert1.getRow();
     row1.addInt("key", 1);
@@ -256,8 +269,8 @@ public class TestKuduInputFormat {
   @Test
   public void testPredicate() throws Exception {
     // Insert a second test row that will be filtered out.
-    KuduTable table = harness.getClient().openTable(TABLE_NAME);
-    KuduSession session = harness.getClient().newSession();
+    KuduTable table = client.openTable(TABLE_NAME);
+    KuduSession session = client.newSession();
     Insert insert = table.newInsert();
     PartialRow row = insert.getRow();
     row.addByte("key", (byte) 2);
@@ -313,11 +326,11 @@ public class TestKuduInputFormat {
           (KuduRecordReader) input.getRecordReader(split, jobConf, null);
       assertTrue(reader.nextKeyValue());
       RowResult value = reader.getCurrentValue().getRowResult();
-      verfiyRow(value);
+      verifyRow(value);
       assertFalse("Extra row on column: " + col.getName(), reader.nextKeyValue());
     }
   }
-  private void verfiyRow(RowResult value) {
+  private void verifyRow(RowResult value) {
     assertEquals(SCHEMA.getColumnCount(), value.getSchema().getColumnCount());
     assertEquals(ROW.getByte(0), value.getByte(0));
     assertEquals(ROW.getShort(1), value.getShort(1));

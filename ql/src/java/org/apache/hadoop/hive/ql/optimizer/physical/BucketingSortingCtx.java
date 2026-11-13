@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.physical;
@@ -107,8 +108,8 @@ public class BucketingSortingCtx implements NodeProcessorCtx {
    * Classes that implement this interface provide a way to store information about equivalent
    * columns as their names and indexes in the schema change going into and out of operators.  The
    * definition of equivalent columns is up to the class which uses these classes, e.g.
-   * BucketingSortingOpProcFactory.  For example, two columns are equivalent if they
-   * contain exactly the same data.  Though, it's possible that two columns contain exactly the
+   * BucketingSortingOpProcFactory. For example, two columns are equivalent if they
+   * contain exactly the same data. Though, it's possible that two columns contain exactly the
    * same data and are not known to be equivalent.
    *
    * E.g. SELECT key a, key b FROM (SELECT key, count(*) c FROM src GROUP BY key) s;

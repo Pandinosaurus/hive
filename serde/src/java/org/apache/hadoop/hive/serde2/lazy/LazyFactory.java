@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.serde2.lazy;
@@ -68,6 +69,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.hive.serde2.typeinfo.UnionTypeInfo;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
@@ -370,6 +372,10 @@ public final class LazyFactory {
       return LazyObjectInspectorFactory.getLazyUnionObjectInspector(lazyOIs,
           LazyUtils.getSeparator(lazyParams.getSeparators(), separatorIndex),
           lazyParams);
+    case UNKNOWN:
+      // Unknown columns are always null and are not stored in data files.
+      return LazyPrimitiveObjectInspectorFactory.getLazyObjectInspector(
+          TypeInfoFactory.voidTypeInfo, lazyParams);
    }
 
     throw new RuntimeException("Hive LazySerDe Internal error.");

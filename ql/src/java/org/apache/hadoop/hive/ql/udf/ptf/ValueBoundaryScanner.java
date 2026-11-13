@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.ptf;
@@ -37,6 +38,7 @@ import org.apache.hadoop.hive.ql.plan.ptf.BoundaryDef;
 import org.apache.hadoop.hive.ql.plan.ptf.OrderDef;
 import org.apache.hadoop.hive.ql.plan.ptf.OrderExpressionDef;
 import org.apache.hadoop.hive.ql.plan.ptf.WindowFrameDef;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.io.HiveDecimalWritable;
 import org.apache.hadoop.hive.serde2.io.TimestampWritableV2;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorUtils;
@@ -746,6 +748,8 @@ abstract class SingleValueBoundaryScanner extends ValueBoundaryScanner {
       return new CharValueBoundaryScanner(start, end, exprDef, nullsLast);
     case VARCHAR:
       return new VarcharValueBoundaryScanner(start, end, exprDef, nullsLast);
+    case BOOLEAN:
+      return new BooleanValueBoundaryScanner(start, end, exprDef, nullsLast);
     default:
       throw new HiveException(String
           .format("Internal Error: attempt to setup a Window for datatype: '%s'", primitiveCategory));
@@ -755,24 +759,27 @@ abstract class SingleValueBoundaryScanner extends ValueBoundaryScanner {
   public static SingleValueBoundaryScanner getBoundaryScanner(BoundaryDef start, BoundaryDef end,
       boolean nullsLast, OrderExpressionDef exprDef, String typeString) throws HiveException {
     switch (typeString) {
-    case "int":
-    case "bigint":
-    case "smallint":
+    case serdeConstants.INT_TYPE_NAME:
+    case serdeConstants.BIGINT_TYPE_NAME:
+    case serdeConstants.SMALLINT_TYPE_NAME:
+    case serdeConstants.TINYINT_TYPE_NAME:
       return new LongPrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
-    case "timestamp":
+    case serdeConstants.TIMESTAMP_TYPE_NAME:
       return new TimestampPrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
-    case "double":
-    case "float":
+    case serdeConstants.DOUBLE_TYPE_NAME:
+    case serdeConstants.FLOAT_TYPE_NAME:
       return new DoublePrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
-    case "date":
+    case serdeConstants.DATE_TYPE_NAME:
       return new DatePrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
-    case "string":
+    case serdeConstants.STRING_TYPE_NAME:
       return new StringPrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
+    case serdeConstants.BOOLEAN_TYPE_NAME:
+      return new BooleanPrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
     default:
       // The following types includes scale/precision: "decimal(10,4), char(10) and varchar(15)"
-      if (typeString.startsWith("char") || typeString.startsWith("varchar")) {
+      if (typeString.startsWith(serdeConstants.CHAR_TYPE_NAME) || typeString.startsWith(serdeConstants.VARCHAR_TYPE_NAME)) {
         return new StringPrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
-      } else if (typeString.startsWith("decimal")) {
+      } else if (typeString.startsWith(serdeConstants.DECIMAL_TYPE_NAME)) {
         return new HiveDecimalPrimitiveValueBoundaryScanner(start, end, exprDef, nullsLast);
       }
       throw new HiveException(String
@@ -1221,6 +1228,23 @@ class StringPrimitiveValueBoundaryScanner extends SinglePrimitiveValueBoundarySc
   }
 }
 
+class BooleanPrimitiveValueBoundaryScanner extends SinglePrimitiveValueBoundaryScanner<Long> {
+  public BooleanPrimitiveValueBoundaryScanner(BoundaryDef start, BoundaryDef end,
+      OrderExpressionDef expressionDef, boolean nullsLast) {
+    super(start, end, expressionDef, nullsLast);
+  }
+
+  @Override
+  public boolean isDistanceGreaterPrimitive(Long s1, Long s2, int amt) {
+    return s1 != null && s2 != null && s1.compareTo(s2) > 0;
+  }
+
+  @Override
+  public boolean isEqualPrimitive(Long s1, Long s2) {
+    return (s1 == null && s2 == null) || (s1 != null && s1.equals(s2));
+  }
+}
+
 class CharValueBoundaryScanner extends SingleValueBoundaryScanner {
   public CharValueBoundaryScanner(BoundaryDef start, BoundaryDef end,
       OrderExpressionDef expressionDef, boolean nullsLast) {
@@ -1270,6 +1294,40 @@ class VarcharValueBoundaryScanner extends SingleValueBoundaryScanner {
     return (s1 == null && s2 == null) || (s1 != null && s1.equals(s2));
   }
 }
+
+class BooleanValueBoundaryScanner extends SingleValueBoundaryScanner {
+  public BooleanValueBoundaryScanner(BoundaryDef start, BoundaryDef end,
+      OrderExpressionDef expressionDef, boolean nullsLast) {
+    super(start, end, expressionDef, nullsLast);
+  }
+
+  @Override
+  public boolean isDistanceGreater(Object v1, Object v2, int amt) {
+    if (v1 != null && v2 != null) {
+      boolean b1 = PrimitiveObjectInspectorUtils.getBoolean(v1,
+          (PrimitiveObjectInspector) expressionDef.getOI());
+      boolean b2 = PrimitiveObjectInspectorUtils.getBoolean(v2,
+          (PrimitiveObjectInspector) expressionDef.getOI());
+
+      return Boolean.compare(b1, b2) > 0;
+    }
+    return false;
+  }
+
+  @Override
+  public boolean isEqual(Object v1, Object v2) {
+    if (v1 != null & v2 != null) {
+      boolean b1 = PrimitiveObjectInspectorUtils.getBoolean(v1,
+          (PrimitiveObjectInspector) expressionDef.getOI());
+      boolean b2 = PrimitiveObjectInspectorUtils.getBoolean(v2,
+          (PrimitiveObjectInspector) expressionDef.getOI());
+      return b1 == b2;
+    }
+    return v1 == null && v2 == null; // True if both are null
+  }
+}
+
+
 /*
  */
  class MultiValueBoundaryScanner extends ValueBoundaryScanner {

@@ -86,7 +86,7 @@ Stage-0
                     Select Operator [SEL_2] (runtime: rows=5 width=4)
                       Output:["_col0"]
                       Filter Operator [FIL_18] (runtime: rows=5 width=4)
-                        predicate:((u < 10) and (u > 2))
+                        predicate:((u > 2) and (u < 10))
                         TableScan [TS_0] (runtime: rows=8 width=4)
                           default@tx_n2,tx_n2,Tbl:COMPLETE,Col:COMPLETE,Output:["u"]
                 <-Map 4 [SIMPLE_EDGE] llap
@@ -99,12 +99,12 @@ Stage-0
                         TableScan [TS_3] (runtime: rows=5 width=4)
                           default@px,px,Tbl:COMPLETE,Col:COMPLETE,Output:["p"]
 
-PREHOOK: query: select sum(u*p) from tx_n2 join px on (u=p) where u<10 and p>2
+PREHOOK: query: select sum(`u`*`p`) from `tx_n2` join `px` on (`u`=`p`) where `u`<10 and `p`>2
 PREHOOK: type: QUERY
 PREHOOK: Input: default@px
 PREHOOK: Input: default@tx_n2
 #### A masked pattern was here ####
-POSTHOOK: query: select sum(u*p) from tx_n2 join px on (u=p) where u<10 and p>2
+POSTHOOK: query: select sum(`u`*`p`) from `tx_n2` join `px` on (`u`=`p`) where `u`<10 and `p`>2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: default@px
 POSTHOOK: Input: default@tx_n2
@@ -149,7 +149,7 @@ Stage-0
                     Select Operator [SEL_2] (rows=1/5 width=4)
                       Output:["_col0"]
                       Filter Operator [FIL_18] (rows=1/5 width=4)
-                        predicate:((u < 10) and (u > 2))
+                        predicate:((u > 2) and (u < 10))
                         TableScan [TS_0] (rows=8/8 width=4)
                           default@tx_n2,tx_n2,Tbl:COMPLETE,Col:COMPLETE,Output:["u"]
                 <-Map 4 [SIMPLE_EDGE] llap
@@ -162,12 +162,12 @@ Stage-0
                         TableScan [TS_3] (rows=5/5 width=4)
                           default@px,px,Tbl:COMPLETE,Col:COMPLETE,Output:["p"]
 
-PREHOOK: query: select sum(u*p) from tx_n2 join px on (u=p) where u<10 and p>2
+PREHOOK: query: select sum(`u`*`p`) from `tx_n2` join `px` on (`u`=`p`) where `u`<10 and `p`>2
 PREHOOK: type: QUERY
 PREHOOK: Input: default@px
 PREHOOK: Input: default@tx_n2
 #### A masked pattern was here ####
-POSTHOOK: query: select sum(u*p) from tx_n2 join px on (u=p) where u<10 and p>2
+POSTHOOK: query: select sum(`u`*`p`) from `tx_n2` join `px` on (`u`=`p`) where `u`<10 and `p`>2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: default@px
 POSTHOOK: Input: default@tx_n2
@@ -218,7 +218,7 @@ Stage-0
                 <-Select Operator [SEL_2] (rows=1/5 width=4)
                     Output:["_col0"]
                     Filter Operator [FIL_18] (rows=1/5 width=4)
-                      predicate:((u < 10) and (u > 2))
+                      predicate:((u > 2) and (u < 10))
                       TableScan [TS_0] (rows=8/8 width=4)
                         default@tx_n2,tx_n2,Tbl:COMPLETE,Col:COMPLETE,Output:["u"]
 
@@ -289,7 +289,7 @@ Caused by: org.apache.hadoop.hive.ql.exec.mapjoin.MapJoinMemoryExhaustionError: 
 Caused by: org.apache.hadoop.hive.ql.exec.mapjoin.MapJoinMemoryExhaustionError: assert_true_oom: assertion failed; Simulated OOM
 #### A masked pattern was here ####
 ]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:1 killedTasks:0, Vertex vertex_#ID# [Reducer 2] killed/failed due to:OWN_TASK_FAILURE]
-DAG did not succeed due to VERTEX_FAILURE. failedVertices:1 killedVertices:0
+DAG did not succeed due to VERTEX_FAILURE. failedVertices:1 killedVertices:#Masked#
 FAILED: Execution Error, return code 2 from org.apache.hadoop.hive.ql.exec.tez.TezTask. Vertex failed, vertexName=Reducer 2, vertexId=vertex_#ID#, diagnostics=[Task failed, taskId=task_#ID#, diagnostics=[TaskAttempt 0 failed, info=[Error: Error while running task ( failure ) : attempt_#ID#:java.lang.RuntimeException: org.apache.hadoop.hive.ql.exec.mapjoin.MapJoinMemoryExhaustionError: assert_true_oom: assertion failed; Simulated OOM
 #### A masked pattern was here ####
 Caused by: org.apache.hadoop.hive.ql.exec.mapjoin.MapJoinMemoryExhaustionError: assert_true_oom: assertion failed; Simulated OOM
@@ -298,7 +298,7 @@ Caused by: org.apache.hadoop.hive.ql.exec.mapjoin.MapJoinMemoryExhaustionError: 
 #### A masked pattern was here ####
 Caused by: org.apache.hadoop.hive.ql.exec.mapjoin.MapJoinMemoryExhaustionError: assert_true_oom: assertion failed; Simulated OOM
 #### A masked pattern was here ####
-]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:1 killedTasks:0, Vertex vertex_#ID# [Reducer 2] killed/failed due to:OWN_TASK_FAILURE]DAG did not succeed due to VERTEX_FAILURE. failedVertices:1 killedVertices:0
+]], Vertex did not succeed due to OWN_TASK_FAILURE, failedTasks:1 killedTasks:0, Vertex vertex_#ID# [Reducer 2] killed/failed due to:OWN_TASK_FAILURE]DAG did not succeed due to VERTEX_FAILURE. failedVertices:1 killedVertices:#Masked#
 PREHOOK: query: select assert_true_oom(2000 > sum(u*p)) from tx_n2 join px on (tx_n2.a=px.a) where u<10 and p>2
 PREHOOK: type: QUERY
 PREHOOK: Input: default@px

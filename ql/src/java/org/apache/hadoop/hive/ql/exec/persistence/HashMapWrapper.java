@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.persistence;
@@ -32,7 +33,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.ExprNodeEvaluator;
 import org.apache.hadoop.hive.ql.exec.JoinUtil;
-import org.apache.hadoop.hive.ql.exec.persistence.MapJoinTableContainer.NonMatchedSmallTableIterator;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorExpressionWriter;
 import org.apache.hadoop.hive.ql.exec.vector.wrapper.VectorHashKeyWrapperBase;
 import org.apache.hadoop.hive.ql.exec.vector.wrapper.VectorHashKeyWrapperBatch;
@@ -72,15 +72,15 @@ public class HashMapWrapper extends AbstractMapJoinTableContainer implements Ser
   }
 
   public HashMapWrapper() {
-    this(HiveConf.ConfVars.HIVEHASHTABLEKEYCOUNTADJUSTMENT.defaultFloatVal,
-        HiveConf.ConfVars.HIVEHASHTABLETHRESHOLD.defaultIntVal,
-        HiveConf.ConfVars.HIVEHASHTABLELOADFACTOR.defaultFloatVal, -1);
+    this(HiveConf.ConfVars.HIVE_HASHTABLE_KEY_COUNT_ADJUSTMENT.defaultFloatVal,
+        HiveConf.ConfVars.HIVE_HASHTABLE_THRESHOLD.defaultIntVal,
+        HiveConf.ConfVars.HIVE_HASHTABLE_LOAD_FACTOR.defaultFloatVal, -1);
   }
 
   public HashMapWrapper(Configuration hconf, long keyCount) {
-    this(HiveConf.getFloatVar(hconf, HiveConf.ConfVars.HIVEHASHTABLEKEYCOUNTADJUSTMENT),
-        HiveConf.getIntVar(hconf, HiveConf.ConfVars.HIVEHASHTABLETHRESHOLD),
-        HiveConf.getFloatVar(hconf, HiveConf.ConfVars.HIVEHASHTABLELOADFACTOR), keyCount);
+    this(HiveConf.getFloatVar(hconf, HiveConf.ConfVars.HIVE_HASHTABLE_KEY_COUNT_ADJUSTMENT),
+        HiveConf.getIntVar(hconf, HiveConf.ConfVars.HIVE_HASHTABLE_THRESHOLD),
+        HiveConf.getFloatVar(hconf, HiveConf.ConfVars.HIVE_HASHTABLE_LOAD_FACTOR), keyCount);
   }
 
   private HashMapWrapper(float keyCountAdj, int threshold, float loadFactor, long keyCount) {

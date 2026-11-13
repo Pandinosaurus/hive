@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
       http://www.apache.org/licenses/LICENSE-2.0
+
   Unless required by applicable law or agreed to in writing, software
   distributed under the License is distributed on an "AS IS" BASIS,
   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,48 +20,61 @@
   <parent>
     <groupId>org.apache.hive</groupId>
     <artifactId>hive</artifactId>
-    <version>4.0.0-alpha-2-SNAPSHOT</version>
+    <version>4.3.0-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>hive-iceberg</artifactId>
-  <version>4.0.0-alpha-2-SNAPSHOT</version>
+  <version>4.3.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Hive Iceberg Modules</name>
   <properties>
     <hive.path.to.root>..</hive.path.to.root>
     <path.to.iceberg.root>.</path.to.iceberg.root>
-    <iceberg.version>0.13.1</iceberg.version>
-    <kryo-shaded.version>4.0.2</kryo-shaded.version>
-    <iceberg.mockito-core.version>3.4.4</iceberg.mockito-core.version>
-    <iceberg.avro.version>1.9.2</iceberg.avro.version>
-    <iceberg.kryo.version>4.0.2</iceberg.kryo.version>
-    <iceberg.checkstyle.plugin.version>3.1.2</iceberg.checkstyle.plugin.version>
-    <spotless.maven.plugin.version>2.5.0</spotless.maven.plugin.version>
-    <google.errorprone.javac.version>9+181-r4173-1</google.errorprone.javac.version>
-    <google.errorprone.version>2.5.1</google.errorprone.version>
-    <assertj.version>3.19.0</assertj.version>
-    <junit.jupiter.version>5.7.2</junit.jupiter.version>
+    <kryo-shaded.version>4.0.3</kryo-shaded.version>
+    <iceberg.mockito-core.version>5.2.0</iceberg.mockito-core.version>
+    <iceberg.avro.version>${avro.version}</iceberg.avro.version>
+    <!-- Must match parquet.version: the bundle embeds org.apache.parquet unrelocated. -->
+    <iceberg.parquet.version>${parquet.version}</iceberg.parquet.version>
+    <spotless.maven.plugin.version>2.44.4</spotless.maven.plugin.version>
+    <google.errorprone.version>2.29.2</google.errorprone.version>
+    <assertj.version>3.27.3</assertj.version>
+    <immutables.value.version>2.10.0</immutables.value.version>
     <validate.skip>false</validate.skip>
+    <caffeine.version>3.2.4</caffeine.version>
   </properties>
   <modules>
     <module>patched-iceberg-api</module>
     <module>patched-iceberg-core</module>
     <module>iceberg-shading</module>
     <module>iceberg-catalog</module>
+    <module>iceberg-rest-catalog-client</module>
     <module>iceberg-handler</module>
   </modules>
+  <dependencies>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-inline</artifactId>
+      <version>${iceberg.mockito-core.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.errorprone</groupId>
+      <artifactId>error_prone_annotations</artifactId>
+      <version>${google.errorprone.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
   <dependencyManagement>
     <dependencies>
       <dependency>
         <groupId>org.apache.hive</groupId>
         <artifactId>patched-iceberg-api</artifactId>
-        <version>patched-${iceberg.version}-${project.parent.version}</version>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.hive</groupId>
         <artifactId>patched-iceberg-core</artifactId>
-        <version>patched-${iceberg.version}-${project.parent.version}</version>
+        <version>${project.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.iceberg</groupId>
@@ -69,11 +88,6 @@
       </dependency>
       <dependency>
         <groupId>org.apache.iceberg</groupId>
-        <artifactId>iceberg-hive-metastore</artifactId>
-        <version>${iceberg.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.iceberg</groupId>
         <artifactId>iceberg-data</artifactId>
         <version>${iceberg.version}</version>
       </dependency>
@@ -81,6 +95,12 @@
         <groupId>org.apache.iceberg</groupId>
         <artifactId>iceberg-parquet</artifactId>
         <version>${iceberg.version}</version>
+      </dependency>
+      <!-- iceberg-data pulls parquet-avro, the root of the Parquet subtree the bundle embeds. -->
+      <dependency>
+        <groupId>org.apache.parquet</groupId>
+        <artifactId>parquet-avro</artifactId>
+        <version>${iceberg.parquet.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.iceberg</groupId>
@@ -90,6 +110,11 @@
       <dependency>
         <groupId>org.apache.hive</groupId>
         <artifactId>hive-iceberg-catalog</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.hive</groupId>
+        <artifactId>hive-iceberg-rest-catalog-client</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
@@ -139,7 +164,7 @@
       </dependency>
       <dependency>
         <groupId>org.apache.hive</groupId>
-        <artifactId>hive-standalone-metastore-common</artifactId>
+        <artifactId>hive-standalone-metastore-client</artifactId>
         <version>${standalone-metastore.version}</version>
       </dependency>
       <dependency>
@@ -194,11 +219,6 @@
         <version>${assertj.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-api</artifactId>
-        <version>${junit.jupiter.version}</version>
-      </dependency>
-      <dependency>
         <groupId>com.esotericsoftware</groupId>
         <artifactId>kryo-shaded</artifactId>
         <version>${kryo-shaded.version}</version>
@@ -207,6 +227,11 @@
         <groupId>org.mockito</groupId>
         <artifactId>mockito-inline</artifactId>
         <version>${iceberg.mockito-core.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.immutables</groupId>
+        <artifactId>value</artifactId>
+        <version>${immutables.value.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -256,14 +281,15 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>${iceberg.checkstyle.plugin.version}</version>
+        <version>${maven.checkstyle.plugin.version}</version>
         <configuration>
           <skip>${validate.skip}</skip>
           <propertyExpansion>config_loc=${basedir}/${path.to.iceberg.root}/checkstyle/</propertyExpansion>
           <configLocation>${basedir}/${path.to.iceberg.root}/checkstyle/checkstyle.xml</configLocation>
           <suppressionsLocation>${basedir}/${path.to.iceberg.root}/checkstyle/checkstyle-suppressions.xml</suppressionsLocation>
           <includeTestSourceDirectory>true</includeTestSourceDirectory>
-          <encoding>UTF-8</encoding>
+          <inputEncoding>UTF-8</inputEncoding>
+          <outputEncoding>UTF-8</outputEncoding>
           <consoleOutput>true</consoleOutput>
           <failsOnError>true</failsOnError>
         </configuration>
@@ -293,9 +319,19 @@
               <compilerArgs>
                 <arg>-XDcompilePolicy=simple</arg>
                 <arg>-Xplugin:ErrorProne -Xep:BanSerializableRead:WARN</arg>
-                <arg>-J-Xbootclasspath/p:${settings.localRepository}/com/google/errorprone/javac/${google.errorprone.javac.version}/javac-${google.errorprone.javac.version}.jar</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+                <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+                <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
               </compilerArgs>
-              <annotationProcessorPaths>
+              <proc combine.self="override">full</proc>
+              <annotationProcessorPaths combine.children="append">
                 <path>
                   <groupId>com.google.errorprone</groupId>
                   <artifactId>error_prone_core</artifactId>

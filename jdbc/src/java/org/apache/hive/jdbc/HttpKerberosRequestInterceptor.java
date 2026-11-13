@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc;
@@ -23,11 +24,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import javax.security.auth.Subject;
 
+import org.apache.hc.client5.http.cookie.CookieStore;
+import org.apache.hc.core5.http.HttpException;
+import org.apache.hc.core5.http.HttpRequest;
+import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hive.service.auth.HttpAuthUtils;
-import org.apache.http.HttpException;
-import org.apache.http.HttpRequest;
-import org.apache.http.client.CookieStore;
-import org.apache.http.protocol.HttpContext;
 
 /**
  * Authentication interceptor which adds Base64 encoded payload,
@@ -64,7 +65,8 @@ public class HttpKerberosRequestInterceptor extends HttpRequestInterceptorBase {
       // Set the session key token (Base64 encoded) in the headers
       httpRequest.addHeader(HttpAuthUtils.AUTHORIZATION + ": " + HttpAuthUtils.NEGOTIATE + " ", kerberosAuthHeader);
     } catch (Exception e) {
-      throw new HttpException(e.getMessage(), e);
+      // e.getMessage() is null at UndeclaredThrowableException
+      throw new HttpException("Failed to find any Kerberos ticket", e);
     } finally {
       kerberosLock.unlock();
     }

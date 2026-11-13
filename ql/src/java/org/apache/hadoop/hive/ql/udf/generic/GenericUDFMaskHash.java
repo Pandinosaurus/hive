@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -21,19 +22,33 @@ package org.apache.hadoop.hive.ql.udf.generic;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.hadoop.hive.common.type.Date;
 import org.apache.hadoop.hive.ql.exec.Description;
+import org.apache.hadoop.hive.ql.exec.MapredContext;
+import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.ql.session.SessionState;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Description(name = "mask_hash",
              value = "returns hash of the given value",
              extended = "Examples:\n "
                       + "  mask_hash(value)\n "
                       + "Arguments:\n "
-                      + "  value - value to mask. Supported types: STRING, VARCHAR, CHAR"
+                      + "  value - value to mask. Supported types: STRING, VARCHAR, CHAR\n "
+                      + "Note:\n "
+                      + "  The result is an unsalted, unkeyed SHA-256 digest (SHA-512 if hive.masking.algo=sha512).\n "
+                      + "  It is deterministic, so values from small or predictable domains (e.g. phone numbers,\n "
+                      + "  national IDs, dates) can be recovered by hashing every candidate value. For such\n "
+                      + "  columns prefer a nullifying or redacting mask."
             )
 public class GenericUDFMaskHash extends BaseMaskUDF {
   public static final String UDF_NAME = "mask_hash";
+
+  public void configure(MapredContext context) {
+    boolean isSha512 =
+        "sha512".equalsIgnoreCase(HiveConf.getVar(context.getJobConf(), HiveConf.ConfVars.HIVE_MASKING_ALGO).trim());
+    ((MaskHashTransformer) transformer).setSHA512(isSha512);
+  }
 
   public GenericUDFMaskHash() {
     super(new MaskHashTransformer(), UDF_NAME);
@@ -41,17 +56,38 @@ public class GenericUDFMaskHash extends BaseMaskUDF {
 }
 
 class MaskHashTransformer extends AbstractTransformer {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MaskHashTransformer.class);
+
+  private boolean isSHA512 = false;
   @Override
   public void init(ObjectInspector[] arguments, int startIdx) {
   }
 
+  public void setSHA512(boolean val) {
+    if (val) {
+      LOG.info("Using SHA512 for masking");
+    } else {
+      LOG.info("Using SHA256 for masking");
+    }
+    this.isSHA512 = val;
+  }
+
   @Override
   String transform(final String value) {
-    if("sha512".equalsIgnoreCase(HiveConf.getVar(SessionState.get().getConf(), HiveConf.ConfVars.HIVE_MASKING_ALGO).trim())){
+    if (getIsSHA512FromSessionConf() || isSHA512) {
       return DigestUtils.sha512Hex(value);
-    }else{
+    } else {
       return DigestUtils.sha256Hex(value);
     }
+  }
+
+  private boolean getIsSHA512FromSessionConf() {
+    if (SessionState.get() != null) {
+      return "sha512".equalsIgnoreCase(
+          HiveConf.getVar(SessionState.get().getConf(), HiveConf.ConfVars.HIVE_MASKING_ALGO).trim());
+    }
+    return false;
   }
 
   @Override

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common.jsonexplain;
@@ -75,8 +76,10 @@ public class TestVertex {
 
   @Test
   public void testExtractOpOneChild() throws Exception {
-    String jsonString = "{\"opName\":{\"children\":{\"childName\":" +
-            "{\"OperatorId:\":\"child-operator-id\"}}}}";
+    String jsonString = """
+            {"opName":{"children":{"childName":\
+            {"OperatorId:":"child-operator-id"}}}}\
+            """;
     JSONObject operator = new JSONObject(jsonString);
 
     Vertex uut = new Vertex("name", null, null, tezJsonParser);
@@ -90,9 +93,11 @@ public class TestVertex {
 
   @Test
   public void testExtractOpMultipleChildren() throws Exception {
-    String jsonString = "{\"opName\":{\"children\":[" +
-            "{\"childName1\":{\"OperatorId:\":\"child-operator-id1\"}}," +
-            "{\"childName2\":{\"OperatorId:\":\"child-operator-id2\"}}]}}";
+    String jsonString = """
+            {"opName":{"children":[\
+            {"childName1":{"OperatorId:":"child-operator-id1"}},\
+            {"childName2":{"OperatorId:":"child-operator-id2"}}]}}\
+            """;
     JSONObject operator = new JSONObject(jsonString);
 
     Vertex uut = new Vertex("name", null, null, tezJsonParser);

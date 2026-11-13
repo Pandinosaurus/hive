@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common;
 
@@ -79,6 +80,21 @@ public class HiveStatsUtils {
     }
     Path pathPattern = new Path(path, sb.toString());
     return Lists.newArrayList(fs.globStatus(pathPattern, FileUtils.HIDDEN_FILES_PATH_FILTER));
+  }
+
+  public static boolean computeHistograms(Configuration conf) {
+    return HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVE_STATS_KLL_ENABLE,
+        HiveConf.ConfVars.HIVE_STATS_KLL_ENABLE.defaultBoolVal);
+  }
+
+  public static int getKParamForKllSketch(Configuration conf) {
+    int k = HiveConf.getIntVar(conf, HiveConf.ConfVars.HIVE_STATS_KLL_K_PARAM);
+
+    if (k < 8 || k > 65535) {
+      throw new IllegalArgumentException(HiveConf.ConfVars.HIVE_STATS_KLL_K_PARAM.varname +
+          " must be in the range [8, 65535], got " + k);
+    }
+    return k;
   }
 
   public static int getNumBitVectorsForNDVEstimation(Configuration conf) throws Exception {

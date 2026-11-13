@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.calcite.translator.opconventer;
@@ -112,7 +113,7 @@ final class HiveOpConverterUtils {
 
   @SuppressWarnings({ "rawtypes", "unchecked" })
   static ReduceSinkOperator genReduceSink(Operator<?> input, String tableAlias, ExprNodeDesc[] keys, int tag,
-      ArrayList<ExprNodeDesc> partitionCols, String order, String nullOrder, int numReducers,
+      List<ExprNodeDesc> partitionCols, String order, String nullOrder, int numReducers,
       Operation acidOperation, HiveConf hiveConf) throws SemanticException {
     Operator dummy = Operator.createDummy(); // dummy for backtracking
     dummy.setParentOperators(Arrays.asList(input));
@@ -183,14 +184,8 @@ final class HiveOpConverterUtils {
       }
     }
 
-    ReduceSinkDesc rsDesc;
-    if (order.isEmpty()) {
-      rsDesc = PlanUtils.getReduceSinkDesc(reduceKeys, reduceValues, outputColumnNames, false, tag,
-          reduceKeys.size(), numReducers, acidOperation, NullOrdering.defaultNullOrder(hiveConf));
-    } else {
-      rsDesc = PlanUtils.getReduceSinkDesc(reduceKeys, reduceValues, outputColumnNames, false, tag,
+    ReduceSinkDesc rsDesc = PlanUtils.getReduceSinkDesc(reduceKeys, reduceValues, outputColumnNames, false, tag,
           partitionCols, order, nullOrder, NullOrdering.defaultNullOrder(hiveConf), numReducers, acidOperation, false);
-    }
 
     ReduceSinkOperator rsOp = (ReduceSinkOperator) OperatorFactory.getAndMakeChild(
         rsDesc, new RowSchema(outputColumns), input);

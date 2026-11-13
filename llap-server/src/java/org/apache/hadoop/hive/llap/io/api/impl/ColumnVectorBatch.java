@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.io.api.impl;
@@ -33,6 +34,8 @@ public class ColumnVectorBatch {
   public MutableFilterContext filterContext;
   public ColumnVector[] cols;
   public int size;
+  /** File row position of the first row; Long.MIN_VALUE when the producer does not track positions. */
+  private long startRowInFile = Long.MIN_VALUE;
 
   public ColumnVectorBatch(int columnCount) {
     this(columnCount, VectorizedRowBatch.DEFAULT_SIZE);
@@ -50,6 +53,13 @@ public class ColumnVectorBatch {
     cols[ix] = old;
   }
 
+  public long getStartRowInFile() {
+    return startRowInFile;
+  }
+
+  public void setStartRowInFile(long startRowInFile) {
+    this.startRowInFile = startRowInFile;
+  }
   
   @Override
   public String toString() {
@@ -75,7 +85,6 @@ public class ColumnVectorBatch {
     }
     b.append('\n');
 
-
     for (int i = 0; i < size; i++) {
       b.append('[');
       for (int k = 0; k < cols.length; k++) {
@@ -84,12 +93,10 @@ public class ColumnVectorBatch {
           b.append(", ");
         }
         if (cv == null) continue;
-        if (cv != null) {
-          try {
-            cv.stringifyValue(b, i);
-          } catch (Exception ex) {
-            b.append("invalid");
-          }
+        try {
+          cv.stringifyValue(b, i);
+        } catch (Exception ex) {
+          b.append("invalid");
         }
       }
       b.append(']');

@@ -19,6 +19,8 @@
 
 package org.apache.iceberg.mr.hive;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.hive.serde2.objectinspector.ListObjectInspector;
@@ -27,6 +29,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
+import org.apache.hadoop.hive.serde2.variant.Variant;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
@@ -34,15 +37,18 @@ import org.apache.iceberg.mr.hive.serde.objectinspector.WriteObjectInspector;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.schema.SchemaWithPartnerVisitor;
+import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Type.PrimitiveType;
+import org.apache.iceberg.types.Types;
 import org.apache.iceberg.types.Types.ListType;
 import org.apache.iceberg.types.Types.MapType;
 import org.apache.iceberg.types.Types.NestedField;
 import org.apache.iceberg.types.Types.StructType;
-
+import org.apache.iceberg.variants.VariantMetadata;
+import org.apache.iceberg.variants.VariantValue;
 
 class Deserializer {
-  private FieldDeserializer fieldDeserializer;
+  private final FieldDeserializer fieldDeserializer;
 
   /**
    * Builder to create a Deserializer instance.
@@ -105,6 +111,15 @@ class Deserializer {
 
     @Override
     public FieldDeserializer primitive(PrimitiveType type, ObjectInspectorPair pair) {
+      if (type.typeId() == Type.TypeID.UNKNOWN) {
+        return o -> {
+          if (o != null) {
+            throw new IllegalArgumentException("UNKNOWN type columns only accept NULL values");
+          }
+          return null;
+        };
+      }
+
       return o -> {
         if (o == null) {
           return null;
@@ -161,6 +176,26 @@ class Deserializer {
         }
 
         return result;
+      };
+    }
+
+    @Override
+    public FieldDeserializer variant(Types.VariantType variantType, ObjectInspectorPair pair) {
+      return variantObj -> {
+        if (variantObj == null) {
+          return null;
+        }
+        // Extract data from the struct representation
+        StructObjectInspector variantOI = (StructObjectInspector) pair.sourceInspector();
+        Variant variant = Variant.from(variantOI.getStructFieldsDataAsList(variantObj));
+
+        VariantMetadata metadata = VariantMetadata.from(
+            ByteBuffer.wrap(variant.getMetadata()).order(ByteOrder.LITTLE_ENDIAN));
+
+        VariantValue value = VariantValue.from(metadata,
+            ByteBuffer.wrap(variant.getValue()).order(ByteOrder.LITTLE_ENDIAN));
+
+        return org.apache.iceberg.variants.Variant.of(metadata, value);
       };
     }
 
@@ -256,8 +291,8 @@ class Deserializer {
    * writerInspector.
    */
   private static class ObjectInspectorPair {
-    private ObjectInspector writerInspector;
-    private ObjectInspector sourceInspector;
+    private final ObjectInspector writerInspector;
+    private final ObjectInspector sourceInspector;
 
     ObjectInspectorPair(ObjectInspector writerInspector, ObjectInspector sourceInspector) {
       this.writerInspector = writerInspector;

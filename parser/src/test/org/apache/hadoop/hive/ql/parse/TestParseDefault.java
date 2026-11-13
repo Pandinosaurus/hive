@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
@@ -105,4 +106,21 @@ public class TestParseDefault {
 
     assertFalse(tree.dump(), tree.toStringTree().contains("tok_default_value"));
   }
+
+  @Test
+  public void testCompact() throws Exception {
+    ASTNode tree = parseDriver.parse(
+            "alter table t1 compact 'minor' pool 'pool'", null).getTree();
+
+    assertTrue(tree.dump(), tree.toStringTree().contains("tok_compact_pool 'pool'"));
+    assertTrue(tree.dump(), tree.toStringTree().contains("tok_altertable_compact 'minor'"));
+  }
+
+  @Test
+  public void testShowCompactions() throws Exception {
+    ASTNode tree = parseDriver.parse(
+        "show compactions pool 'pool'", null).getTree();
+    assertTrue(tree.dump(), tree.toStringTree().contains("tok_compact_pool 'pool'"));
+  }
+
 }

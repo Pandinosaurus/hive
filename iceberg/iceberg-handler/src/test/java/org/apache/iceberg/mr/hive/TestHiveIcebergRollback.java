@@ -21,19 +21,34 @@ package org.apache.iceberg.mr.hive;
 
 
 import java.io.IOException;
+import java.util.Collection;
 import org.apache.iceberg.AssertHelpers;
-import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.mr.hive.test.TestTables.TestTableType;
+import org.apache.iceberg.mr.hive.test.utils.HiveIcebergStorageHandlerTestUtils;
+import org.apache.iceberg.mr.hive.test.utils.HiveIcebergTestUtils;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
+import org.junit.runners.Parameterized.Parameters;
 
 
 /**
  * Tests covering the rollback feature
  */
 public class TestHiveIcebergRollback extends HiveIcebergStorageHandlerWithEngineBase {
+
+  @Parameters(name = "fileFormat={0}, catalog={1}, isVectorized={2}, formatVersion={3}")
+  public static Collection<Object[]> parameters() {
+    return HiveIcebergStorageHandlerWithEngineBase.getParameters(p ->
+        p.fileFormat() == FileFormat.PARQUET &&
+        p.testTableType() == TestTableType.HIVE_CATALOG &&
+        p.isVectorized() &&
+        p.formatVersion() == 2);
+  }
 
   @Test
   public void testRollbackToTimestamp() throws IOException, InterruptedException {
@@ -83,12 +98,12 @@ public class TestHiveIcebergRollback extends HiveIcebergStorageHandlerWithEngine
   @Test
   public void testRevertRollback() throws IOException, InterruptedException {
     Assume.assumeTrue("Rollback revert is only supported for tables from Hive Catalog",
-        testTableType.equals(TestTables.TestTableType.HIVE_CATALOG));
+        testTableType.equals(TestTableType.HIVE_CATALOG));
     TableIdentifier identifier = TableIdentifier.of("default", "source");
     Table table = testTables.createTableWithVersions(shell, identifier.name(),
         HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA, fileFormat,
         HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS, 2);
-    String metadataLocationBeforeRollback = ((BaseTable) table).operations().current().metadataFileLocation();
+    String metadataLocationBeforeRollback = TableUtil.metadataFileLocation(table);
     shell.executeStatement("ALTER TABLE " + identifier.name() + " EXECUTE ROLLBACK(" +
         table.history().get(0).snapshotId() + ")");
     Assert.assertEquals(3, shell.executeStatement("SELECT * FROM " + identifier.name()).size());
@@ -128,6 +143,16 @@ public class TestHiveIcebergRollback extends HiveIcebergStorageHandlerWithEngine
         "Cannot roll back to snapshot, not an ancestor of the current state", () -> {
         shell.executeStatement("ALTER TABLE " + identifier.name() + " EXECUTE ROLLBACK(" +
             table.history().get(1).snapshotId() + ")");
+        });
+  }
+
+  @Test
+  public void testNonIcebergRollback() {
+    shell.executeStatement("CREATE TABLE non_ice (id int)");
+
+    AssertHelpers.assertThrows("should throw exception", IllegalArgumentException.class,
+        "ALTER EXECUTE is not supported for table", () -> {
+        shell.executeStatement("ALTER TABLE non_ice EXECUTE ROLLBACK('2022-09-26 00:00:00')");
         });
   }
 }

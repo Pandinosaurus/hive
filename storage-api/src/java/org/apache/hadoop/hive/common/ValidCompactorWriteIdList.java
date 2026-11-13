@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common;
@@ -24,7 +25,7 @@ import java.util.BitSet;
 /**
  * An implementation of {@link ValidWriteIdList} for use by the compactor.
  *
- * Compaction should only include txns up to smallest open txn (exclussive).
+ * Compaction should only include txns up to smallest open txn (exclusive).
  * There may be aborted write ids in the snapshot represented by this ValidCompactorWriteIdList.
  * Thus {@link #isWriteIdRangeValid(long, long)} returns NONE for any range that includes any unresolved
  * write ids.  Any write id above {@code highWatermark} is unresolved.
@@ -55,13 +56,13 @@ public class ValidCompactorWriteIdList extends ValidReaderWriteIdList {
                                    long highWatermark, long minOpenWriteId) {
     // abortedBits should be all true as everything in exceptions are aborted txns
     super(tableName, abortedWriteIdList, abortedBits, highWatermark, minOpenWriteId);
-    if(this.exceptions.length <= 0) {
+    if (this.exceptions.length <= 0) {
       return;
     }
     //now that exceptions (aka abortedTxnList) is sorted
     int idx = Arrays.binarySearch(this.exceptions, highWatermark);
     int lastElementPos;
-    if(idx < 0) {
+    if (idx < 0) {
       int insertionPoint = -idx - 1 ;//see Arrays.binarySearch() JavaDoc
       lastElementPos = insertionPoint - 1;
     }
@@ -74,8 +75,11 @@ public class ValidCompactorWriteIdList extends ValidReaderWriteIdList {
      */
     this.exceptions = Arrays.copyOf(this.exceptions, lastElementPos + 1);
   }
-  public ValidCompactorWriteIdList(String value) {
-    super(value);
+
+  public static ValidCompactorWriteIdList fromValue(String value) {
+    ValidCompactorWriteIdList cmpWrtList = new ValidCompactorWriteIdList();
+    cmpWrtList.readFromString(value);
+    return cmpWrtList;
   }
   /**
    * Returns org.apache.hadoop.hive.common.ValidWriteIdList.RangeResponse.ALL if all write ids in

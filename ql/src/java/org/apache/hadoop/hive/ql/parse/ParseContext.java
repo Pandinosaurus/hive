@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse;
@@ -128,7 +129,7 @@ public class ParseContext {
   private boolean needViewColumnAuthorization;
 
   private Map<ReduceSinkOperator, RuntimeValuesInfo> rsToRuntimeValuesInfo =
-          new LinkedHashMap<ReduceSinkOperator, RuntimeValuesInfo>();
+      new LinkedHashMap<>();
   /**
    * Mapping holding information about semijoins.
    *
@@ -451,7 +452,7 @@ public class ParseContext {
    * @return col stats
    */
   public ColumnStatsList getColStatsCached(PrunedPartitionList partList) {
-    return ctx.getOpContext().getColStatsCache().get(partList.getKey().orElse(null));
+    return ctx.getOpContext().getColStatsCache().get(partList.getKey());
   }
 
   /**
@@ -515,8 +516,7 @@ public class ParseContext {
     return semanticInputs;
   }
 
-  public void replaceRootTask(Task<?> rootTask,
-                              List<? extends Task<?>> tasks) {
+  public void replaceRootTask(Task<?> rootTask, List<? extends Task<?>> tasks) {
     this.rootTasks.remove(rootTask);
     this.rootTasks.addAll(tasks);
   }
@@ -663,7 +663,7 @@ public class ParseContext {
 
   public Collection<Operator> getAllOps() {
     List<Operator> ops = new ArrayList<>();
-    Set<Operator> visited = new HashSet<Operator>();
+    Set<Operator> visited = new HashSet<>();
     for (Operator<?> op : getTopOps().values()) {
       getAllOps(ops, visited, op);
     }

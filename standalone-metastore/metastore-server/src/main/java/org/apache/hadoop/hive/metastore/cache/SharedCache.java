@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.cache;
 
@@ -47,7 +48,7 @@ import com.google.common.cache.RemovalCause;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 import com.google.common.cache.Weigher;
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.ValidReaderWriteIdList;
 import org.apache.hadoop.hive.common.ValidWriteIdList;
@@ -115,7 +116,10 @@ public class SharedCache {
   private static final Logger LOG = LoggerFactory.getLogger(SharedCache.class.getName());
   private AtomicLong cacheUpdateCount = new AtomicLong(0);
   private long maxCacheSizeInBytes = -1;
-  private HashMap<Class<?>, ObjectEstimator> sizeEstimators = null;
+  // volatile + copy-on-write in getMemorySizeEstimator: tables are cached concurrently during a
+  // multi threaded prewarm, so this map must never be mutated in place while others read it
+  private volatile Map<Class<?>, ObjectEstimator> sizeEstimators = null;
+  private final Object sizeEstimatorsLock = new Object();
   private Set<String> tableToUpdateSize = new ConcurrentHashSet<>();
   private ScheduledExecutorService executor = null;
   private Map<String, Integer> tableSizeMap = null;
@@ -185,7 +189,7 @@ public class SharedCache {
   public void setConcurrencyLevel(int cl){
     this.concurrencyLevel = cl;
   }
-  //number of miliseconds between size updates.
+  //number of milliseconds between size updates.
   public void setRefreshInterval(int interval){
     this.refreshInterval = interval;
   }
@@ -246,14 +250,29 @@ public class SharedCache {
 
   }
 
+  /**
+   * Returns the estimator for the given class, creating it on first use. Estimators are added
+   * copy-on-write under {@link #sizeEstimatorsLock}: callers can run concurrently (prewarm caches
+   * tables in parallel), and readers always see a map that is no longer being mutated.
+   */
   private ObjectEstimator getMemorySizeEstimator(Class<?> clazz) {
-    if (sizeEstimators == null) {
+    Map<Class<?>, ObjectEstimator> estimators = sizeEstimators;
+    if (estimators == null) {
       return null;
     }
-    ObjectEstimator estimator = sizeEstimators.get(clazz);
+    ObjectEstimator estimator = estimators.get(clazz);
     if (estimator == null) {
-      IncrementalObjectSizeEstimator.createEstimators(clazz, sizeEstimators);
-      estimator = sizeEstimators.get(clazz);
+      synchronized (sizeEstimatorsLock) {
+        estimators = sizeEstimators;
+        estimator = estimators.get(clazz);
+        if (estimator == null) {
+          // IncrementalObjectSizeEstimator's API is HashMap typed, hence the casts at its boundary
+          Map<Class<?>, ObjectEstimator> updated = new HashMap<>(estimators);
+          IncrementalObjectSizeEstimator.createEstimators(clazz, (HashMap<Class<?>, ObjectEstimator>) updated);
+          estimator = updated.get(clazz);
+          sizeEstimators = updated;
+        }
+      }
     }
     return estimator;
   }
@@ -265,7 +284,8 @@ public class SharedCache {
 
     try {
       ObjectEstimator oe = getMemorySizeEstimator(clazz);
-      return oe.estimate(obj, sizeEstimators);
+      // Read the field again: getMemorySizeEstimator may have published a map with more entries
+      return oe.estimate(obj, (HashMap<Class<?>, ObjectEstimator>) sizeEstimators);
     } catch (Exception e) {
       LOG.error("Error while getting object size.", e);
     }
@@ -363,7 +383,7 @@ public class SharedCache {
           Object val = field.get(this);
           ObjectEstimator oe = getMemorySizeEstimator(field.getType());
           if (oe != null) {
-            size += oe.estimate(val, sizeEstimators);
+            size += oe.estimate(val, (HashMap<Class<?>, ObjectEstimator>) sizeEstimators);
           }
         } catch (Exception ex) {
           LOG.error("Not able to estimate size.", ex);
@@ -519,7 +539,7 @@ public class SharedCache {
     /**
      * Common method to cache constraints
      * @param constraintsList list of constraints to add to cache
-     * @param fromPrewarm is this method called as part of perwarm phase
+     * @param fromPrewarm is this method called as part of prewarm phase
      * @param mn Constraint type
      * @return memory constraint is handled by cache eviction policy hence this method will always return true
      * if correct constraint type is provided.
@@ -1104,7 +1124,7 @@ public class SharedCache {
           return null;
         }
         long writeId = wrapper.getPartition().getWriteId();
-        ValidWriteIdList list4TheQuery = new ValidReaderWriteIdList(writeIdList);
+        ValidWriteIdList list4TheQuery = ValidReaderWriteIdList.fromValue(writeIdList);
         // Just check if the write ID is valid. If it's valid (i.e. we are allowed to see it),
         // that means it cannot possibly be a concurrent write. If it's not valid (we are not
         // allowed to see it), that means it's either concurrent or aborted, same thing for us.
@@ -1519,7 +1539,7 @@ public class SharedCache {
         cacheLock.writeLock().lock();
         // Since we allow write operations on cache while prewarm is happening:
         // 1. Don't add databases that were deleted while we were preparing list for prewarm
-        // 2. Skip overwriting exisiting db object
+        // 2. Skip overwriting existing db object
         // (which is present because it was added after prewarm started)
         if (catalogsDeletedDuringPrewarm.contains(catCopy.getName())) {
           continue;
@@ -1622,7 +1642,7 @@ public class SharedCache {
         cacheLock.writeLock().lock();
         // Since we allow write operations on cache while prewarm is happening:
         // 1. Don't add databases that were deleted while we were preparing list for prewarm
-        // 2. Skip overwriting exisiting db object
+        // 2. Skip overwriting existing db object
         // (which is present because it was added after prewarm started)
         String key = CacheUtils.buildDbKey(dbCopy.getCatalogName().toLowerCase(), dbCopy.getName().toLowerCase());
         if (databasesDeletedDuringPrewarm.contains(key)) {
@@ -2707,7 +2727,7 @@ public class SharedCache {
   }
 
   /**
-   * This resets the contents of the cataog cache so that we can re-fill it in another test.
+   * This resets the contents of the catalog cache so that we can re-fill it in another test.
    */
   void resetCatalogCache() {
     isCatalogCachePrewarmed = false;

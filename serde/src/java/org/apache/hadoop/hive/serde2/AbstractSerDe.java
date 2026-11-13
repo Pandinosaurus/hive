@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.serde2;
@@ -44,7 +45,7 @@ import com.google.common.base.Preconditions;
  */
 public abstract class AbstractSerDe implements Deserializer, Serializer {
 
-  protected Logger log = LoggerFactory.getLogger(getClass());
+  protected static final Logger log = LoggerFactory.getLogger(AbstractSerDe.class);
 
   protected Optional<Configuration> configuration;
   protected Properties properties;
@@ -90,7 +91,7 @@ public abstract class AbstractSerDe implements Deserializer, Serializer {
     Preconditions.checkArgument(this.columnNames.size() == this.columnTypes.size(),
         "Column names must match count of column types");
 
-    log.debug("SerDe initialized: [{}][{}]", this.configuration, this.properties);
+    log.debug("{} initialized: [{}][{}]", getClass().getName(), this.configuration, this.properties);
   }
 
   protected List<String> parseColumnNames() {

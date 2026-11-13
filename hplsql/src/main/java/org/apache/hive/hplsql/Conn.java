@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.hplsql;
@@ -146,15 +147,11 @@ public class Conn {
    * @throws Exception 
    */
   Connection openConnection(String connStr) throws Exception {
-    String driver = "org.apache.hadoop.hive.jdbc.HiveDriver";
     StringBuilder url = new StringBuilder();
     String usr = "";
     String pwd = "";
     if (connStr != null) {
       String[] c = connStr.split(";");
-      if (c.length >= 1) {
-        driver = c[0];
-      }
       if (c.length >= 2) {
         url.append(c[1]);
       }
@@ -174,7 +171,6 @@ public class Conn {
         }
       }
     }
-    Class.forName(driver);
     timer.start();
     Connection conn = DriverManager.getConnection(url.toString().trim(), usr, pwd);
     timer.stop();

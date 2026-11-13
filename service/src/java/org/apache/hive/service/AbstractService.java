@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.service;
@@ -117,6 +118,26 @@ public abstract class AbstractService implements Service {
    *           this action
    */
   @Override
+  public synchronized void decommission() {
+    if (state == STATE.STOPPED ||
+        state == STATE.INITED ||
+        state == STATE.NOTINITED ||
+        state == STATE.DECOMMISSIONING) {
+      return;
+    }
+    ensureCurrentState(STATE.STARTED);
+    changeState(STATE.DECOMMISSIONING);
+    LOG.info("Service:" + getName() + " is decommissioning.");
+  }
+
+  /**
+   * {@inheritDoc}
+   *
+   * @throws IllegalStateException
+   *           if the current service state does not permit
+   *           this action
+   */
+  @Override
   public synchronized void stop() {
     if (state == STATE.STOPPED ||
         state == STATE.INITED ||
@@ -125,7 +146,10 @@ public abstract class AbstractService implements Service {
       // started (eg another service failing canceled startup)
       return;
     }
-    ensureCurrentState(STATE.STARTED);
+    if (state != STATE.DECOMMISSIONING && state != STATE.STARTED) {
+      throw new IllegalStateException("For stop operation, the current service state must be " +
+          STATE.DECOMMISSIONING + " or " + STATE.STARTED + " instead of " + state);
+    }
     changeState(STATE.STOPPED);
     LOG.info("Service:" + getName() + " is stopped.");
   }

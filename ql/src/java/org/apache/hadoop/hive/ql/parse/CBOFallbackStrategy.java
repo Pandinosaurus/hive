@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
@@ -63,24 +64,6 @@ public enum CBOFallbackStrategy {
     @Override
     boolean isFatal(Exception e) {
       return false;
-    }
-
-    @Override
-    public boolean allowsRetry() {
-      return true;
-    }
-  },
-  /**
-   * Specific strategy only for tests.
-   */
-  TEST {
-    @Override
-    boolean isFatal(Exception e) {
-      if (e instanceof CalciteSubquerySemanticException || e instanceof CalciteViewSemanticException
-          || e instanceof CalciteSubqueryRuntimeException) {
-        return true;
-      }
-      return !(e instanceof CalciteSemanticException);
     }
 
     @Override

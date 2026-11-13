@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -56,10 +57,10 @@ public class TestServerSpecificConfig {
 
     // check config properties expected with embedded metastore client
     assertTrue(HiveConf.isLoadMetastoreConfig());
-    assertEquals("from.hivemetastore-site.xml",
+    assertEquals("from.metastore-site.xml",
         conf.get("hive.dummyparam.test.server.specific.config.override"));
 
-    assertEquals("from.hivemetastore-site.xml",
+    assertEquals("from.metastore-site.xml",
         conf.get("hive.dummyparam.test.server.specific.config.metastoresite"));
 
     assertEquals("from.hive-site.xml",
@@ -74,7 +75,7 @@ public class TestServerSpecificConfig {
     conf = new HiveConf();
     verifyHS2ConfParams(conf);
 
-    assertEquals("from.hivemetastore-site.xml",
+    assertEquals("from.metastore-site.xml",
         conf.get("hive.dummyparam.test.server.specific.config.metastoresite"));
   }
 
@@ -131,7 +132,7 @@ public class TestServerSpecificConfig {
   }
 
   /**
-   * Test to ensure that HiveConf does not try to load hivemetastore-site.xml,
+   * Test to ensure that HiveConf does not try to load metastore-site.xml,
    * when remote metastore is used.
    *
    * @throws IOException
@@ -181,7 +182,7 @@ public class TestServerSpecificConfig {
     FileOutputStream out = new FileOutputStream(hiveSite);
     HiveConf.setHiveSiteLocation(oldDefaultHiveSite);
     HiveConf defaultHiveConf = new HiveConf();
-    defaultHiveConf.setVar(ConfVars.METASTOREURIS, "dummyvalue");
+    defaultHiveConf.setVar(ConfVars.METASTORE_URIS, "dummyvalue");
     // reset to the hive-site.xml values for following param
     defaultHiveConf.set("hive.dummyparam.test.server.specific.config.override",
         "from.hive-site.xml");

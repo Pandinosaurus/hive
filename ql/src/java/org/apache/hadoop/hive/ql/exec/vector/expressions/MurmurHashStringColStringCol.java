@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.vector.expressions;
 
@@ -47,12 +48,15 @@ public class MurmurHashStringColStringCol extends MurmurHashExpression {
     BytesColumnVector inV1 = (BytesColumnVector) inputColVector1;
     BytesColumnVector inV2 = (BytesColumnVector) inputColVector2;
 
+    int idx1 = inputColVector1.isRepeating ? 0 : i;
+    int idx2 = inputColVector2.isRepeating ? 0 : i;
+
     // hash of value from 1. column
-    int hash = inV1.isNull[i] ? 0
-      : Murmur3.hash32(inV1.vector[i], inV1.start[i], inV1.length[i], Murmur3.DEFAULT_SEED);
+    int hash = inV1.isNull[idx1] ? 0
+      : Murmur3.hash32(inV1.vector[idx1], inV1.start[idx1], inV1.length[idx1], Murmur3.DEFAULT_SEED);
     // hash of value from 2. column
-    int hash2 = inV2.isNull[i] ? 0
-      : Murmur3.hash32(inV2.vector[i], inV2.start[i], inV2.length[i], Murmur3.DEFAULT_SEED);
+    int hash2 = inV2.isNull[idx2] ? 0
+      : Murmur3.hash32(inV2.vector[idx2], inV2.start[idx2], inV2.length[idx2], Murmur3.DEFAULT_SEED);
 
     outputColVector.vector[i] = 31 * hash + hash2;
   }

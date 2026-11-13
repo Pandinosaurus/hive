@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.txn;
 
@@ -38,8 +39,6 @@ import org.apache.hadoop.hive.metastore.api.DataOperationType;
 import org.apache.hadoop.hive.metastore.api.GetOpenTxnsInfoResponse;
 import org.apache.hadoop.hive.metastore.api.GetOpenTxnsResponse;
 import org.apache.hadoop.hive.metastore.api.HeartbeatRequest;
-import org.apache.hadoop.hive.metastore.api.HeartbeatTxnRangeRequest;
-import org.apache.hadoop.hive.metastore.api.HeartbeatTxnRangeResponse;
 import org.apache.hadoop.hive.metastore.api.LockComponent;
 import org.apache.hadoop.hive.metastore.api.LockLevel;
 import org.apache.hadoop.hive.metastore.api.LockRequest;
@@ -95,19 +94,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertSame;
 import static junit.framework.Assert.assertFalse;
 import static junit.framework.Assert.assertNull;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.fail;
 import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.TABLE_IS_TRANSACTIONAL;
 import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.TABLE_TRANSACTIONAL_PROPERTIES;
-import static org.apache.hadoop.hive.metastore.utils.LockTypeUtil.getEncoding;
 
 /**
  * Tests for TxnHandler.
@@ -947,6 +945,39 @@ public class TestTxnHandler {
   }
 
   @Test
+  public void testLockSameDatabaseNameWithDifferentCatalogs() throws Exception {
+    // Test that two databases with same name in different catalogs don't collide on their locks
+    LockComponent comp = new LockComponent(LockType.EXCLUSIVE, LockLevel.DB, "mydb");
+    comp.setCatName("catalog1");
+    comp.setOperationType(DataOperationType.NO_TXN);
+    List<LockComponent> components = new ArrayList<LockComponent>(1);
+    components.add(comp);
+    LockRequest req = new LockRequest(components, "me", "localhost");
+    LockResponse res = txnHandler.lock(req);
+    assertSame(LockState.ACQUIRED, res.getState());
+
+    comp = new LockComponent(LockType.EXCLUSIVE, LockLevel.DB, "mydb");
+    comp.setCatName("catalog2");
+    comp.setOperationType(DataOperationType.NO_TXN);
+    components.clear();
+    components.add(comp);
+    req = new LockRequest(components, "me", "localhost");
+    res = txnHandler.lock(req);
+    assertSame(LockState.ACQUIRED, res.getState());
+
+    ShowLocksRequest showLockreq = new ShowLocksRequest();
+    showLockreq.setCatname("catalog1");
+    ShowLocksResponse rsp = txnHandler.showLocks(showLockreq);
+    List<ShowLocksResponseElement> locks = rsp.getLocks();
+    assertEquals(1, locks.size());
+
+    showLockreq.setCatname("catalog2");
+    rsp = txnHandler.showLocks(showLockreq);
+    locks = rsp.getLocks();
+    assertEquals(1, locks.size());
+  }
+
+  @Test
   public void testCheckLockAcquireAfterWaiting() throws Exception {
     LockComponent comp = new LockComponent(LockType.EXCL_WRITE, LockLevel.DB, "mydb");
     comp.setTablename("mytable");
@@ -1033,7 +1064,7 @@ public class TestTxnHandler {
     res = txnHandler.checkLock(new CheckLockRequest(lockid));
     assertTrue(res.getState() == LockState.ACQUIRED);
     txnHandler.unlock(new UnlockRequest(lockid));
-    assertEquals(0, txnHandler.numLocksInLockTable());
+    assertEquals(0, txnHandler.getNumLocks());
   }
 
   @Test
@@ -1088,7 +1119,7 @@ public class TestTxnHandler {
     LockResponse res = txnHandler.lock(req);
     assertTrue(res.getState() == LockState.ACQUIRED);
     txnHandler.commitTxn(new CommitTxnRequest(txnid));
-    assertEquals(0, txnHandler.numLocksInLockTable());
+    assertEquals(0, txnHandler.getNumLocks());
   }
 
   @Test
@@ -1104,7 +1135,7 @@ public class TestTxnHandler {
     LockResponse res = txnHandler.lock(req);
     assertTrue(res.getState() == LockState.ACQUIRED);
     txnHandler.abortTxn(new AbortTxnRequest(txnid));
-    assertEquals(0, txnHandler.numLocksInLockTable());
+    assertEquals(0, txnHandler.getNumLocks());
   }
 
   @Test
@@ -1177,48 +1208,6 @@ public class TestTxnHandler {
         fail("Told there was no lock, when the heartbeat should have kept it.");
       }
     }
-  }
-
-  @Test
-  public void heartbeatTxnRange() throws Exception {
-    long txnid = openTxn();
-    assertEquals(1, txnid);
-    txnid = openTxn();
-    txnid = openTxn();
-    HeartbeatTxnRangeResponse rsp =
-        txnHandler.heartbeatTxnRange(new HeartbeatTxnRangeRequest(1, 3));
-    assertEquals(0, rsp.getAborted().size());
-    assertEquals(0, rsp.getNosuch().size());
-  }
-
-  @Test
-  public void heartbeatTxnRangeOneCommitted() throws Exception {
-    long txnid = openTxn();
-    assertEquals(1, txnid);
-    txnHandler.commitTxn(new CommitTxnRequest(1));
-    txnid = openTxn();
-    txnid = openTxn();
-    HeartbeatTxnRangeResponse rsp =
-      txnHandler.heartbeatTxnRange(new HeartbeatTxnRangeRequest(1, 3));
-    assertEquals(1, rsp.getNosuchSize());
-    Long txn = rsp.getNosuch().iterator().next();
-    assertEquals(1L, (long)txn);
-    assertEquals(0, rsp.getAborted().size());
-  }
-
-  @Test
-  public void heartbeatTxnRangeOneAborted() throws Exception {
-    long txnid = openTxn();
-    assertEquals(1, txnid);
-    txnid = openTxn();
-    txnid = openTxn();
-    txnHandler.abortTxn(new AbortTxnRequest(3));
-    HeartbeatTxnRangeResponse rsp =
-      txnHandler.heartbeatTxnRange(new HeartbeatTxnRangeRequest(1, 3));
-    assertEquals(1, rsp.getAbortedSize());
-    Long txn = rsp.getAborted().iterator().next();
-    assertEquals(3L, (long)txn);
-    assertEquals(0, rsp.getNosuch().size());
   }
 
   @Test
@@ -1408,6 +1397,16 @@ public class TestTxnHandler {
     req = new LockRequest(components, "you", "remotehost");
     res = txnHandler.lock(req);
 
+    components = new ArrayList<LockComponent>(1);
+    comp = new LockComponent(LockType.SHARED_READ, LockLevel.PARTITION, "yourdb");
+    comp.setCatName("testcatalog");
+    comp.setTablename("yourtable");
+    comp.setPartitionname("yourpartition=yourvalue");
+    comp.setOperationType(DataOperationType.INSERT);
+    components.add(comp);
+    req = new LockRequest(components, "you", "remotehost");
+    res = txnHandler.lock(req);
+
     ShowLocksResponse rsp = txnHandler.showLocks(new ShowLocksRequest());
     List<ShowLocksResponseElement> locks = rsp.getLocks();
     assertEquals(3, locks.size());
@@ -1416,6 +1415,7 @@ public class TestTxnHandler {
     for (ShowLocksResponseElement lock : locks) {
       if (lock.getLockid() == 1) {
         assertEquals(0, lock.getTxnid());
+        assertEquals("hive", lock.getCatname());
         assertEquals("mydb", lock.getDbname());
         assertNull(lock.getTablename());
         assertNull(lock.getPartname());
@@ -1430,6 +1430,7 @@ public class TestTxnHandler {
         saw[0] = true;
       } else if (lock.getLockid() == 2) {
         assertEquals(1, lock.getTxnid());
+        assertEquals("hive", lock.getCatname());
         assertEquals("mydb", lock.getDbname());
         assertEquals("mytable", lock.getTablename());
         assertNull(lock.getPartname());
@@ -1443,6 +1444,7 @@ public class TestTxnHandler {
         saw[1] = true;
       } else if (lock.getLockid() == 3) {
         assertEquals(0, lock.getTxnid());
+        assertEquals("hive", lock.getCatname());
         assertEquals("yourdb", lock.getDbname());
         assertEquals("yourtable", lock.getTablename());
         assertEquals("yourpartition=yourvalue", lock.getPartname());
@@ -1460,113 +1462,26 @@ public class TestTxnHandler {
       }
     }
     for (int i = 0; i < saw.length; i++) assertTrue("Didn't see lock id " + i, saw[i]);
-  }
 
-  @Test
-  @Ignore("Wedges Derby")
-  public void deadlockDetected() throws Exception {
-    LOG.debug("Starting deadlock test");
+    ShowLocksRequest rqst = new ShowLocksRequest();
+    rqst.setCatname("testcatalog");
+    rsp = txnHandler.showLocks(rqst);
+    locks = rsp.getLocks();
 
-    if (txnHandler instanceof TxnHandler) {
-      final TxnHandler tHndlr = (TxnHandler)txnHandler;
-      Connection conn = tHndlr.getDbConn(Connection.TRANSACTION_SERIALIZABLE);
-      try {
-        Statement stmt = conn.createStatement();
-        long now = tHndlr.getDbTime(conn);
-        stmt.executeUpdate("INSERT INTO \"TXNS\" (\"TXN_ID\", \"TXN_STATE\", \"TXN_STARTED\", \"TXN_LAST_HEARTBEAT\", " +
-                "txn_user, txn_host) values (1, 'o', " + now + ", " + now + ", 'shagy', " +
-                "'scooby.com')");
-        stmt.executeUpdate("INSERT INTO \"HIVE_LOCKS\" (\"HL_LOCK_EXT_ID\", \"HL_LOCK_INT_ID\", \"HL_TXNID\", " +
-                "\"HL_DB\", \"HL_TABLE\", \"HL_PARTITION\", \"HL_LOCK_STATE\", \"HL_LOCK_TYPE\", \"HL_LAST_HEARTBEAT\", " +
-                "\"HL_USER\", \"HL_HOST\") VALUES (1, 1, 1, 'MYDB', 'MYTABLE', 'MYPARTITION', '" +
-                tHndlr.LOCK_WAITING + "', '" + getEncoding(LockType.EXCLUSIVE) + "', " + now + ", 'fred', " +
-                "'scooby.com')");
-        conn.commit();
-      } finally {
-        tHndlr.closeDbConn(conn);
-      }
-
-      final AtomicBoolean sawDeadlock = new AtomicBoolean();
-
-      final Connection conn1 = tHndlr.getDbConn(Connection.TRANSACTION_SERIALIZABLE);
-      final Connection conn2 = tHndlr.getDbConn(Connection.TRANSACTION_SERIALIZABLE);
-      try {
-
-        for (int i = 0; i < 5; i++) {
-          Thread t1 = new Thread() {
-            @Override
-            public void run() {
-              try {
-                try {
-                  updateTxns(conn1);
-                  updateLocks(conn1);
-                  Thread.sleep(1000);
-                  conn1.commit();
-                  LOG.debug("no exception, no deadlock");
-                } catch (SQLException e) {
-                  try {
-                    tHndlr.checkRetryable(e, "thread t1");
-                    LOG.debug("Got an exception, but not a deadlock, SQLState is " +
-                        e.getSQLState() + " class of exception is " + e.getClass().getName() +
-                        " msg is <" + e.getMessage() + ">");
-                  } catch (TxnHandler.RetryException de) {
-                    LOG.debug("Forced a deadlock, SQLState is " + e.getSQLState() + " class of " +
-                        "exception is " + e.getClass().getName() + " msg is <" + e
-                        .getMessage() + ">");
-                    sawDeadlock.set(true);
-                  }
-                }
-                conn1.rollback();
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            }
-          };
-
-          Thread t2 = new Thread() {
-            @Override
-            public void run() {
-              try {
-                try {
-                  updateLocks(conn2);
-                  updateTxns(conn2);
-                  Thread.sleep(1000);
-                  conn2.commit();
-                  LOG.debug("no exception, no deadlock");
-                } catch (SQLException e) {
-                  try {
-                    tHndlr.checkRetryable(e, "thread t2");
-                    LOG.debug("Got an exception, but not a deadlock, SQLState is " +
-                        e.getSQLState() + " class of exception is " + e.getClass().getName() +
-                        " msg is <" + e.getMessage() + ">");
-                  } catch (TxnHandler.RetryException de) {
-                    LOG.debug("Forced a deadlock, SQLState is " + e.getSQLState() + " class of " +
-                        "exception is " + e.getClass().getName() + " msg is <" + e
-                        .getMessage() + ">");
-                    sawDeadlock.set(true);
-                  }
-                }
-                conn2.rollback();
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            }
-          };
-
-          t1.start();
-          t2.start();
-          t1.join();
-          t2.join();
-          if (sawDeadlock.get()) break;
-        }
-        assertTrue(sawDeadlock.get());
-      } finally {
-        conn1.rollback();
-        tHndlr.closeDbConn(conn1);
-        conn2.rollback();
-        tHndlr.closeDbConn(conn2);
-      }
-    }
+    assertEquals(1, locks.size());
+    assertEquals(0, locks.get(0).getTxnid());
+    assertEquals("testcatalog", locks.get(0).getCatname());
+    assertEquals("yourdb", locks.get(0).getDbname());
+    assertEquals("yourtable", locks.get(0).getTablename());
+    assertEquals("yourpartition=yourvalue", locks.get(0).getPartname());
+    assertEquals(LockState.ACQUIRED, locks.get(0).getState());
+    assertEquals(LockType.SHARED_READ, locks.get(0).getType());
+    assertTrue(locks.get(0).toString(), begining <= locks.get(0).getLastheartbeat() &&
+        System.currentTimeMillis() >= locks.get(0).getLastheartbeat());
+    assertTrue(begining <= locks.get(0).getAcquiredat() &&
+        System.currentTimeMillis() >= locks.get(0).getAcquiredat());
+    assertEquals("you", locks.get(0).getUser());
+    assertEquals("remotehost", locks.get(0).getHostname());
   }
 
   /**
@@ -1578,9 +1493,9 @@ public class TestTxnHandler {
    *      <version>5.1.30</version>
    *     </dependency>
    * 2. Hack in the c'tor of this class
-   *     conf.setVar(HiveConf.ConfVars.METASTORECONNECTURLKEY, "jdbc:mysql://localhost/metastore");
+   *     conf.setVar(HiveConf.ConfVars.METASTORE_CONNECT_URL_KEY, "jdbc:mysql://localhost/metastore");
    *      conf.setVar(HiveConf.ConfVars.METASTORE_CONNECTION_USER_NAME, "hive");
-   *      conf.setVar(HiveConf.ConfVars.METASTOREPWD, "hive");
+   *      conf.setVar(HiveConf.ConfVars.METASTORE_PWD, "hive");
    *      conf.setVar(HiveConf.ConfVars.METASTORE_CONNECTION_DRIVER, "com.mysql.jdbc.Driver");
    * 3. Remove TxnDbUtil.prepDb(); in TxnHandler.checkQFileTestHack()
    *
@@ -1660,20 +1575,6 @@ public class TestTxnHandler {
       LOG.error("Uncaught exception from " + t.getName() + ": " + e.getMessage());
       error = e;
     }
-  }
-
-  @Test
-  public void testRetryableRegex() throws Exception {
-    SQLException sqlException = new SQLException("ORA-08177: can't serialize access for this transaction", "72000");
-    // Note that we have 3 regex'es below
-    conf.setVar(HiveConf.ConfVars.HIVE_TXN_RETRYABLE_SQLEX_REGEX, "^Deadlock detected, roll back,.*08177.*,.*08178.*");
-    boolean result = TxnHandler.isRetryable(conf, sqlException);
-    Assert.assertTrue("regex should be retryable", result);
-
-    sqlException = new SQLException("This error message, has comma in it");
-    conf.setVar(HiveConf.ConfVars.HIVE_TXN_RETRYABLE_SQLEX_REGEX, ".*comma.*");
-    result = TxnHandler.isRetryable(conf, sqlException);
-    Assert.assertTrue("regex should be retryable", result);
   }
 
   private List<Long> replOpenTxnForTest(long startId, int numTxn, String replPolicy)
@@ -1823,9 +1724,8 @@ public class TestTxnHandler {
     // use TxnHandler instance w/ increased retry limit
     long originalLimit = MetastoreConf.getLongVar(conf, MetastoreConf.ConfVars.HMS_HANDLER_ATTEMPTS);
     MetastoreConf.setLongVar(conf, MetastoreConf.ConfVars.HMS_HANDLER_ATTEMPTS, iterations + 1);
-    TxnStore txnHandler = TxnUtils.getTxnStore(conf);
-
-    try (Connection dbConn = ((TxnHandler) txnHandler).getDbConn(Connection.TRANSACTION_READ_COMMITTED);
+    TxnStore txnHandler = TxnUtils.getTxnStore(conf);    
+    try (Connection dbConn = TestTxnDbUtil.getConnection(conf);
          Statement stmt = dbConn.createStatement()) {
       // run this multiple times to get write-write conflicts with relatively high chance
       for (int i = 0; i < iterations; ++i) {
@@ -1879,6 +1779,7 @@ public class TestTxnHandler {
   @Test
   public void testGetMaterializationInvalidationInfo() throws MetaException {
     testGetMaterializationInvalidationInfo(
+            new ValidReadTxnList(new long[] {6, 11}, new BitSet(), 10L, 12L),
             new ValidReaderWriteIdList(TableName.getDbTable("default", "t1"), new long[] { 2 }, new BitSet(), 1)
     );
   }
@@ -1886,6 +1787,7 @@ public class TestTxnHandler {
   @Test
   public void testGetMaterializationInvalidationInfoWhenTableHasNoException() throws MetaException {
     testGetMaterializationInvalidationInfo(
+            new ValidReadTxnList(new long[] {6, 11}, new BitSet(), 10L, 12L),
             new ValidReaderWriteIdList(TableName.getDbTable("default", "t1"), new long[0], new BitSet(), 1)
     );
   }
@@ -1893,12 +1795,13 @@ public class TestTxnHandler {
   @Test
   public void testGetMaterializationInvalidationInfoWhenCurrentTxnListHasNoException() throws MetaException {
     testGetMaterializationInvalidationInfo(
+            new ValidReadTxnList(new long[0], new BitSet(), 10L, 12L),
             new ValidReaderWriteIdList(TableName.getDbTable("default", "t1"), new long[] { 2 }, new BitSet(), 1)
     );
   }
 
   private void testGetMaterializationInvalidationInfo(
-          ValidReaderWriteIdList... tableWriteIdList) throws MetaException {
+          ValidReadTxnList currentValidTxnList, ValidReaderWriteIdList... tableWriteIdList) throws MetaException {
     ValidTxnWriteIdList validTxnWriteIdList = new ValidTxnWriteIdList(5L);
     for (ValidReaderWriteIdList tableWriteId : tableWriteIdList) {
       validTxnWriteIdList.addTableValidWriteIdList(tableWriteId);
@@ -1917,10 +1820,11 @@ public class TestTxnHandler {
     CreationMetadata creationMetadata = new CreationMetadata();
     creationMetadata.setDbName("default");
     creationMetadata.setTblName("mat1");
-    creationMetadata.setSourceTables(Collections.singletonList(sourceTable));
+    creationMetadata.setTablesUsed(new HashSet<String>() {{ add("default.t1"); }});
     creationMetadata.setValidTxnList(validTxnWriteIdList.toString());
 
-    Materialization materialization = txnHandler.getMaterializationInvalidationInfo(creationMetadata);
+    Materialization materialization = txnHandler.getMaterializationInvalidationInfo(
+            creationMetadata, currentValidTxnList.toString());
     assertFalse(materialization.isSourceTablesUpdateDeleteModified());
   }
 
@@ -1946,6 +1850,15 @@ public class TestTxnHandler {
             new ValidReadTxnList(new long[0], new BitSet(), 10L, 12L),
             new ValidReaderWriteIdList(TableName.getDbTable("default", "t1"), new long[] { 2 }, new BitSet(), 1)
     );
+  }
+
+  @Test
+  public void testHeartbeatLockMaterializationRebuild() throws MetaException {
+    txnHandler.lockMaterializationRebuild("default", "table1", 1L);
+
+    boolean result = txnHandler.heartbeatLockMaterializationRebuild("default", "table1", 1L);
+
+    assertTrue(result);
   }
 
   private void testGetMaterializationInvalidationInfoWithValidReaderWriteIdList(

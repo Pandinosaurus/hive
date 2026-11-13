@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common.type;
 
@@ -62,8 +63,8 @@ public class HiveVarchar extends HiveBaseChar
     if (rhs == this) {
       return true;
     }
-    if (rhs instanceof HiveVarchar) {
-      return this.getValue().equals(((HiveVarchar) rhs).getValue());
+    if (rhs instanceof HiveVarchar varchar) {
+      return this.getValue().equals(varchar.getValue());
     }
     return false;
   }

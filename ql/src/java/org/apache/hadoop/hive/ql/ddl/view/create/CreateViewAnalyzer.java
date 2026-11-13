@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.view.create;
@@ -24,16 +25,19 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.hive.common.TableName;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.QueryState;
-import org.apache.hadoop.hive.ql.ddl.DDLWork;
 import org.apache.hadoop.hive.ql.ddl.DDLSemanticAnalyzerFactory.DDLType;
 import org.apache.hadoop.hive.ql.ddl.DDLUtils;
+import org.apache.hadoop.hive.ql.ddl.DDLWork;
 import org.apache.hadoop.hive.ql.exec.TaskFactory;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.metadata.HiveStorageHandler;
 import org.apache.hadoop.hive.ql.metadata.HiveUtils;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
@@ -41,12 +45,19 @@ import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.parse.ParseUtils;
 import org.apache.hadoop.hive.ql.parse.SemanticAnalyzer;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.parse.StorageFormat;
+import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 
 /**
  * Analyzer for create view commands.
  */
 @DDLType(types = HiveParser.TOK_CREATEVIEW)
 public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
+
+  private static final String VIEW_FORMAT_TABLE_PROPERTY = "view-format";
+
   public CreateViewAnalyzer(QueryState queryState) throws SemanticException {
     super(queryState);
   }
@@ -64,7 +75,7 @@ public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
     }
 
     List<FieldSchema> imposedSchema = children.containsKey(HiveParser.TOK_TABCOLNAME) ?
-        getColumns((ASTNode) children.remove(HiveParser.TOK_TABCOLNAME)) : null;
+        getColumns(children.remove(HiveParser.TOK_TABCOLNAME)) : null;
     boolean ifNotExists = children.remove(HiveParser.TOK_IFNOTEXISTS) != null;
     boolean orReplace = children.remove(HiveParser.TOK_ORREPLACE) != null;
     String comment = children.containsKey(HiveParser.TOK_TABLECOMMENT) ?
@@ -74,6 +85,14 @@ public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
         getProps((ASTNode) children.remove(HiveParser.TOK_TABLEPROPERTIES).getChild(0)) : null;
     List<String> partitionColumnNames = children.containsKey(HiveParser.TOK_VIEWPARTCOLS) ?
         getColumnNames((ASTNode) children.remove(HiveParser.TOK_VIEWPARTCOLS).getChild(0)) : null;
+
+    String storageHandlerClassFromTableProps = getViewStorageHandlerClassFromTableProps(properties);
+    String storageHandlerClass = resolveViewStorageHandlerClass(storageHandlerClassFromTableProps);
+
+    if (storageHandlerClassFromTableProps != null && storageHandlerClass == null) {
+      throw new SemanticException(
+          ErrorMsg.VIEW_STORAGE_HANDLER_UNSUPPORTED.format(storageHandlerClassFromTableProps));
+    }
 
     assert children.isEmpty();
 
@@ -85,17 +104,16 @@ public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
 
     SemanticAnalyzer analyzer = analyzeQuery(select, fqViewName);
 
-    schema = new ArrayList<FieldSchema>(analyzer.getResultSchema());
+    schema = new ArrayList<>(analyzer.getResultSchema());
     ParseUtils.validateColumnNameUniqueness(
         analyzer.getOriginalResultSchema() == null ? schema : analyzer.getOriginalResultSchema());
 
     String expandedText = getExpandedText(imposedSchema, select, viewName);
 
-    List<FieldSchema> partitionColumns = getPartitionColumns(imposedSchema, select, viewName,
-        partitionColumnNames);
-
+    List<FieldSchema> partitionColumns = getPartitionColumns(partitionColumnNames);
+    setColumnAccessInfo(analyzer.getColumnAccessInfo());
     CreateViewDesc desc = new CreateViewDesc(fqViewName, schema, comment, properties, partitionColumnNames,
-        ifNotExists, orReplace, originalText, expandedText, partitionColumns);
+        ifNotExists, orReplace, originalText, expandedText, partitionColumns, storageHandlerClass);
     validateCreateView(desc, analyzer);
 
     rootTasks.add(TaskFactory.get(new DDLWork(getInputs(), getOutputs(), desc)));
@@ -112,6 +130,12 @@ public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
     }
 
     String expandedText = ctx.getTokenRewriteStream().toString(select.getTokenStartIndex(), select.getTokenStopIndex());
+    String trimmedExpandedText = expandedText.trim();
+    while (trimmedExpandedText.startsWith("(") && trimmedExpandedText.endsWith(")")) {
+      trimmedExpandedText = trimmedExpandedText.substring(1, trimmedExpandedText.length() - 1);
+      expandedText = trimmedExpandedText;
+      trimmedExpandedText = trimmedExpandedText.trim();
+    }
 
     if (imposedSchema != null) {
       // Merge the names from the imposed schema into the types from the derived schema.
@@ -147,8 +171,7 @@ public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
     return expandedText;
   }
 
-  private List<FieldSchema> getPartitionColumns(List<FieldSchema> imposedSchema, ASTNode select, TableName viewName,
-      List<String> partitionColumnNames) throws SemanticException {
+  private List<FieldSchema> getPartitionColumns(List<String> partitionColumnNames) throws SemanticException {
     if (partitionColumnNames == null) {
       return null;
     }
@@ -170,6 +193,11 @@ public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
     while (columnNameIterator.hasNext()) {
       String columnName = columnNameIterator.next();
       FieldSchema fieldSchema = schemaIterator.next();
+      TypeInfo typeInfo = TypeInfoUtils.getTypeInfoFromTypeString(fieldSchema.getType());
+      if (typeInfo.getCategory() != ObjectInspector.Category.PRIMITIVE) {
+        throw new SemanticException(ErrorMsg.PARTITION_COLUMN_NON_PRIMITIVE.getMsg() + " Found "
+            + columnName + " of type: " + fieldSchema.getType());
+      }
       if (!fieldSchema.getName().equals(columnName)) {
         throw new SemanticException(ErrorMsg.VIEW_PARTITION_MISMATCH.getMsg());
       }
@@ -182,9 +210,55 @@ public class CreateViewAnalyzer extends AbstractCreateViewAnalyzer {
 
     // Now make a copy, and remove the partition columns from the end of derivedSchema.
     // (Clearing the subList writes through to the underlying derivedSchema ArrayList.)
-    List<FieldSchema> partitionColumnsCopy = new ArrayList<FieldSchema>(partitionColumns);
+    List<FieldSchema> partitionColumnsCopy = new ArrayList<>(partitionColumns);
     partitionColumns.clear();
     return partitionColumnsCopy;
+  }
+
+  /**
+   * Returns the FQCN of the storage handler that should own external logical view metadata, or {@code null} for a
+   * classic HMS virtual view. Uses {@code storageHandlerClassFromTableProps} when non-null (from the 
+   * {@code view-format} table property); otherwise the Hive config {@code hive.default.storage.handler.class}.
+   */
+  private String resolveViewStorageHandlerClass(String storageHandlerClassFromTableProps)
+      throws SemanticException {
+
+    String storageHandlerClassFromConfig =
+        StringUtils.trimToNull(HiveConf.getVar(conf, HiveConf.ConfVars.HIVE_DEFAULT_STORAGE_HANDLER));
+
+    String storageHandlerClass =
+        storageHandlerClassFromTableProps != null ? storageHandlerClassFromTableProps : storageHandlerClassFromConfig;
+
+    if (StringUtils.isBlank(storageHandlerClass)) {
+      return null;
+    }
+
+    try {
+      HiveStorageHandler storageHandler = HiveUtils.getStorageHandler(conf, storageHandlerClass);
+
+      if (storageHandler != null && storageHandler.supportsExternalViewCatalog()) {
+        return storageHandlerClass;
+      }
+    } catch (HiveException e) {
+      throw new SemanticException(e);
+    }
+
+    return null;
+  }
+
+  private static String getViewStorageHandlerClassFromTableProps(Map<String, String> properties) 
+      throws SemanticException {
+    if (properties == null) {
+      return null;
+    }
+    for (Map.Entry<String, String> e : properties.entrySet()) {
+      if (e.getKey() != null
+          && VIEW_FORMAT_TABLE_PROPERTY.equalsIgnoreCase(e.getKey())
+          && StringUtils.isNotBlank(e.getValue())) {
+        return StorageFormat.resolveStorageHandlerClassName(e.getValue().trim());
+      }
+    }
+    return null;
   }
 
   private void validateCreateView(CreateViewDesc desc, SemanticAnalyzer analyzer) throws SemanticException {

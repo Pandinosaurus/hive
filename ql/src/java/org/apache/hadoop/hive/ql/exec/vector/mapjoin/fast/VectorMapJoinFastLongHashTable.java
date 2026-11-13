@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.mapjoin.fast;
 
 import java.io.IOException;
 
+import org.apache.hadoop.hive.ql.exec.vector.mapjoin.VectorMapJoinLongHashUtil;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
 import org.apache.hadoop.hive.ql.util.JavaDataModel;
 import org.slf4j.Logger;
@@ -77,7 +79,7 @@ public abstract class VectorMapJoinFastLongHashTable
       throw new HiveException("DeserializeRead details: " +
           keyBinarySortableDeserializeRead.getDetailedReadPositionString(), e);
     }
-    long key = VectorMapJoinFastLongHashUtil.deserializeLongKey(keyBinarySortableDeserializeRead, hashTableKeyType);
+    long key = VectorMapJoinLongHashUtil.deserializeLongKey(keyBinarySortableDeserializeRead, hashTableKeyType);
     add(hashCode, key, currentValue);
     return true;
   }
@@ -279,7 +281,7 @@ public abstract class VectorMapJoinFastLongHashTable
     size += (2 * jdm.primitive2());
     size += (2 * jdm.primitive1());
     size += jdm.object();
-    // adding 16KB constant memory for keyBinarySortableDeserializeRead as the rabit hole is deep to implement
+    // adding 16KB constant memory for keyBinarySortableDeserializeRead as the rabbit hole is deep to implement
     // MemoryEstimate interface, also it is constant overhead
     size += (16 * 1024L);
     return size;

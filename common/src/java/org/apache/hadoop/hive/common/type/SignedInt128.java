@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common.type;
@@ -532,8 +533,7 @@ public final class SignedInt128 extends Number implements
 
   @Override
   public boolean equals(Object obj) {
-    if (obj instanceof SignedInt128) {
-      SignedInt128 o = (SignedInt128) obj;
+    if (obj instanceof SignedInt128 o) {
       return this.negative == o.negative && mag.equals(o.mag);
     } else {
       return false;

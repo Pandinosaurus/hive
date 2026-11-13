@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -36,6 +37,7 @@ import org.apache.hadoop.hive.metastore.events.AlterDataConnectorEvent;
 import org.apache.hadoop.hive.metastore.events.AlterISchemaEvent;
 import org.apache.hadoop.hive.metastore.events.AddPartitionEvent;
 import org.apache.hadoop.hive.metastore.events.AlterPartitionEvent;
+import org.apache.hadoop.hive.metastore.events.AlterPartitionsEvent;
 import org.apache.hadoop.hive.metastore.events.AlterSchemaVersionEvent;
 import org.apache.hadoop.hive.metastore.events.AlterTableEvent;
 import org.apache.hadoop.hive.metastore.events.BatchAcidWriteEvent;
@@ -68,6 +70,7 @@ import org.apache.hadoop.hive.metastore.events.UpdateTableColumnStatEvent;
 import org.apache.hadoop.hive.metastore.events.DeleteTableColumnStatEvent;
 import org.apache.hadoop.hive.metastore.events.UpdatePartitionColumnStatEvent;
 import org.apache.hadoop.hive.metastore.events.DeletePartitionColumnStatEvent;
+import org.apache.hadoop.hive.metastore.events.ReloadEvent;
 import org.apache.hadoop.hive.metastore.tools.SQLGenerator;
 import java.sql.Connection;
 
@@ -134,6 +137,13 @@ public abstract class MetaStoreEventListener implements Configurable {
    * @throws MetaException
    */
   public void onAlterPartition (AlterPartitionEvent partitionEvent)  throws MetaException {
+  }
+
+  /**
+   * @param event alter partitions event
+   * @throws MetaException
+   */
+  public void onAlterPartitions (AlterPartitionsEvent event)  throws MetaException {
   }
 
   /**
@@ -408,6 +418,15 @@ public abstract class MetaStoreEventListener implements Configurable {
    */
   public void onCommitCompaction(CommitCompactionEvent commitCompactionEvent, Connection dbConn,
       SQLGenerator sqlGenerator) throws MetaException {
+  }
+
+  /**
+   * This will be called to reload table/partition
+   * @param reloadEvent event to be processed
+   * @throws MetaException
+   */
+  public void onReload(ReloadEvent reloadEvent)
+          throws MetaException {
   }
 
   /**

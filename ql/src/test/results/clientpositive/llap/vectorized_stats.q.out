@@ -209,7 +209,7 @@ Table Parameters:
 	numFiles            	1                   
 	numRows             	12288               
 	rawDataSize         	134109              
-	totalSize           	146397              
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -519,7 +519,7 @@ Table Parameters:
 	numFiles            	1                   
 	numRows             	12288               
 	rawDataSize         	99809               
-	totalSize           	112097              
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -829,7 +829,7 @@ Table Parameters:
 	numFiles            	1                   
 	numRows             	12288               
 	rawDataSize         	68383               
-	totalSize           	80671               
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -1139,7 +1139,7 @@ Table Parameters:
 	numFiles            	1                   
 	numRows             	12288               
 	rawDataSize         	216589              
-	totalSize           	228877              
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -1207,13 +1207,13 @@ STAGE PLANS:
                       minReductionHashAggr: 0.99
                       mode: hash
                       outputColumnNames: _col0
-                      Statistics: Num rows: 1 Data size: 40 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 36 Data size: 1120 Basic stats: COMPLETE Column stats: COMPLETE
                       Reduce Output Operator
                         key expressions: _col0 (type: timestamp)
                         null sort order: z
                         sort order: +
                         Map-reduce partition columns: _col0 (type: timestamp)
-                        Statistics: Num rows: 1 Data size: 40 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 36 Data size: 1120 Basic stats: COMPLETE Column stats: COMPLETE
             Execution mode: vectorized, llap
             LLAP IO: all inputs
         Reducer 2 
@@ -1223,10 +1223,10 @@ STAGE PLANS:
                 keys: KEY._col0 (type: timestamp)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 1 Data size: 40 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 36 Data size: 1120 Basic stats: COMPLETE Column stats: COMPLETE
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 1 Data size: 40 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 36 Data size: 1120 Basic stats: COMPLETE Column stats: COMPLETE
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat
@@ -1450,7 +1450,7 @@ Table Parameters:
 	numFiles            	1                   
 	numRows             	12288               
 	rawDataSize         	27511               
-	totalSize           	39799               
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -1761,7 +1761,7 @@ Table Parameters:
 	numFiles            	1                   
 	numRows             	100                 
 	rawDataSize         	1000                
-	totalSize           	1100                
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -1826,16 +1826,16 @@ STAGE PLANS:
                     Statistics: Num rows: 100 Data size: 5600 Basic stats: COMPLETE Column stats: COMPLETE
                     Group By Operator
                       keys: val1 (type: date)
-                      minReductionHashAggr: 0.99
+                      minReductionHashAggr: 0.4
                       mode: hash
                       outputColumnNames: _col0
-                      Statistics: Num rows: 50 Data size: 2800 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 95 Data size: 5320 Basic stats: COMPLETE Column stats: COMPLETE
                       Reduce Output Operator
                         key expressions: _col0 (type: date)
                         null sort order: z
                         sort order: +
                         Map-reduce partition columns: _col0 (type: date)
-                        Statistics: Num rows: 50 Data size: 2800 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 95 Data size: 5320 Basic stats: COMPLETE Column stats: COMPLETE
             Execution mode: vectorized, llap
             LLAP IO: all inputs
         Reducer 2 
@@ -1845,10 +1845,10 @@ STAGE PLANS:
                 keys: KEY._col0 (type: date)
                 mode: mergepartial
                 outputColumnNames: _col0
-                Statistics: Num rows: 25 Data size: 1400 Basic stats: COMPLETE Column stats: COMPLETE
+                Statistics: Num rows: 95 Data size: 5320 Basic stats: COMPLETE Column stats: COMPLETE
                 File Output Operator
                   compressed: false
-                  Statistics: Num rows: 25 Data size: 1400 Basic stats: COMPLETE Column stats: COMPLETE
+                  Statistics: Num rows: 95 Data size: 5320 Basic stats: COMPLETE Column stats: COMPLETE
                   table:
                       input format: org.apache.hadoop.mapred.SequenceFileInputFormat
                       output format: org.apache.hadoop.hive.ql.io.HiveSequenceFileOutputFormat

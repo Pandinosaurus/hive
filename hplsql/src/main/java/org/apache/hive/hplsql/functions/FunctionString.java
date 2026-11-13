@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.hplsql.functions;
@@ -42,7 +43,7 @@ public class FunctionString extends BuiltinFunctions {
     f.map.put("SUBSTRING", this::substr);
     f.map.put("TO_CHAR", this::toChar);
     f.map.put("UPPER", this::upper);
-    
+
     f.specMap.put("SUBSTRING", this::substring);
     f.specMap.put("TRIM", this::trim);
   }
@@ -57,7 +58,9 @@ public class FunctionString extends BuiltinFunctions {
     for (int i = 0; i < cnt; i++) {
       Var c = evalPop(ctx.func_param(i).expr());
       if (!c.isNull()) {
-        val.append(c.toString());
+        String value = c.toString();
+        value = unquoteString(value);
+        val.append(value);
         nulls = false;
       }
     }
@@ -68,7 +71,14 @@ public class FunctionString extends BuiltinFunctions {
       evalString(val);
     }
   }
-  
+
+  private String unquoteString(String value) {
+    if (exec.buildSql) {
+      value = Utils.unquoteString(value);
+    }
+    return value;
+  }
+
   /**
    * CHAR function
    */
@@ -81,7 +91,7 @@ public class FunctionString extends BuiltinFunctions {
     String str = evalPop(ctx.func_param(0).expr()).toString(); 
     evalString(str);
   }
-  
+
   /**
    * INSTR function
    */
@@ -92,6 +102,7 @@ public class FunctionString extends BuiltinFunctions {
       return;
     }
     String str = evalPop(ctx.func_param(0).expr()).toString();
+    str = unquoteString(str);
     if (str == null) {
       evalNull();
       return;
@@ -101,6 +112,7 @@ public class FunctionString extends BuiltinFunctions {
       return;
     }
     String substr = evalPop(ctx.func_param(1).expr()).toString();
+    substr = unquoteString(substr);
     int pos = 1;
     int occur = 1;
     int idx = 0;
@@ -151,10 +163,12 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    int len = evalPop(ctx.func_param(0).expr()).toString().trim().length(); 
+    String value = evalPop(ctx.func_param(0).expr()).toString();
+    value = unquoteString(value);
+    int len = value.trim().length();
     evalInt(len);
   }
-  
+
   /**
    * LENGTH function
    */
@@ -163,10 +177,12 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    int len = evalPop(ctx.func_param(0).expr()).toString().length(); 
+    String value = evalPop(ctx.func_param(0).expr()).toString();
+    value = unquoteString(value);
+    int len = value.length();
     evalInt(len);
   }
-  
+
   /**
    * LOWER function
    */
@@ -175,10 +191,11 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    String str = evalPop(ctx.func_param(0).expr()).toString().toLowerCase(); 
+    String str = evalPop(ctx.func_param(0).expr()).toString().toLowerCase();
+    str = unquoteString(str);
     evalString(str);
   }
-  
+
   /**
    * REPLACE function
    */
@@ -188,12 +205,14 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    String str = evalPop(ctx.func_param(0).expr()).toString(); 
+    String str = evalPop(ctx.func_param(0).expr()).toString();
     String what = evalPop(ctx.func_param(1).expr()).toString();
+    what = unquoteString(what);
     String with = evalPop(ctx.func_param(2).expr()).toString();
+    with = unquoteString(with);
     evalString(str.replaceAll(what, with));
   }
-  
+
   /**
    * SUBSTR and SUBSTRING function
    */
@@ -203,18 +222,19 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    String str = evalPop(ctx.func_param(0).expr()).toString(); 
+    String str = evalPop(ctx.func_param(0).expr()).toString();
+    str = unquoteString(str);
     int start = evalPop(ctx.func_param(1).expr()).intValue();
     int len = -1;
     if (start == 0) {
-      start = 1; 
+      start = 1;
     }
     if (cnt > 2) {
       len = evalPop(ctx.func_param(2).expr()).intValue();
     }
     substr(str, start, len);
   }
-  
+
   void substr(String str, int start, int len) {
     if (str == null) {
       evalNull();
@@ -225,7 +245,7 @@ public class FunctionString extends BuiltinFunctions {
       return;
     }
     if (start == 0) {
-      start = 1; 
+      start = 1;
     }
     if (len == -1) {
       if (start > 0) {
@@ -236,23 +256,23 @@ public class FunctionString extends BuiltinFunctions {
       evalString(str.substring(start - 1, start - 1 + len));      
     }
   }
-  
+
   /**
    * SUBSTRING FROM FOR function
    */
   void substring(HplsqlParser.Expr_spec_funcContext ctx) {
-    String str = evalPop(ctx.expr(0)).toString(); 
+    String str = evalPop(ctx.expr(0)).toString();
     int start = evalPop(ctx.expr(1)).intValue();
     int len = -1;
     if (start == 0) {
-      start = 1; 
+      start = 1;
     }
     if (ctx.T_FOR() != null) {
       len = evalPop(ctx.expr(2)).intValue();
     }
     substr(str, start, len);
   }
-  
+
   /**
    * TRIM function
    */
@@ -262,7 +282,8 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    String str = evalPop(ctx.expr(0)).toString(); 
+    String str = evalPop(ctx.expr(0)).toString();
+    str = unquoteString(str);
     evalString(str.trim());
   }
   
@@ -275,8 +296,8 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    String str = evalPop(ctx.func_param(0).expr()).toString(); 
-    evalString(str);
+    String str = evalPop(ctx.func_param(0).expr()).toString();
+    evalSqlString(str);
   }
   
   /**
@@ -287,7 +308,8 @@ public class FunctionString extends BuiltinFunctions {
       evalNull();
       return;
     }
-    String str = evalPop(ctx.func_param(0).expr()).toString().toUpperCase(); 
+    String str = evalPop(ctx.func_param(0).expr()).toString().toUpperCase();
+    str = unquoteString(str);
     evalString(str);
   }
 }

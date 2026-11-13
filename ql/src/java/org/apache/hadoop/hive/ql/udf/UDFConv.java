@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.udf;
 
@@ -88,7 +89,7 @@ public class UDFConv extends UDF {
    * @param radix
    *          must be between MIN_RADIX and MAX_RADIX
    * @param fromPos
-   *          is the first element that should be conisdered
+   *          is the first element that should be considered
    * @return the result should be treated as an unsigned 64-bit integer.
    */
   private long encode(int radix, int fromPos) {

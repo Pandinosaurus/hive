@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.reloperators;
 
@@ -26,6 +27,7 @@ import java.util.Set;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptPlanner;
 import org.apache.calcite.plan.RelTraitSet;
+import org.apache.calcite.rel.RelInput;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.RelShuttle;
 import org.apache.calcite.rel.RelWriter;
@@ -50,6 +52,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import com.google.common.collect.ImmutableSet;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+
 
 /**
  * Relational expression representing a scan of a HiveDB collection.
@@ -61,6 +65,7 @@ import com.google.common.collect.ImmutableSet;
  */
 public class HiveTableScan extends TableScan implements HiveRelNode {
 
+  private static final String QBID_TAG = "qbid:alias";
   public enum HiveTableScanTrait {
     /**
      * If this is a fully acid table scan fetch the deleted rows too.
@@ -137,6 +142,18 @@ public class HiveTableScan extends TableScan implements HiveRelNode {
     this(cluster, traitSet, table, alias, concatQbIDAlias, table.getRowType(), useQBIdInDigest, insideView, null);
   }
 
+  public HiveTableScan(RelInput input) {
+    this(
+        input.getCluster(),
+        input.getTraitSet(),
+        (RelOptHiveTable) input.getTable("table"),
+        input.getString("table:alias"),
+        input.getString(QBID_TAG),
+        input.get(QBID_TAG) != null,
+        input.getBoolean("insideView", false),
+        createTableScanTrait(input));
+  }
+
   public HiveTableScan(RelOptCluster cluster, RelTraitSet traitSet, RelOptHiveTable table,
       String alias, String concatQbIDAlias, boolean useQBIdInDigest, boolean insideView,
       HiveTableScanTrait tableScanTrait) {
@@ -148,7 +165,7 @@ public class HiveTableScan extends TableScan implements HiveRelNode {
       String alias, String concatQbIDAlias, RelDataType newRowtype, boolean useQBIdInDigest, boolean insideView,
       HiveTableScanTrait tableScanTrait) {
     super(cluster, TraitsUtil.getDefaultTraitSet(cluster), table);
-    assert getConvention() == HiveRelNode.CONVENTION;
+    assert getTraitSet().containsIfApplicable(HiveRelNode.CONVENTION);
     this.tblAlias = alias;
     this.concatQbIDAlias = concatQbIDAlias;
     this.hiveTableScanRowType = newRowtype;
@@ -201,22 +218,19 @@ public class HiveTableScan extends TableScan implements HiveRelNode {
   // expression was already generated.
   @Override public RelWriter explainTerms(RelWriter pw) {
     return super.explainTerms(pw)
-      .itemIf("qbid:alias", concatQbIDAlias, this.useQBIdInDigest)
+      .itemIf(QBID_TAG, concatQbIDAlias, this.useQBIdInDigest)
       .itemIf("htColumns", this.neededColIndxsFrmReloptHT, pw.getDetailLevel() == SqlExplainLevel.DIGEST_ATTRIBUTES)
       .itemIf("insideView", this.isInsideView(), pw.getDetailLevel() == SqlExplainLevel.DIGEST_ATTRIBUTES)
       .itemIf("plKey", ((RelOptHiveTable) table).getPartitionListKey(), pw.getDetailLevel() == SqlExplainLevel.DIGEST_ATTRIBUTES)
       .itemIf("table:alias", tblAlias, !this.useQBIdInDigest)
       .itemIf("tableScanTrait", this.tableScanTrait,
-          pw.getDetailLevel() == SqlExplainLevel.DIGEST_ATTRIBUTES);
+          pw.getDetailLevel() == SqlExplainLevel.DIGEST_ATTRIBUTES)
+      .itemIf("fromVersion", ((RelOptHiveTable) table).getHiveTableMD().getVersionIntervalFrom(),
+          isNotBlank(((RelOptHiveTable) table).getHiveTableMD().getVersionIntervalFrom()));
   }
 
   @Override
   public void register(RelOptPlanner planner) {
-
-  }
-
-  @Override
-  public void implement(Implementor implementor) {
 
   }
 
@@ -262,13 +276,8 @@ public class HiveTableScan extends TableScan implements HiveRelNode {
         fieldNames));
 
     // 5. Add Proj on top of TS
-    HiveProject hp = (HiveProject) relBuilder.push(newHT)
+    return relBuilder.push(newHT)
         .project(exprList, new ArrayList<String>(fieldNames)).build();
-
-    // 6. Set synthetic flag, so that we would push filter below this one
-    hp.setSynthetic();
-
-    return hp;
   }
 
   public List<Integer> getNeededColIndxsFrmReloptHT() {
@@ -329,6 +338,14 @@ public class HiveTableScan extends TableScan implements HiveRelNode {
 
   public HiveTableScanTrait getTableScanTrait() {
     return tableScanTrait;
+  }
+
+  private static HiveTableScanTrait createTableScanTrait(RelInput input) {
+    String enumName = input.getString("tableScanTrait");
+    if (enumName == null) {
+      return null;
+    }
+    return HiveTableScanTrait.valueOf(enumName);
   }
 
   @Override

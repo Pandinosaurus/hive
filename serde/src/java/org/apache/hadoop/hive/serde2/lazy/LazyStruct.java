@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.serde2.lazy;
 
@@ -300,7 +301,7 @@ public class LazyStruct extends LazyNonPrimitive<LazySimpleStructObjectInspector
     // first field always starts from 0, even when missing
     startPosition[0] = 0;
     for (int i = 1; i <= fields.length; i++) {
-      if (fields.length > 1 && delimitIndexes[i - 1] != -1) {
+      if (delimitIndexes[i - 1] != -1) {
         int start = delimitIndexes[i - 1] + fieldDelimit.length;
         startPosition[i] = start - i * diff;
       } else {
@@ -313,7 +314,7 @@ public class LazyStruct extends LazyNonPrimitive<LazySimpleStructObjectInspector
 
   // find all the indexes of the sub byte[]
   private int[] findIndexes(byte[] array, byte[] target) {
-    if (fields.length <= 1) {
+    if (fields.length < 1) {
       return new int[0];
     }
     int[] indexes = new int[fields.length];

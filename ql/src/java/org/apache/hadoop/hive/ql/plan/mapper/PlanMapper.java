@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan.mapper;
@@ -37,6 +38,9 @@ import org.apache.hadoop.hive.ql.optimizer.signature.OpTreeSignature;
 import org.apache.hadoop.hive.ql.optimizer.signature.OpTreeSignatureFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
+import org.apache.hadoop.hive.ql.stats.OperatorStats;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Enables to connect related objects to eachother.
@@ -44,6 +48,7 @@ import com.google.common.collect.Sets;
  * Most importantly it aids to connect Operators to OperatorStats and probably RelNodes.
  */
 public class PlanMapper {
+  private static final Logger LOG = LoggerFactory.getLogger(PlanMapper.class);
 
   Set<EquivGroup> groups = new HashSet<>();
   private Map<Object, EquivGroup> objectMap = new CompositeMap<>(OpTreeSignature.class, AuxOpTreeSignature.class);
@@ -217,7 +222,9 @@ public class PlanMapper {
     }
     if (mGroups.size() > 1) {
       if (!mayMerge) {
-        throw new RuntimeException("equivalence mapping violation");
+        LOG.warn("Illegally linking {} and {}", o1, o2);
+        mGroups.forEach(g -> g.add(new OperatorStats.IncorrectRuntimeStatsMarker()));
+        return;
       }
       EquivGroup newGrp = new EquivGroup();
       newGrp.add(o1);
@@ -256,13 +263,7 @@ public class PlanMapper {
     return ret;
   }
 
-  public void runMapper(GroupTransformer mapper) {
-    for (EquivGroup equivGroup : groups) {
-      mapper.map(equivGroup);
-    }
-  }
-
-  public <T> List<T> lookupAll(Class<T> clazz, Object key) {
+  private <T> List<T> lookupAll(Class<T> clazz, Object key) {
     EquivGroup group = objectMap.get(key);
     if (group == null) {
       throw new NoSuchElementException(Objects.toString(key));
@@ -270,6 +271,7 @@ public class PlanMapper {
     return group.getAll(clazz);
   }
 
+  @VisibleForTesting
   public <T> T lookup(Class<T> clazz, Object key) {
     List<T> all = lookupAll(clazz, key);
     if (all.size() != 1) {
@@ -279,7 +281,6 @@ public class PlanMapper {
     return all.get(0);
   }
 
-  @VisibleForTesting
   public Iterator<EquivGroup> iterateGroups() {
     return groups.iterator();
 

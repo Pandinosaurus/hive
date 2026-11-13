@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.calcite.reloperators;
@@ -21,11 +22,11 @@ package org.apache.hadoop.hive.ql.optimizer.calcite.reloperators;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelCollation;
-import org.apache.calcite.rel.RelCollationImpl;
 import org.apache.calcite.rel.RelCollationTraitDef;
 import org.apache.calcite.rel.RelDistribution;
 import org.apache.calcite.rel.RelDistributionTraitDef;
 import org.apache.calcite.rel.RelFieldCollation;
+import org.apache.calcite.rel.RelInput;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.SortExchange;
 import org.apache.calcite.rex.RexNode;
@@ -46,6 +47,11 @@ public final class HiveSortExchange extends SortExchange implements HiveRelNode 
       RelNode input, RelDistribution distribution, RelCollation collation, ImmutableList<RexNode> keys) {
     super(cluster, traitSet, input, distribution, collation);
     this.keys = new ImmutableList.Builder<RexNode>().addAll(keys).build();
+  }
+
+  public HiveSortExchange(RelInput input) {
+    super(input);
+    this.keys = sortKeys(input.getCollation(), input.getInput());
   }
 
   /**
@@ -76,15 +82,16 @@ public final class HiveSortExchange extends SortExchange implements HiveRelNode 
     distribution = RelDistributionTraitDef.INSTANCE.canonize(distribution);
     collation = RelCollationTraitDef.INSTANCE.canonize(collation);
     RelTraitSet traitSet = getTraitSet(cluster, collation, distribution);
-    RelCollation canonizedCollation = traitSet.canonize(RelCollationImpl.of(collation.getFieldCollations()));
+    return new HiveSortExchange(cluster, traitSet, input, distribution, collation, sortKeys(collation, input));
+  }
 
+  private static ImmutableList<RexNode> sortKeys(RelCollation collation, RelNode input) {
     ImmutableList.Builder<RexNode> builder = ImmutableList.builder();
-    for (RelFieldCollation relFieldCollation : canonizedCollation.getFieldCollations()) {
+    for (RelFieldCollation relFieldCollation : collation.getFieldCollations()) {
       int index = relFieldCollation.getFieldIndex();
-      builder.add(cluster.getRexBuilder().makeInputRef(input, index));
+      builder.add(input.getCluster().getRexBuilder().makeInputRef(input, index));
     }
-
-    return new HiveSortExchange(cluster, traitSet, input, distribution, collation, builder.build());
+    return builder.build();
   }
 
   @Override
@@ -104,9 +111,5 @@ public final class HiveSortExchange extends SortExchange implements HiveRelNode 
 
   public void setKeyExpressions(ExprNodeDesc[] keyExpressions) {
     this.keyExpressions = keyExpressions;
-  }
-
-  @Override
-  public void implement(Implementor implementor) {
   }
 }

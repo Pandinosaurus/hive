@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
@@ -64,6 +65,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 
 
 public class ExprNodeDescUtils {
@@ -71,7 +73,11 @@ public class ExprNodeDescUtils {
   protected static final Logger LOG = LoggerFactory.getLogger(ExprNodeDescUtils.class);
 
   public static int indexOf(ExprNodeDesc origin, List<ExprNodeDesc> sources) {
-    for (int i = 0; i < sources.size(); i++) {
+    return indexOf(origin, sources, 0);
+  }
+
+  public static int indexOf(ExprNodeDesc origin, List<ExprNodeDesc> sources, int startIndex) {
+    for (int i = startIndex; i < sources.size(); i++) {
       if (origin.isSame(sources.get(i))) {
         return i;
       }
@@ -240,6 +246,21 @@ public class ExprNodeDescUtils {
   }
 
   /**
+   * Creates a disjunction (OR) of the given expressions flattening nested disjunctions if possible.
+   * <pre>
+   * Input: AND(A, B), C, OR(D, OR(E, F))
+   * Output: OR(AND(A, B), C, D, E, F)
+   * </pre>
+   */
+  public static ExprNodeGenericFuncDesc or(List<ExprNodeDesc> exps) {
+    List<ExprNodeDesc> flatExps = new ArrayList<>();
+    for (ExprNodeDesc e : exps) {
+      split(e, flatExps, FunctionRegistry::isOpOr);
+    }
+    return new ExprNodeGenericFuncDesc(TypeInfoFactory.booleanTypeInfo, new GenericUDFOPOr(), "or", flatExps);
+  }
+
+  /**
    * Create an expression for computing a murmur hash by recursively hashing given expressions by two:
    * <pre>
    * Input: HASH(A, B, C, D)
@@ -301,9 +322,17 @@ public class ExprNodeDescUtils {
    * split predicates by AND op
    */
   public static List<ExprNodeDesc> split(ExprNodeDesc current, List<ExprNodeDesc> splitted) {
-    if (FunctionRegistry.isOpAnd(current)) {
+    return split(current, splitted, FunctionRegistry::isOpAnd);
+  }
+
+  /**
+   * split predicates by a certain condition
+   */
+  private static List<ExprNodeDesc> split(ExprNodeDesc current, List<ExprNodeDesc> splitted,
+      Predicate<ExprNodeDesc> condition) {
+    if (condition.test(current)) {
       for (ExprNodeDesc child : current.getChildren()) {
-        split(child, splitted);
+        split(child, splitted, condition);
       }
       return splitted;
     }
@@ -533,9 +562,9 @@ public class ExprNodeDescUtils {
         if(columnInternalName.startsWith(Utilities.ReduceField.VALUE.toString())) {
           continue;
         }
-        if (source instanceof ExprNodeColumnDesc) {
+        ColumnInfo columnInfo = reduceSinkOp.getSchema().getColumnInfo(columnInternalName);
+        if (source instanceof ExprNodeColumnDesc && columnInfo != null) {
           // The join key is a table column. Create the ExprNodeDesc based on this column.
-          ColumnInfo columnInfo = reduceSinkOp.getSchema().getColumnInfo(columnInternalName);
           return new ExprNodeColumnDesc(columnInfo);
         } else {
           // Join key expression is likely some expression involving functions/operators, so there

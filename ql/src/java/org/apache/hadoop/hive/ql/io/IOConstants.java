@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io;
 
@@ -39,7 +40,7 @@ public final class IOConstants {
 
   /**
    * The desired TABLE column names and types for input format schema evolution.
-   * This is different than COLUMNS and COLUMNS_TYPES, which are based on individual partition
+   * This is different from COLUMNS and COLUMNS_TYPES, which are based on individual partition
    * metadata.
    *
    * Virtual columns and partition columns are not included

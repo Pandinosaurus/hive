@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.hplsql;
@@ -110,7 +111,13 @@ public class Expression {
     }
     else {
       visitChildren(ctx);
-      sql.append(exec.stackPop().toString());
+      Var value = exec.stackPop();
+      if (value.type == Type.NULL && sql.toString().length() == 0) {
+        exec.stackPush(new Var());
+        return;
+      } else {
+        sql.append(value.toSqlString());
+      }
     }
     exec.stackPush(sql);
   }
@@ -565,13 +572,14 @@ public class Expression {
     sql.append("CONCAT(");
     int cnt = ctx.expr_concat_item().size();
     for (int i = 0; i < cnt; i++) {
-      sql.append(evalPop(ctx.expr_concat_item(i)).toString());
+      sql.append(evalPop(ctx.expr_concat_item(i)).toSqlString());
       if (i + 1 < cnt) {
         sql.append(", ");
       }
     }
     sql.append(")");
-    exec.stackPush(sql);
+    Var var = new Var(Type.SQL_STRING, sql);
+    exec.stackPush(var);
   }
   
   /**

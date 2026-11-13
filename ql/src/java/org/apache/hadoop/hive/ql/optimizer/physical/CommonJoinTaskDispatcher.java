@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.physical;
 
@@ -143,7 +144,7 @@ public class CommonJoinTaskDispatcher extends AbstractJoinTaskDispatcher impleme
    * Check if the total size of local tables will be under
    * the limit after we merge localWork1 and localWork2.
    * The limit of the total size of local tables is defined by
-   * HiveConf.ConfVars.HIVECONVERTJOINNOCONDITIONALTASKTHRESHOLD.
+   * HiveConf.ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONAL_TASK_THRESHOLD.
    * @param conf
    * @param localWorks
    * @return
@@ -152,7 +153,7 @@ public class CommonJoinTaskDispatcher extends AbstractJoinTaskDispatcher impleme
       Configuration conf,
       MapredLocalWork... localWorks) {
     final long localTableTotalSizeLimit = HiveConf.getLongVar(conf,
-        HiveConf.ConfVars.HIVECONVERTJOINNOCONDITIONALTASKTHRESHOLD);
+        HiveConf.ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONAL_TASK_THRESHOLD);
     long localTableTotalSize = 0;
     for (int i = 0; i < localWorks.length; i++) {
       final long localWorkTableTotalSize = calculateLocalTableTotalSize(localWorks[i]);
@@ -166,7 +167,7 @@ public class CommonJoinTaskDispatcher extends AbstractJoinTaskDispatcher impleme
     if (localTableTotalSize > localTableTotalSizeLimit) {
       // The total size of local tables after we merge localWorks
       // is larger than the limit set by
-      // HiveConf.ConfVars.HIVECONVERTJOINNOCONDITIONALTASKTHRESHOLD.
+      // HiveConf.ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONAL_TASK_THRESHOLD.
       return false;
     }
 
@@ -431,12 +432,12 @@ public class CommonJoinTaskDispatcher extends AbstractJoinTaskDispatcher impleme
       // If sizes of at least n-1 tables in a n-way join is known, and their sum is smaller than
       // the threshold size, convert the join into map-join and don't create a conditional task
       boolean convertJoinMapJoin = HiveConf.getBoolVar(conf,
-          HiveConf.ConfVars.HIVECONVERTJOINNOCONDITIONALTASK);
+          HiveConf.ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONALTASK);
       int bigTablePosition = -1;
       if (convertJoinMapJoin) {
         // This is the threshold that the user has specified to fit in mapjoin
         long mapJoinSize = HiveConf.getLongVar(conf,
-            HiveConf.ConfVars.HIVECONVERTJOINNOCONDITIONALTASKTHRESHOLD);
+            HiveConf.ConfVars.HIVE_CONVERT_JOIN_NOCONDITIONAL_TASK_THRESHOLD);
 
         Long bigTableSize = null;
         Set<String> aliases = aliasToWork.keySet();
@@ -480,7 +481,7 @@ public class CommonJoinTaskDispatcher extends AbstractJoinTaskDispatcher impleme
       }
 
       long ThresholdOfSmallTblSizeSum = HiveConf.getLongVar(conf,
-          HiveConf.ConfVars.HIVESMALLTABLESFILESIZE);
+          HiveConf.ConfVars.HIVE_SMALL_TABLES_FILESIZE);
       for (int pos = 0; pos < joinOp.getNumParent(); pos++) {
         // this table cannot be big table
         if (!bigTableCandidates.contains(pos)) {

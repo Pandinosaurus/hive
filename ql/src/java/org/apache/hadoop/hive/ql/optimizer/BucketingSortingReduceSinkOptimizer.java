@@ -1,19 +1,20 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.See the NOTICE file
+ * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
- * regarding copyright ownership.The ASF licenses this file
+ * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
- * with the License.You may obtain a copy of the License at
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer;
@@ -477,7 +478,7 @@ public class BucketingSortingReduceSinkOptimizer extends Transform {
           SMBJoinDesc smbJoinDesc = smbOp.getConf();
           int posBigTable = smbJoinDesc.getPosBigTable();
 
-          // join keys dont match the bucketing keys
+          // join keys don't match the bucketing keys
           List<ExprNodeDesc> keysBigTable = smbJoinDesc.getKeys().get((byte) posBigTable);
           if (keysBigTable.size() != bucketPositions.size()) {
             return null;
@@ -621,8 +622,8 @@ public class BucketingSortingReduceSinkOptimizer extends Transform {
             if (selectDesc.getColList().size() < bucketPositions.size()
                 || selectDesc.getColList().size() != fsOp.getSchema().getSignature().size()) {
               // Some columns in select are pruned. This may happen if those are constants.
-              // TODO: the best solution is to hook the operator before fs with the select operator. 
-              // See smb_mapjoin_20.q for more details. 
+              // TODO: the best solution is to hook the operator before fs with the select operator.
+              // See smb_mapjoin_20.q for more details.
               return null;
             }
             // Only columns can be selected for both sorted and bucketed positions

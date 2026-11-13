@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -45,6 +46,7 @@ import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.client.builder.DatabaseBuilder;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.hive.metastore.model.MTable;
 import org.apache.hadoop.hive.ql.io.sarg.SearchArgument;
 import org.junit.After;
 import org.junit.Assert;
@@ -148,6 +150,7 @@ public class TestOldSchema {
     Table table = new Table(tableName, dbName, "me", (int) now, (int) now, 0, sd, partCols,
         Collections.emptyMap(), null, null, null);
     store.createTable(table);
+    MTable mTable = store.ensureGetMTable(table.getCatName(), table.getDbName(), table.getTableName());
 
     Deadline.startTimer("getPartition");
     for (int i = 0; i < 10; i++) {
@@ -178,7 +181,7 @@ public class TestOldSchema {
       obj.setStatsData(data);
       cs.addToStatsObj(obj);
       cs.setEngine(ENGINE);
-      store.updatePartitionColumnStatistics(cs, partVal, null, -1);
+      store.updatePartitionColumnStatistics(table, mTable, cs, partVal, null, -1);
 
     }
 
@@ -221,10 +224,8 @@ public class TestOldSchema {
         String db = dbs.get(i);
         List<String> tbls = store.getAllTables(DEFAULT_CATALOG_NAME, db);
         for (String tbl : tbls) {
-          List<Partition> parts = store.getPartitions(DEFAULT_CATALOG_NAME, db, tbl, 100);
-          for (Partition part : parts) {
-            store.dropPartition(DEFAULT_CATALOG_NAME, db, tbl, part.getValues());
-          }
+          List<String> partNames = store.listPartitionNames(DEFAULT_CATALOG_NAME, db, tbl, (short) -1);
+          store.dropPartitions(DEFAULT_CATALOG_NAME, db, tbl, partNames);
           store.dropTable(DEFAULT_CATALOG_NAME, db, tbl);
         }
         store.dropDatabase(DEFAULT_CATALOG_NAME, db);

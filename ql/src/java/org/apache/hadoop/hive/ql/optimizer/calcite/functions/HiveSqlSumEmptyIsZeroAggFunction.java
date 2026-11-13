@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.calcite.functions;
@@ -42,7 +43,7 @@ import com.google.common.collect.ImmutableList;
 public class HiveSqlSumEmptyIsZeroAggFunction extends SqlAggFunction {
   //~ Constructors -----------------------------------------------------------
 
-  public HiveSqlSumEmptyIsZeroAggFunction(boolean isDistinct, SqlReturnTypeInference returnTypeInference,
+  public HiveSqlSumEmptyIsZeroAggFunction(SqlReturnTypeInference returnTypeInference,
           SqlOperandTypeInference operandTypeInference, SqlOperandTypeChecker operandTypeChecker) {
     super("$SUM0",
         null,
@@ -73,5 +74,10 @@ public class HiveSqlSumEmptyIsZeroAggFunction extends SqlAggFunction {
       return clazz.cast(SqlSplittableAggFunction.SumSplitter.INSTANCE);
     }
     return super.unwrap(clazz);
+  }
+
+  @Override
+  public SqlAggFunction getRollup() {
+    return this;
   }
 }

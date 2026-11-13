@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.drop;
@@ -76,7 +77,7 @@ public class DropTableOperation extends DDLOperation<DropTableDesc> {
        * to repeats. What can happen, sometimes, is that a drone processing a replication task can
        * have been abandoned for not returning in time, but still execute its task after a while,
        * which should not result in it mucking up data that has been impressed later on. So, for eg.,
-       * if we create partition P1, followed by droppping it, followed by creating it yet again,
+       * if we create partition P1, followed by dropping it, followed by creating it yet again,
        * the replication of that drop should not drop the newer partition if it runs after the destination
        * object is already in the newer state.
        *
@@ -91,7 +92,7 @@ public class DropTableOperation extends DDLOperation<DropTableDesc> {
        */
       Map<String, String> dbParams = context.getDb().getDatabase(table.getDbName()).getParameters();
       if (!replicationSpec.allowEventReplacementInto(dbParams)) {
-        // Drop occured as part of replicating a drop, but the destination
+        // Drop occurred as part of replicating a drop, but the destination
         // table was newer than the event being replicated. Ignore, but drop
         // any partitions inside that are older.
         if (table.isPartitioned()) {
@@ -115,7 +116,7 @@ public class DropTableOperation extends DDLOperation<DropTableDesc> {
     if (LlapHiveUtils.isLlapMode(context.getConf())) {
       TableName tableName = HiveTableName.of(table);
       ProactiveEviction.Request.Builder llapEvictRequestBuilder = ProactiveEviction.Request.Builder.create();
-      llapEvictRequestBuilder.addTable(tableName.getDb(), tableName.getTable());
+      llapEvictRequestBuilder.addTable(table.getCatName(), tableName.getDb(), tableName.getTable());
       ProactiveEviction.evict(context.getConf(), llapEvictRequestBuilder.build());
     }
 

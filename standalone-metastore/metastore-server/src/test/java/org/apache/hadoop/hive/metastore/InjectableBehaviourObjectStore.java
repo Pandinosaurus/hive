@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -180,13 +181,8 @@ public class InjectableBehaviourObjectStore extends ObjectStore {
 
   // ObjectStore methods to be overridden with injected behavior
   @Override
-  public Table getTable(String catName, String dbName, String tableName) throws MetaException {
-    return getTableModifier.apply(super.getTable(catName, dbName, tableName));
-  }
-
-  @Override
-  public Table getTable(String catName, String dbName, String tableName, String writeIdList) throws MetaException {
-    return getTableModifier.apply(super.getTable(catName, dbName, tableName, writeIdList));
+  public Table getTable(String catName, String dbName, String tableName, String writeIdList, long tableId) throws MetaException {
+    return getTableModifier.apply(super.getTable(catName, dbName, tableName, writeIdList, tableId));
   }
 
   @Override

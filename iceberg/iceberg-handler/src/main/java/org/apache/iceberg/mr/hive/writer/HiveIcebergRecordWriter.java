@@ -21,37 +21,27 @@ package org.apache.iceberg.mr.hive.writer;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import org.apache.hadoop.io.Writable;
 import org.apache.iceberg.DataFile;
-import org.apache.iceberg.FileFormat;
-import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.io.ClusteredDataWriter;
 import org.apache.iceberg.io.DataWriteResult;
-import org.apache.iceberg.io.FileIO;
-import org.apache.iceberg.io.FileWriterFactory;
 import org.apache.iceberg.io.OutputFileFactory;
 import org.apache.iceberg.mr.hive.FilesForCommit;
+import org.apache.iceberg.mr.hive.writer.WriterBuilder.Context;
 import org.apache.iceberg.mr.mapred.Container;
 
-class HiveIcebergRecordWriter extends HiveIcebergWriterBase {
+class HiveIcebergRecordWriter extends HiveIcebergDefaultWriter {
 
-  private final int currentSpecId;
-
-  HiveIcebergRecordWriter(Schema schema, Map<Integer, PartitionSpec> specs, int currentSpecId,
-      FileWriterFactory<Record> fileWriterFactory, OutputFileFactory fileFactory, FileFormat format, FileIO io,
-      long targetFileSize) {
-    super(schema, specs, io,
-        new ClusteredDataWriter<>(fileWriterFactory, fileFactory, io, format, targetFileSize));
-    this.currentSpecId = currentSpecId;
+  HiveIcebergRecordWriter(Table table, HiveFileWriterFactory fileWriterFactory,
+      OutputFileFactory dataFileFactory, Context context) {
+    super(table, fileWriterFactory, dataFileFactory, context);
   }
 
   @Override
   public void write(Writable row) throws IOException {
     Record record = ((Container<Record>) row).get();
-    writer.write(record, specs.get(currentSpecId), partition(record, currentSpecId));
+    write(record);
   }
 
   @Override

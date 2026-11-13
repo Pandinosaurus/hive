@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io;
@@ -21,12 +22,19 @@ package org.apache.hadoop.hive.ql.io;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.mapred.JobConf;
 
 public final class SyntheticFileId implements Writable {
+
+  private static final String JOBCONF_KEY = "SYNTHETIC_FILE_ID";
+  private static final Pattern STRING_PATTERN = Pattern.compile("\\[(-?\\d+),\\s(-?\\d+),\\s(\\d+)\\]");
+
   private long pathHash;
   private long modTime;
   private long length;
@@ -39,6 +47,16 @@ public final class SyntheticFileId implements Writable {
     this.pathHash = hashCode(path.toUri().getPath());
     this.modTime = modificationTime;
     this.length = len;
+  }
+
+  private SyntheticFileId(String fileIdAsString) {
+    Matcher matcher = STRING_PATTERN.matcher(fileIdAsString);
+    if (!matcher.matches()) {
+      throw new IllegalArgumentException("Expected format " + STRING_PATTERN + " but got " + fileIdAsString);
+    }
+    this.pathHash = Long.parseLong(matcher.group(1));
+    this.modTime = Long.parseLong(matcher.group(2));
+    this.length = Long.parseLong(matcher.group(3));
   }
 
   public SyntheticFileId(FileStatus file) {
@@ -108,5 +126,17 @@ public final class SyntheticFileId implements Writable {
 
   public long getLength() {
     return length;
+  }
+
+  public void toJobConf(JobConf job) {
+    job.set(JOBCONF_KEY, this.toString());
+  }
+
+  public static SyntheticFileId fromJobConf(JobConf job) {
+    String idAsString = job.get(JOBCONF_KEY);
+    if (idAsString == null) {
+      return null;
+    }
+    return new SyntheticFileId(idAsString);
   }
 }

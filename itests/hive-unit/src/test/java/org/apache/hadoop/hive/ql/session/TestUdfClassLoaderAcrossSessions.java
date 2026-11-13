@@ -9,15 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.session;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.ql.DriverFactory;
 import org.apache.hadoop.hive.ql.IDriver;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorException;
@@ -32,7 +34,7 @@ public class TestUdfClassLoaderAcrossSessions {
 
   @Test
   public void testDropDatabaseCascadeDoesNotThrow() throws CommandProcessorException, IOException {
-    HiveConf conf = new HiveConf(this.getClass());
+    HiveConf conf = new HiveConfForTest(this.getClass());
     conf.set(HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY.varname, "false");
     SessionState.start(conf);
     IDriver driver = DriverFactory.newDriver(conf);
@@ -48,7 +50,7 @@ public class TestUdfClassLoaderAcrossSessions {
 
   @Test
   public void testDropFunctionDoesNotThrow() throws CommandProcessorException, IOException {
-    HiveConf conf = new HiveConf(this.getClass());
+    HiveConf conf = new HiveConfForTest(this.getClass());
     conf.set(HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY.varname, "false");
     SessionState.start(conf);
     IDriver driver = DriverFactory.newDriver(conf);
@@ -65,7 +67,7 @@ public class TestUdfClassLoaderAcrossSessions {
 
   @Test
   public void testUseBeforeDropDatabaseCascadeDoesNotThrow() throws CommandProcessorException, IOException {
-    HiveConf conf = new HiveConf(this.getClass());
+    HiveConf conf = new HiveConfForTest(this.getClass());
     conf.set(HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY.varname, "false");
     SessionState.start(conf);
     IDriver driver = DriverFactory.newDriver(conf);

@@ -9,31 +9,29 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.StringInternUtils;
+import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.io.HiveFileFormatUtils;
 import org.apache.hadoop.hive.ql.plan.Explain.Level;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.AbstractSerDe;
-import org.apache.hadoop.hive.serde2.Deserializer;
 import org.apache.hadoop.hive.serde2.SerDeException;
-import org.apache.hadoop.hive.serde2.SerDeUtils;
 import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.OutputFormat;
 import org.apache.hive.common.util.ReflectionUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Enumeration;
@@ -56,7 +54,29 @@ public class TableDesc implements Serializable, Cloneable {
   public static final String SECRET_PREFIX = "TABLE_SECRET";
   public static final String SECRET_DELIMIT = "#";
 
+  private String catalogName;
+
   public TableDesc() {
+  }
+
+  /**
+   * @param inputFormatClass
+   * @param outputFormatClass
+   * @param properties must contain serde class name associate with this table.
+   * @param catalogName the catalog this table belongs to; stored as a dedicated field so it does
+   *                    not appear in EXPLAIN output. Pass {@code null} for internal/intermediate
+   *                    descriptors that are not backed by a real user table; {@code null} will be
+   *                    normalized to {@link Warehouse#DEFAULT_CATALOG_NAME}.
+   */
+  public TableDesc(
+      final Class<? extends InputFormat> inputFormatClass,
+      final Class<?> outputFormatClass, final Properties properties,
+      final String catalogName) {
+    this.inputFileFormatClass = inputFormatClass;
+    outputFileFormatClass = HiveFileFormatUtils
+        .getOutputFormatSubstitute(outputFormatClass);
+    setProperties(properties);
+    this.catalogName = catalogName == null ? Warehouse.DEFAULT_CATALOG_NAME : catalogName;
   }
 
   /**
@@ -67,10 +87,7 @@ public class TableDesc implements Serializable, Cloneable {
   public TableDesc(
       final Class<? extends InputFormat> inputFormatClass,
       final Class<?> outputFormatClass, final Properties properties) {
-    this.inputFileFormatClass = inputFormatClass;
-    outputFileFormatClass = HiveFileFormatUtils
-        .getOutputFormatSubstitute(outputFormatClass);
-    setProperties(properties);
+    this(inputFormatClass, outputFormatClass, properties, null);
   }
 
   public Class<? extends AbstractSerDe> getSerDeClass() {
@@ -129,7 +146,7 @@ public class TableDesc implements Serializable, Cloneable {
 
   @Explain(displayName = "properties", explainLevels = { Level.EXTENDED })
   public Map getPropertiesExplain() {
-    return PlanUtils.getPropertiesExplain(getProperties());
+    return PlanUtils.getPropertiesForExplain(getProperties());
   }
 
   public void setProperties(final Properties properties) {
@@ -203,6 +220,14 @@ public class TableDesc implements Serializable, Cloneable {
         properties.getProperty(hive_metastoreConstants.TABLE_BUCKETING_VERSION));
   }
 
+  public String getCatalogName() {
+    return catalogName;
+  }
+
+  public void setCatalogName(String catalogName) {
+    this.catalogName = catalogName == null ? Warehouse.DEFAULT_CATALOG_NAME : catalogName;
+  }
+
   @Override
   public Object clone() {
     TableDesc ret = new TableDesc();
@@ -219,6 +244,7 @@ public class TableDesc implements Serializable, Cloneable {
     if (jobProperties != null) {
       ret.jobProperties = new LinkedHashMap<String, String>(jobProperties);
     }
+    ret.catalogName = catalogName == null ? Warehouse.DEFAULT_CATALOG_NAME : catalogName;
     return ret;
   }
 
@@ -263,5 +289,13 @@ public class TableDesc implements Serializable, Cloneable {
     return "TableDesc [inputFileFormatClass=" + inputFileFormatClass
         + ", outputFileFormatClass=" + outputFileFormatClass + ", properties="
         + properties + ", jobProperties=" + jobProperties + "]";
+  }
+
+  public void setProperty(String key, String value) {
+    properties.put(key, value);
+  }
+
+  public String getProperty(String key) {
+    return properties.getProperty(key);
   }
 }

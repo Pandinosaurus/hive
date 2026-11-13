@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -21,6 +22,7 @@ package org.apache.hadoop.hive.kafka;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -39,7 +41,11 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.config.ConfigDef;
+import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.config.SecurityConfig;
 import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.InvalidTopicException;
@@ -47,6 +53,8 @@ import org.apache.kafka.common.errors.OffsetMetadataTooLarge;
 import org.apache.kafka.common.errors.SecurityDisabledException;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.errors.UnknownServerException;
+import org.apache.kafka.common.security.JaasContext;
+import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +65,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -75,6 +84,9 @@ final class KafkaUtils {
   private static final String JAAS_TEMPLATE_SCRAM =
       "org.apache.kafka.common.security.scram.ScramLoginModule required "
           + "username=\"%s\" password=\"%s\" serviceName=\"%s\" tokenauth=true;";
+  static final Text KAFKA_DELEGATION_TOKEN_KEY = new Text("KAFKA_DELEGATION_TOKEN");
+  private static final Set<String> SSL_CONFIG_KEYS =
+      ImmutableSet.copyOf(new ConfigDef().withClientSslSupport().configKeys().keySet());
 
   private KafkaUtils() {
   }
@@ -102,6 +114,172 @@ final class KafkaUtils {
           ProducerConfig.TRANSACTIONAL_ID_CONFIG,
           ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
           ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG));
+
+  /**
+   * System property letting an operator enable the {@link #CLASS_NAME_PROPERTIES} for values
+   * configured globally in hive-site.xml. It does not enable them as table properties.
+   */
+  static final String ALLOW_CLASS_NAME_PROPERTIES = "hive.kafka.client.class.name.properties.allowed";
+
+  /**
+   * Kafka client properties whose value names one or more classes that the client loads and
+   * instantiates in the JVM running the client. Deciding which classes the Hive service loads is a
+   * deployment concern, so these belong to the site configuration an operator controls rather than
+   * to per table DDL, and they are not accepted as table properties.
+   *
+   * <p>Most hold a single class name, while {@code interceptor.classes}, {@code metric.reporters}
+   * and {@code partition.assignment.strategy} hold a comma separated list. Kafka types the two
+   * groups differently, {@code ConfigDef.Type.CLASS} against {@code ConfigDef.Type.LIST}, and loads
+   * the first group while parsing the configuration and the second while building the client, but
+   * both end up in {@code Utils.loadClass}, so they are treated alike here.</p>
+   *
+   * <p>An operator who needs one of them, say a custom OAUTHBEARER callback handler, sets it under
+   * the {@link #CONSUMER_CONFIGURATION_PREFIX} / {@link #PRODUCER_CONFIGURATION_PREFIX} prefix in
+   * hive-site.xml and opts in with {@code -Dhive.kafka.client.class.name.properties.allowed=true}.</p>
+   */
+  static final Set<String> CLASS_NAME_PROPERTIES = ImmutableSet.of(SaslConfigs.SASL_LOGIN_CLASS,
+      SaslConfigs.SASL_LOGIN_CALLBACK_HANDLER_CLASS,
+      SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS,
+      SslConfigs.SSL_ENGINE_FACTORY_CLASS_CONFIG,
+      SecurityConfig.SECURITY_PROVIDERS_CONFIG,
+      CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG,
+      ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
+      ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
+      ProducerConfig.PARTITIONER_CLASS_CONFIG);
+
+  /**
+   * {@code config.providers.<name>.class} names a class the same way the
+   * {@link #CLASS_NAME_PROPERTIES} do, but it carries a user chosen name in the middle, so it is
+   * matched by prefix rather than by set membership. The same prefix also covers the
+   * {@code config.providers.<name>.param.*} keys that configure such a class.
+   */
+  static final String CONFIG_PROVIDERS_PREFIX = "config.providers.";
+
+  /**
+   * Checks a property whose value is known to come from a table property, so the
+   * {@link #ALLOW_CLASS_NAME_PROPERTIES} opt-in does not apply.
+   *
+   * @param key the Kafka client property name, given without the Hive prefix.
+   * @param value the property value as the user supplied it.
+   * @throws IllegalArgumentException when a user must not set the property to that value.
+   */
+  static void checkTableClientProperty(String key, String value) {
+    checkClientProperty(key, value, true);
+  }
+
+  /**
+   * Checks a property read out of a {@link Configuration}, where a value set by an operator in
+   * hive-site.xml is indistinguishable from a table property, so the
+   * {@link #ALLOW_CLASS_NAME_PROPERTIES} opt-in applies.
+   *
+   * @param key the Kafka client property name, given without the Hive prefix.
+   * @param value the property value, which Hive has escaped if it came from a table property.
+   * @throws IllegalArgumentException when a user must not set the property to that value.
+   */
+  static void checkConfiguredClientProperty(String key, String value) {
+    checkClientProperty(key, value, false);
+  }
+
+  /**
+   * The single policy for one Kafka client property, name given without the Hive prefix. There is
+   * one policy and it is applied everywhere; the only thing that varies between call sites is
+   * whether the value's provenance is known, which is what {@code provenanceIsTable} records.
+   *
+   * @param key the Kafka client property name, e.g. {@code sasl.login.class}.
+   * @param value the property value.
+   * @param provenanceIsTable true when the value is known to come from a table property. False
+   *     only for a {@link Configuration}, in which Hive has already merged hive-site.xml with the table
+   *     properties ({@code Utilities.copyTableJobPropertiesToConf}) so the two can no longer be told apart.
+   *     Since an operator legitimately needs the {@link #CLASS_NAME_PROPERTIES} from hive-site.xml,
+   *     that ambiguous case is the only one where {@link #ALLOW_CLASS_NAME_PROPERTIES} can re-enable them.
+   * @throws IllegalArgumentException when a user must not set the property to that value.
+   */
+  private static void checkClientProperty(String key, String value, boolean provenanceIsTable) {
+    if (FORBIDDEN_PROPERTIES.contains(key)) {
+      throw new IllegalArgumentException("Not suppose to set Kafka Property " + key);
+    }
+    if (CLASS_NAME_PROPERTIES.contains(key) || key.startsWith(CONFIG_PROVIDERS_PREFIX)) {
+      if (provenanceIsTable) {
+        throw new IllegalArgumentException("Kafka Property " + key + " configures a class that the Hive service "
+            + "would load and run, therefore it can not be set as a table property.");
+      }
+      if (!Boolean.getBoolean(ALLOW_CLASS_NAME_PROPERTIES)) {
+        throw new IllegalArgumentException("Kafka Property " + key + " configures a class that the Hive service "
+            + "would load and run, therefore it can not be set here. An operator can set -D"
+            + ALLOW_CLASS_NAME_PROPERTIES + "=true to allow values configured in hive-site.xml.");
+      }
+    }
+    if (SaslConfigs.SASL_JAAS_CONFIG.equals(key)) {
+      checkJaasConfig(value);
+    }
+  }
+
+  /**
+   * Rejects a {@link SaslConfigs#SASL_JAAS_CONFIG} value Kafka would not accept, reusing Kafka's own
+   * mechanisms. Kafka applies the same check when the client is built; running it here fails the DDL
+   * rather than the query.
+   *
+   * @param jaasConfig the user supplied {@code sasl.jaas.config} value.
+   * @throws IllegalArgumentException when the value does not parse or names a refused login module.
+   */
+  static void checkJaasConfig(String jaasConfig) {
+    try {
+      JaasContext.loadClientContext(Collections.singletonMap(SaslConfigs.SASL_JAAS_CONFIG, new Password(jaasConfig)));
+    } catch (RuntimeException e) {
+      throw new IllegalArgumentException("Refused value for Kafka Property " + SaslConfigs.SASL_JAAS_CONFIG + ": "
+          + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Checks the Kafka client properties a user supplied as table properties, before the table is
+   * created or altered.
+   *
+   * @param tableProperties the table parameters as supplied by the user, may be null.
+   * @throws IllegalArgumentException when a user must not set one of the table properties.
+   */
+  static void checkTableProperties(Map<String, String> tableProperties) {
+    if (tableProperties == null) {
+      return;
+    }
+    for (Map.Entry<String, String> entry : tableProperties.entrySet()) {
+      checkTableProperty(entry.getKey(), entry.getValue());
+    }
+  }
+
+  /**
+   * Same as {@link #checkTableProperties(Map)} for the {@link Properties} view of a table.
+   *
+   * @param tableProperties the table properties, may be null.
+   * @throws IllegalArgumentException when a user must not set one of the table properties.
+   */
+  static void checkTableDescProperties(Properties tableProperties) {
+    if (tableProperties == null) {
+      return;
+    }
+    for (String name : tableProperties.stringPropertyNames()) {
+      checkTableProperty(name, tableProperties.getProperty(name));
+    }
+  }
+
+  /**
+   * Checks one table property, whose name might carry the {@value #CONSUMER_CONFIGURATION_PREFIX}
+   * or {@value #PRODUCER_CONFIGURATION_PREFIX} prefix.
+   */
+  private static void checkTableProperty(String rawKey, String value) {
+    String key = rawKey;
+    for (String prefix : new String[] {CONSUMER_CONFIGURATION_PREFIX + ".", PRODUCER_CONFIGURATION_PREFIX + "."}) {
+      if (key.startsWith(prefix)) {
+        key = key.substring(prefix.length());
+        break;
+      }
+    }
+    try {
+      checkTableClientProperty(key, value);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Refused table property " + rawKey + ": " + e.getMessage(), e);
+    }
+  }
 
   /**
    * @param configuration Job configs
@@ -137,6 +315,7 @@ final class KafkaUtils {
   }
 
   static void setupKafkaSslProperties(Configuration configuration, Properties props) {
+    copySSLProperties(configuration, props);
     // Setup SSL via credentials keystore if necessary
     final String credKeystore = configuration.get(KafkaTableProperties.HIVE_KAFKA_SSL_CREDENTIAL_KEYSTORE.getName());
     if (!(credKeystore == null) && !credKeystore.isEmpty()) {
@@ -181,11 +360,27 @@ final class KafkaUtils {
     }
   }
 
+  /**
+   * Copies Kafka SSL properties from source configuration to target property map.
+   * <p>
+   * It only copies SSL properties that are present in the source and not present in the target. It is useful to
+   * propagate global configurations to the Kafka client but also account for use-cases where table properties are not
+   * using the Hive specific prefixes ({@link #CONSUMER_CONFIGURATION_PREFIX}, {@link #PRODUCER_CONFIGURATION_PREFIX}).
+   * </p>
+   * @param source the configuration from which we will get the properties 
+   * @param target the property map to which we will set the properties
+   */
+  private static void copySSLProperties(Configuration source, Properties target) {
+    for (String p : SSL_CONFIG_KEYS) {
+      String v = source.get(p);
+      if (v != null && !target.containsKey(p)) {
+        target.setProperty(p, v);
+      }
+    }
+  }
+
   private static void writeStoreToLocal(Configuration configuration, String hdfsLoc, String localDest)
       throws IOException, URISyntaxException {
-    if(!"hdfs".equals(new URI(hdfsLoc).getScheme())) {
-      throw new IllegalArgumentException("Kafka stores must be located in HDFS, but received: " + hdfsLoc);
-    }
     try {
       // Make sure the local resources directory is created
       File localDir = new File(localDest);
@@ -207,9 +402,7 @@ final class KafkaUtils {
     final Map<String, String> kafkaProperties = configuration.getValByRegex("^" + prefix + "\\..*");
     for (Map.Entry<String, String> entry : kafkaProperties.entrySet()) {
       String key = entry.getKey().substring(prefix.length() + 1);
-      if (FORBIDDEN_PROPERTIES.contains(key)) {
-        throw new IllegalArgumentException("Not suppose to set Kafka Property " + key);
-      }
+      checkConfiguredClientProperty(key, entry.getValue());
       builder.put(key, entry.getValue());
     }
     return builder.build();
@@ -383,7 +576,7 @@ final class KafkaUtils {
 
     if (configuration instanceof JobConf) {
       Credentials creds = ((JobConf) configuration).getCredentials();
-      Token<?> token = creds.getToken(new Text("KAFKA_DELEGATION_TOKEN"));
+      Token<?> token = creds.getToken(KAFKA_DELEGATION_TOKEN_KEY);
 
       if (token != null) {
         log.info("Kafka delegation token has been found: {}", token);
@@ -395,5 +588,32 @@ final class KafkaUtils {
       }
     }
     log.info("Kafka client running with following JAAS = [{}]", jaasConf);
+  }
+
+  /**
+   * Returns the security protocol if one is defined in the properties and null otherwise.
+   * <p>The following properties are examined to determine the protocol:</p>
+   * <ol>
+   *   <li>security.protocol</li>
+   *   <li>kafka.consumer.security.protocol</li>
+   *   <li>kafka.producer.security.protocol</li>
+   * </ol>
+   * <p>and the first non null/not empty is returned.</p>
+   * <p>Defining multiple security protocols at the same time is invalid but this method is lenient and tries to pick
+   * the most reasonable option.</p>
+   * @param props the properties from which to obtain the protocol.
+   * @return the security protocol if one is defined in the properties and null otherwise.
+   */
+  static SecurityProtocol securityProtocol(Properties props) {
+    String[] securityProtocolConfigs = new String[] { CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
+        CONSUMER_CONFIGURATION_PREFIX + "." + CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
+        PRODUCER_CONFIGURATION_PREFIX + "." + CommonClientConfigs.SECURITY_PROTOCOL_CONFIG };
+    for (String c : securityProtocolConfigs) {
+      String v = props.getProperty(c);
+      if (v != null && !v.isEmpty()) {
+        return SecurityProtocol.forName(v);
+      }
+    }
+    return null;
   }
 }

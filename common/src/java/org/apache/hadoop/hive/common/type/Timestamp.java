@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.common.type;
 
@@ -44,7 +45,8 @@ import static java.time.temporal.ChronoField.YEAR;
  * Timestamp is "uuuu-MM-dd HH:mm:ss[.SSS...]", where the time part is optional.
  * If time part is absent, a default '00:00:00.0' will be used.
  *
- * <table border="2" summary="">
+ * <table border="1">
+ * <caption></caption>
  * <tr>
  * <th>Field</th>
  * <th>Format</th>
@@ -134,8 +136,8 @@ public class Timestamp implements Comparable<Timestamp> {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof Timestamp) {
-      return compareTo((Timestamp) other) == 0;
+    if (other instanceof Timestamp timestamp) {
+      return compareTo(timestamp) == 0;
     }
     return false;
   }
@@ -160,6 +162,11 @@ public class Timestamp implements Comparable<Timestamp> {
 
   public long toEpochMilli() {
     return localDateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+  }
+
+  public long toEpochMicro() {
+    return localDateTime.toEpochSecond(ZoneOffset.UTC) * 1_000_000
+            + localDateTime.getNano() / 1000;
   }
 
   public long toEpochMilli(ZoneId id) {
@@ -191,10 +198,15 @@ public class Timestamp implements Comparable<Timestamp> {
       try {
         localDateTime = LocalDateTime.parse(s);
       } catch (DateTimeException e2) {
-        throw new IllegalArgumentException("Cannot create timestamp, parsing error " + s);
+        throw new IllegalArgumentException("Cannot create timestamp, parsing error " + s, e);
       }
     }
     return new Timestamp(localDateTime);
+  }
+
+  public Timestamp minusDays(long days) {
+    localDateTime = localDateTime.minusDays(days);
+    return this;
   }
 
   public static Timestamp getTimestampFromTime(String s) {
@@ -229,6 +241,18 @@ public class Timestamp implements Comparable<Timestamp> {
     return new Timestamp(LocalDateTime
         .ofInstant(Instant.ofEpochMilli(epochMilli), ZoneOffset.UTC)
         .withNano(nanos));
+  }
+
+  public static Timestamp ofEpochMicro(long epochMicro) {
+    int nanos = Math.toIntExact((epochMicro % 1000000) * 1000);
+    epochMicro -= nanos / 1_000_000;
+
+    Instant instant = Instant.ofEpochSecond(
+            epochMicro / 1_000_000,
+            nanos
+    );
+
+    return new Timestamp(LocalDateTime.ofInstant(instant, ZoneOffset.UTC));
   }
 
   public void setNanos(int nanos) {

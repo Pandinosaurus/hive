@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.repl;
 
@@ -25,6 +26,7 @@ import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
+import org.apache.hadoop.util.ExitUtil;
 import org.apache.hadoop.util.StringUtils;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -52,7 +54,7 @@ import static org.apache.hadoop.hdfs.protocol.OpenFilesIterator.OpenFilesType.AL
 
 public class ReplicationMigrationTool implements Tool {
 
-  protected static transient Logger LOG = LoggerFactory.getLogger(ReplicationMigrationTool.class);
+  protected static Logger LOG = LoggerFactory.getLogger(ReplicationMigrationTool.class);
   private Configuration conf;
   private String help = "\tSample Usage: \n"
       + "hive --replMigration -dumpFilePath <path to external table info file> [-dirLevelCheck] "
@@ -155,6 +157,9 @@ public class ReplicationMigrationTool implements Tool {
 
       System.out.println("Completed verification. Source & Target are " + (failed == 0 ? "in Sync." : "not in Sync."));
       System.out.println("Time Taken: " + (System.currentTimeMillis() - startTime) + " ms");
+      if (failed != 0) {
+        return -1;
+      }
     } catch (UnsupportedOperationException e) {
       System.err.println(e.getMessage());
       System.err.println(help);
@@ -256,7 +261,7 @@ public class ReplicationMigrationTool implements Tool {
       // If there is even single open file we can abort.
       if (srcDFS.listOpenFiles(EnumSet.of(ALL_OPEN_FILES), Path.getPathWithoutSchemeAndAuthority(srcPath).toString())
           .hasNext()) {
-        System.out.println("There are open files in " + srcPath);
+        System.err.println("There are open files in " + srcPath);
         return false;
       } else {
         LOG.error("Open file check is ignored since the source filesystem is not of type of "
@@ -359,7 +364,6 @@ public class ReplicationMigrationTool implements Tool {
       LocatedFileStatus sourceFile = srcListing.next();
       if (filtersPattern != null && !isCopied(sourceFile.getPath(), filtersPattern)) {
         LOG.info("Entry: {} is filtered.", sourceFile.getPath());
-        continue;
       } else {
         System.err.println("Extra entry at source: " + sourceFile.getPath());
         return false;
@@ -432,7 +436,7 @@ public class ReplicationMigrationTool implements Tool {
     ReplicationMigrationTool inst = new ReplicationMigrationTool();
     inst.setConf(conf);
     int result = ToolRunner.run(inst, args);
-    System.exit(result);
+    ExitUtil.terminate(result);
   }
 
   /**

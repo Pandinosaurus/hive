@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.fs;
@@ -66,14 +67,6 @@ public class ProxyFileSystem extends FilterFileSystem {
                      isParam ? swizzleParamPath(orig.getPath()) :
                      swizzleReturnPath(orig.getPath()));
     return ret;
-  }
-
-  public ProxyFileSystem() {
-    throw new RuntimeException ("Unsupported constructor");
-  }
-
-  public ProxyFileSystem(FileSystem fs) {
-    throw new RuntimeException ("Unsupported constructor");
   }
 
   /**
@@ -207,9 +200,9 @@ public class ProxyFileSystem extends FilterFileSystem {
 
   @Override //ref. HADOOP-12502
   public RemoteIterator<FileStatus> listStatusIterator(Path f) throws IOException {
+    final RemoteIterator<FileStatus> remoteIterator = ProxyFileSystem.super.listStatusIterator(swizzleParamPath(f));
     return new RemoteIterator<FileStatus>() {
-      private final RemoteIterator<FileStatus> orig =
-              ProxyFileSystem.super.listStatusIterator(swizzleParamPath(f));
+      private final RemoteIterator<FileStatus> orig = remoteIterator;
 
       @Override
       public boolean hasNext() throws IOException {

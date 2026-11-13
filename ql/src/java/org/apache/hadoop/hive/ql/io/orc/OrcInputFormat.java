@@ -9,17 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.orc;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
 import org.apache.hadoop.hive.common.BlobStorageUtils;
 import org.apache.hadoop.hive.common.NoDynamicValuesException;
@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.security.PrivilegedExceptionAction;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -251,12 +252,29 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
 
 
     OrcRecordReader(Reader file, Configuration conf,
-                    FileSplit split) throws IOException {
+                    InputSplit inputSplit) throws IOException {
       this.file = file;
       numColumns = file.getSchema().getChildren().size();
+      FileSplit split = (FileSplit)inputSplit;
       this.offset = split.getStart();
       this.length = split.getLength();
-      this.reader = createReaderFromFile(file, conf, offset, length);
+
+      // In case of query based compaction, the ACID table location is used as the location of the external table.
+      // The assumption is that the table is treated as a external table. But as per file, the table is ACID and thus
+      // the file schema can not be used to judge if the table is original or not. It has to be as per the file split.
+
+      // CREATE temporary external table delete_delta_default_tmp_compactor_testminorcompaction_1657797233724_result(
+      // `operation` int, `originalTransaction` bigint, `bucket` int, `rowId` bigint, `currentTransaction` bigint,
+      // `row` struct<`a` :int, `b` :string, `c` :int, `d` :int, `e` :int, `f` :int, `j` :int, `i` :int>)
+      // clustered by (`bucket`) sorted by (`originalTransaction`, `bucket`, `rowId`) into 1 buckets stored as
+      // orc LOCATION 'file:/warehouse/testminorcompaction/delete_delta_0000001_0000006_v0000009'
+      // TBLPROPERTIES ('compactiontable'='true', 'bucketing_version'='2', 'transactional'='false')
+      if (inputSplit instanceof OrcSplit) {
+        this.reader = createReaderFromFile(file, conf, offset, length, ((OrcSplit) inputSplit).isOriginal());
+      } else {
+        this.reader = createReaderFromFile(file, conf, offset, length);
+      }
+
       this.stats = new SerDeStats();
     }
 
@@ -316,7 +334,7 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
 
   public static void raiseAcidTablesMustBeReadWithAcidReaderException(Configuration conf)
       throws IOException {
-    String hiveInputFormat = HiveConf.getVar(conf, ConfVars.HIVEINPUTFORMAT);
+    String hiveInputFormat = HiveConf.getVar(conf, ConfVars.HIVE_INPUT_FORMAT);
     if (hiveInputFormat.equals(HiveInputFormat.class.getName())) {
       throw new IOException(ErrorMsg.ACID_TABLES_MUST_BE_READ_WITH_ACID_READER.getErrorCodedMsg());
     } else {
@@ -327,6 +345,14 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
   public static RecordReader createReaderFromFile(Reader file,
                                                   Configuration conf,
                                                   long offset, long length
+  ) throws IOException {
+    return createReaderFromFile(file, conf, offset, length, isOriginal(file));
+  }
+
+  public static RecordReader createReaderFromFile(Reader file,
+                                                  Configuration conf,
+                                                  long offset, long length,
+                                                  boolean isOriginal
                                                   ) throws IOException {
     if (AcidUtils.isFullAcidScan(conf)) {
       raiseAcidTablesMustBeReadWithAcidReaderException(conf);
@@ -339,7 +365,6 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
 
     Reader.Options options = new Reader.Options(conf).range(offset, length);
     options.schema(schema);
-    boolean isOriginal = isOriginal(file);
     if (schema == null) {
       schema = file.getSchema();
     }
@@ -355,8 +380,7 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
    * @return <code>false</code> if an ACID file, <code>true</code> if a simple orc file
    */
   public static boolean isOriginal(Reader file) {
-    return !CollectionUtils.isEqualCollection(file.getSchema().getFieldNames(),
-        OrcRecordUpdater.ALL_ACID_ROW_NAMES);
+    return !containsAllAcidRows(file.getSchema().getFieldNames());
   }
 
   /**
@@ -365,8 +389,15 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
    * @return <code>false</code> if an ACID file, <code>true</code> if a simple orc file
    */
   public static boolean isOriginal(Footer footer) {
-    return !CollectionUtils.isEqualCollection(footer.getTypesList().get(0).getFieldNamesList(),
-        OrcRecordUpdater.ALL_ACID_ROW_NAMES);
+    return !containsAllAcidRows(footer.getTypesList().getFirst().getFieldNamesList());
+  }
+
+  private static boolean containsAllAcidRows(Collection<String> fieldNames) {
+    Collection<String> lowerCaseFieldNames = fieldNames.stream()
+            .map(String::toLowerCase)
+            .collect(Collectors.toCollection(HashSet::new));
+
+    return CollectionUtils.isEqualCollection(OrcRecordUpdater.ALL_ACID_ROW_NAMES, lowerCaseFieldNames);
   }
 
   public static boolean[] genIncludedColumns(TypeDescription readerSchema,
@@ -693,8 +724,8 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
       this.isVectorMode = Utilities.getIsVectorized(conf);
       this.forceThreadpool = HiveConf.getBoolVar(conf, ConfVars.HIVE_IN_TEST);
       this.sarg = ConvertAstToSearchArg.createFromConf(conf);
-      minSize = HiveConf.getLongVar(conf, ConfVars.MAPREDMINSPLITSIZE, DEFAULT_MIN_SPLIT_SIZE);
-      maxSize = HiveConf.getLongVar(conf, ConfVars.MAPREDMAXSPLITSIZE, DEFAULT_MAX_SPLIT_SIZE);
+      minSize = HiveConf.getLongVar(conf, ConfVars.MAPRED_MIN_SPLIT_SIZE, DEFAULT_MIN_SPLIT_SIZE);
+      maxSize = HiveConf.getLongVar(conf, ConfVars.MAPRED_MAX_SPLIT_SIZE, DEFAULT_MAX_SPLIT_SIZE);
       String ss = conf.get(ConfVars.HIVE_ORC_SPLIT_STRATEGY.varname);
       if (ss == null || ss.equals(SplitStrategyKind.HYBRID.name())) {
         splitStrategyKind = SplitStrategyKind.HYBRID;
@@ -763,7 +794,7 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
           ? AcidOperationalProperties.parseString(txnProperties) : null;
 
       String value = conf.get(ValidWriteIdList.VALID_WRITEIDS_KEY);
-      writeIdList = value == null ? new ValidReaderWriteIdList() : new ValidReaderWriteIdList(value);
+      writeIdList = value == null ? new ValidReaderWriteIdList() : ValidReaderWriteIdList.fromValue(value);
       LOG.info("Context:: " +
           "isAcid: {} " +
           "isVectorMode: {} " +
@@ -1702,33 +1733,19 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
     }
 
     private long computeProjectionSize(List<OrcProto.Type> fileTypes,
-        List<OrcProto.ColumnStatistics> stats, boolean[] fileIncluded) throws FileFormatException {
-      List<Integer> internalColIds = Lists.newArrayList();
+          List<OrcProto.ColumnStatistics> stats, boolean[] fileIncluded) throws FileFormatException {
+      // Exclude ORC <root> and ACID <row> struct elements to avoid full schema size estimation  
+      final List<Integer> internalColIds;
       if (fileIncluded == null) {
-        // Add all.
-        for (int i = 0; i < fileTypes.size(); i++) {
-          internalColIds.add(i);
-        }
+        internalColIds = IntStream.range(1, fileTypes.size())
+            .boxed().collect(Collectors.toList());
       } else {
-        for (int i = 0; i < fileIncluded.length; i++) {
-          if (fileIncluded[i]) {
-            internalColIds.add(i);
-          }
-        }
+        internalColIds = IntStream.range(1, fileTypes.size()).filter(i -> fileIncluded[i])
+            .filter(i -> i != OrcRecordUpdater.ROW + 1 || isOriginal) 
+            .boxed().collect(Collectors.toList());
       }
       return ReaderImpl.getRawDataSizeFromColIndices(internalColIds, fileTypes, stats);
     }
-  }
-
-  public static boolean[] shiftReaderIncludedForAcid(boolean[] included) {
-    // We always need the base row
-    included[0] = true;
-    boolean[] newIncluded = new boolean[included.length + OrcRecordUpdater.FIELDS];
-    Arrays.fill(newIncluded, 0, OrcRecordUpdater.FIELDS, true);
-    for (int i = 0; i < included.length; ++i) {
-      newIncluded[i + OrcRecordUpdater.FIELDS] = included[i];
-    }
-    return newIncluded;
   }
 
   /** Class intended to update two values from methods... Java-related cruft. */
@@ -1979,7 +1996,7 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
         return new OrcRecordReader(OrcFile.createReader(
             ((FileSplit) inputSplit).getPath(),
             readerOptions),
-            conf, (FileSplit) inputSplit);
+            conf, inputSplit);
       }
     }
 
@@ -2088,7 +2105,7 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
 
     String txnString = conf.get(ValidWriteIdList.VALID_WRITEIDS_KEY);
     ValidWriteIdList validWriteIdList
-            = (txnString == null) ? new ValidReaderWriteIdList() : new ValidReaderWriteIdList(txnString);
+            = (txnString == null) ? new ValidReaderWriteIdList() : ValidReaderWriteIdList.fromValue(txnString);
     if (LOG.isDebugEnabled()) {
       LOG.debug("getReader:: Read ValidWriteIdList: " + validWriteIdList.toString()
             + " isTransactionalTable: " + HiveConf.getBoolVar(conf, ConfVars.HIVE_TRANSACTIONAL_TABLE_SCAN));
@@ -2516,6 +2533,8 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
             return TypeDescription.createDate();
           case TIMESTAMP:
             return TypeDescription.createTimestamp();
+          case TIMESTAMPLOCALTZ:
+            return TypeDescription.createTimestampInstant();
           case BINARY:
             return TypeDescription.createBinary();
           case DECIMAL: {

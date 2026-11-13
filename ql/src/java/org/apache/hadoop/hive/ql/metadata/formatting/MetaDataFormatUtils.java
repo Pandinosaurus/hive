@@ -9,15 +9,21 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.metadata.formatting;
 
+import java.util.Map;
+import java.util.TreeMap;
+
+import org.apache.commons.collections4.MapUtils;
+import org.apache.hadoop.hive.conf.Constants;
 import org.apache.hadoop.hive.conf.HiveConf;
 
 /**
@@ -39,5 +45,20 @@ public final class MetaDataFormatUtils {
 
   public static boolean isJson(HiveConf conf) {
     return "json".equals(conf.get(HiveConf.ConfVars.HIVE_DDL_OUTPUT_FORMAT.varname, "text"));
+  }
+
+  /**
+   * Returns a copy of {@code params} safe to show in DESCRIBE / SHOW CREATE output. JDBC DBCP
+   * credentials keep their keys but use {@link Constants#WITHHELD_VALUE} for values, matching
+   * {@code DESC CONNECTOR} behavior (HIVE-28838).
+   */
+  public static Map<String, String> withholdJdbcConnectionCredentialValues(Map<String, String> params) {
+    if (MapUtils.isEmpty(params)) {
+      return params;
+    }
+    Map<String, String> described = new TreeMap<>(params);
+    described.replaceAll((key, value) ->
+        Constants.JDBC_CONNECTION_CREDENTIALS.contains(key) ? Constants.WITHHELD_VALUE : value);
+    return described;
   }
 }

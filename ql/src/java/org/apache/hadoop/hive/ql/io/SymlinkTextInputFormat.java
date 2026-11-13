@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io;
 
@@ -31,7 +32,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.FileUtils;
-import org.apache.hadoop.hive.io.HiveIOExceptionHandlerUtil;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.FileInputFormat;
@@ -102,14 +102,7 @@ public class SymlinkTextInputFormat extends SymbolicInputFormat implements
     // The target data is in TextInputFormat.
     TextInputFormat inputFormat = new TextInputFormat();
     inputFormat.configure(job);
-    RecordReader innerReader = null;
-    try {
-      innerReader = inputFormat.getRecordReader(targetSplit, job,
-          reporter);
-    } catch (Exception e) {
-      innerReader = HiveIOExceptionHandlerUtil
-          .handleRecordReaderCreationException(e, job);
-    }
+    RecordReader innerReader = inputFormat.getRecordReader(targetSplit, job, reporter);
     HiveRecordReader rr = new HiveRecordReader(innerReader, job);
     rr.initIOContext((FileSplit)targetSplit, job, TextInputFormat.class, innerReader);
     return rr;

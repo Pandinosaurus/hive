@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.ldap;
 
@@ -25,6 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import org.junit.Before;
@@ -93,7 +95,7 @@ public class TestChainFilter {
 
   @Test(expected = AuthenticationException.class)
   public void testApplyNegative() throws AuthenticationException, NamingException, IOException {
-    doThrow(AuthenticationException.class).when(filter3).apply((DirSearch) anyObject(), anyString());
+    doThrow(AuthenticationException.class).when(filter3).apply(ArgumentMatchers.<DirSearch>any(), anyString());
 
     when(factory1.getInstance(any(Configuration.class))).thenReturn(filter1);
     when(factory3.getInstance(any(Configuration.class))).thenReturn(filter3);

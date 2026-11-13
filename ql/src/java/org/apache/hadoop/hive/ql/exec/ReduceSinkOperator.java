@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -26,12 +27,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.function.BiFunction;
 
+import java.util.function.ToIntFunction;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.CompilationOpContext;
-import org.apache.hadoop.hive.ql.io.AcidUtils;
 import org.apache.hadoop.hive.ql.io.BucketCodec;
 import org.apache.hadoop.hive.ql.io.HiveKey;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -63,8 +63,6 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
 
   private static final long serialVersionUID = 1L;
 
-  private transient ObjectInspector[] partitionObjectInspectors;
-  private transient ObjectInspector[] bucketObjectInspectors;
   private transient int buckColIdxInKey;
   /**
    * {@link org.apache.hadoop.hive.ql.optimizer.SortedDynPartitionOptimizer}
@@ -113,7 +111,8 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
   protected transient List<List<Integer>> distinctColIndices;
   protected transient Random random;
 
-  protected transient BiFunction<Object[], ObjectInspector[], Integer> hashFunc;
+  protected transient ToIntFunction<Object[]> partitionHashFunc;
+  protected transient ToIntFunction<Object[]> bucketHashFunc;
 
   /**
    * This two dimensional array holds key data and a corresponding Union object
@@ -230,14 +229,6 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
       useUniformHash = conf.getReducerTraits().contains(UNIFORM);
 
       firstRow = true;
-      // acidOp flag has to be checked to use JAVA hash which works like
-      // identity function for integers, necessary to read RecordIdentifier
-      // incase of ACID updates/deletes.
-      boolean acidOp = conf.getWriteType() == AcidUtils.Operation.UPDATE ||
-          conf.getWriteType() == AcidUtils.Operation.DELETE;
-      hashFunc = getConf().getBucketingVersion() == 2 && !acidOp ?
-          ObjectInspectorUtils::getBucketHashCode :
-          ObjectInspectorUtils::getBucketHashCodeOld;
     } catch (Exception e) {
       String msg = "Error initializing ReduceSinkOperator: " + e.getMessage();
       LOG.error(msg, e);
@@ -304,9 +295,11 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
             conf.getOutputKeyColumnNames(), numDistributionKeys, rowInspector);
         valueObjectInspector = initEvaluatorsAndReturnStruct(valueEval,
             conf.getOutputValueColumnNames(), rowInspector);
-        partitionObjectInspectors = initEvaluators(partitionEval, rowInspector);
+        final ObjectInspector[] partitionObjectInspectors = initEvaluators(partitionEval, rowInspector);
+        partitionHashFunc = conf.getPartitionFunction(partitionObjectInspectors);
         if (bucketEval != null) {
-          bucketObjectInspectors = initEvaluators(bucketEval, rowInspector);
+          final ObjectInspector[] bucketObjectInspectors = initEvaluators(bucketEval, rowInspector);
+          bucketHashFunc = conf.getPartitionFunction(bucketObjectInspectors);
         }
         int numKeys = numDistinctExprs > 0 ? numDistinctExprs : 1;
         int keyLen = numDistinctExprs > 0 ? numDistributionKeys + 1 : numDistributionKeys;
@@ -391,8 +384,7 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
     for (int i = 0; i < bucketEval.length; i++) {
       bucketFieldValues[i] = bucketEval[i].evaluate(row);
     }
-    return ObjectInspectorUtils.getBucketNumber(
-        hashFunc.apply(bucketFieldValues, bucketObjectInspectors), numBuckets);
+    return ObjectInspectorUtils.getBucketNumber(bucketHashFunc.applyAsInt(bucketFieldValues), numBuckets);
   }
 
   private void populateCachedDistributionKeys(Object row) throws HiveException {
@@ -447,7 +439,7 @@ public class ReduceSinkOperator extends TerminalOperator<ReduceSinkDesc>
       for(int i = 0; i < partitionEval.length; i++) {
         bucketFieldValues[i] = partitionEval[i].evaluate(row);
       }
-      keyHashCode = hashFunc.apply(bucketFieldValues, partitionObjectInspectors);
+      keyHashCode = partitionHashFunc.applyAsInt(bucketFieldValues);
     }
     int hashCode = buckNum < 0 ? keyHashCode : keyHashCode * 31 + buckNum;
     if (LOG.isTraceEnabled()) {

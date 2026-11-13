@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.io.api.impl;
 
@@ -107,7 +108,7 @@ public class TestLlapCacheMetadataSerializer {
     LlapDaemonProtocolProtos.CacheEntryRange re2 =
         LlapDaemonProtocolProtos.CacheEntryRange.newBuilder().setStart(14L).setEnd(38L).build();
     LlapDaemonProtocolProtos.CacheTag ct =
-        LlapDaemonProtocolProtos.CacheTag.newBuilder().setTableName("dummyTable").build();
+        LlapDaemonProtocolProtos.CacheTag.newBuilder().setTableName("hive.default.dummyTable").build();
 
     Path path = new Path(TEST_PATH);
     SyntheticFileId syntheticFileId = fileId(path);

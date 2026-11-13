@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.servlet;
 
@@ -88,7 +89,7 @@ public class HS2Peers extends HttpServlet {
     response.setHeader(HttpConstants.ACCESS_CONTROL_ALLOW_ORIGIN, HttpConstants.WILDCARD);
 
     ServletContext ctx = getServletContext();
-    HiveConf hiveConf = (HiveConf) ctx.getAttribute("hiveconf");
+    HiveConf hiveConf = (HiveConf) ctx.getAttribute(HttpServer.CONF_CONTEXT_ATTRIBUTE);
     HS2ActivePassiveHARegistry hs2Registry = HS2ActivePassiveHARegistryClient.getClient(hiveConf);
     HS2Instances instances = new HS2Instances(hs2Registry.getAll());
     response.getWriter().write(instances.toJson());

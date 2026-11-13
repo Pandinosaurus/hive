@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -64,7 +65,7 @@ public class GenericUDFRegExp extends GenericUDF {
   @Override
   public void configure(MapredContext context) {
     if (context != null) {
-      if(HiveConf.getBoolVar(context.getJobConf(), HiveConf.ConfVars.HIVEUSEGOOGLEREGEXENGINE)){
+      if(HiveConf.getBoolVar(context.getJobConf(), HiveConf.ConfVars.HIVE_USE_GOOGLE_REGEX_ENGINE)){
         this.useGoogleRegexEngine=true;
       }
     }
@@ -75,7 +76,7 @@ public class GenericUDFRegExp extends GenericUDF {
   public ObjectInspector initialize(ObjectInspector[] arguments) throws UDFArgumentException {
     SessionState ss = SessionState.get();
     if (ss != null) {
-      this.useGoogleRegexEngine = ss.getConf().getBoolVar(HiveConf.ConfVars.HIVEUSEGOOGLEREGEXENGINE);
+      this.useGoogleRegexEngine = ss.getConf().getBoolVar(HiveConf.ConfVars.HIVE_USE_GOOGLE_REGEX_ENGINE);
     }
 
     checkArgsSize(arguments, 2, 2);
@@ -93,7 +94,7 @@ public class GenericUDFRegExp extends GenericUDF {
       regexConst = getConstantStringValue(arguments, 1);
       if (regexConst != null) {
         if(!useGoogleRegexEngine){
-          //if(!HiveConf.getVar(hiveConf, HiveConf.ConfVars.HIVEUSEGOOGLEREGEXENGINE)){
+          //if(!HiveConf.getVar(hiveConf, HiveConf.ConfVars.HIVE_USE_GOOGLE_REGEX_ENGINE)){
           patternConst = Pattern.compile(regexConst);
         }else{
           patternConstR2j = com.google.re2j.Pattern.compile(regexConst);

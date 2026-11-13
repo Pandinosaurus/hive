@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.metadata;
@@ -31,7 +32,6 @@ import com.google.common.collect.Iterables;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.classification.InterfaceAudience;
-import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.ColumnInfo;
 import org.apache.hadoop.hive.ql.io.RecordIdentifier;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
@@ -46,8 +46,6 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 public enum VirtualColumn {
   FILENAME("INPUT__FILE__NAME", TypeInfoFactory.stringTypeInfo),
   BLOCKOFFSET("BLOCK__OFFSET__INSIDE__FILE", TypeInfoFactory.longTypeInfo),
-  ROWOFFSET("ROW__OFFSET__INSIDE__BLOCK", TypeInfoFactory.longTypeInfo),
-
   RAWDATASIZE("RAW__DATA__SIZE", TypeInfoFactory.longTypeInfo),
   /**
    * {@link org.apache.hadoop.hive.ql.io.RecordIdentifier}
@@ -58,6 +56,10 @@ public enum VirtualColumn {
   PARTITION_HASH("PARTITION__HASH", TypeInfoFactory.longTypeInfo),
   FILE_PATH("FILE__PATH", TypeInfoFactory.stringTypeInfo),
   ROW_POSITION("ROW__POSITION", TypeInfoFactory.longTypeInfo),
+  SNAPSHOT_ID("SNAPSHOT__ID", TypeInfoFactory.longTypeInfo),
+  PARTITION_NAME("PARTITION__NAME", TypeInfoFactory.stringTypeInfo),
+  ROW_LINEAGE_ID("ROW__LINEAGE__ID", TypeInfoFactory.longTypeInfo),
+  LAST_UPDATED_SEQUENCE_NUMBER("LAST__UPDATED__SEQUENCE__NUMBER", TypeInfoFactory.longTypeInfo),
 
   /**
    * GROUPINGID is used with GROUP BY GROUPINGS SETS, ROLLUP and CUBE.
@@ -69,9 +71,11 @@ public enum VirtualColumn {
   GROUPINGID("GROUPING__ID", TypeInfoFactory.longTypeInfo);
 
   public static final ImmutableSet<String> VIRTUAL_COLUMN_NAMES =
-      ImmutableSet.of(FILENAME.getName(), BLOCKOFFSET.getName(), ROWOFFSET.getName(),
+      ImmutableSet.of(FILENAME.getName(), BLOCKOFFSET.getName(),
           RAWDATASIZE.getName(), GROUPINGID.getName(), ROWID.getName(), ROWISDELETED.getName(),
-          PARTITION_SPEC_ID.getName(), PARTITION_HASH.getName(), FILE_PATH.getName(), ROW_POSITION.getName());
+          PARTITION_SPEC_ID.getName(), PARTITION_HASH.getName(), FILE_PATH.getName(), ROW_POSITION.getName(),
+          PARTITION_NAME.getName(), ROW_LINEAGE_ID.getName(),
+          LAST_UPDATED_SEQUENCE_NUMBER.getName());
 
   public static final ImmutableMap<String, VirtualColumn> VIRTUAL_COLUMN_NAME_MAP =
        new ImmutableMap.Builder<String, VirtualColumn>().putAll(getColumnNameMap()).build();
@@ -107,13 +111,10 @@ public enum VirtualColumn {
     return l;
   }
 
-  public static List<VirtualColumn> getRegistry(Configuration conf) {
+  public static List<VirtualColumn> getRegistry() {
     ArrayList<VirtualColumn> l = new ArrayList<VirtualColumn>();
     l.add(BLOCKOFFSET);
     l.add(FILENAME);
-    if (HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVEROWOFFSET)) {
-      l.add(ROWOFFSET);
-    }
     l.add(ROWID);
     l.add(ROWISDELETED);
 

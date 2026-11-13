@@ -19,85 +19,130 @@
 
 package org.apache.iceberg.mr.hive.writer;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.Map;
 import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.MetricsConfig;
+import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
-import org.apache.iceberg.SortOrder;
+import org.apache.iceberg.StructLike;
 import org.apache.iceberg.Table;
-import org.apache.iceberg.avro.Avro;
-import org.apache.iceberg.data.BaseFileWriterFactory;
+import org.apache.iceberg.data.GenericFileWriterFactory;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.data.avro.DataWriter;
-import org.apache.iceberg.data.orc.GenericOrcWriter;
 import org.apache.iceberg.data.parquet.GenericParquetWriter;
-import org.apache.iceberg.orc.ORC;
+import org.apache.iceberg.deletes.EqualityDeleteWriter;
+import org.apache.iceberg.deletes.PositionDeleteWriter;
+import org.apache.iceberg.encryption.EncryptedOutputFile;
+import org.apache.iceberg.io.DataWriter;
+import org.apache.iceberg.io.FileWriterFactory;
 import org.apache.iceberg.parquet.Parquet;
+import org.apache.iceberg.parquet.VariantUtil;
 
-class HiveFileWriterFactory extends BaseFileWriterFactory<Record> {
+class HiveFileWriterFactory implements FileWriterFactory<Record> {
+
+  private final GenericFileWriterFactory delegate;
+  private final Table table;
+  private final FileFormat dataFileFormat;
+  private final Schema dataSchema;
+  private final Map<String, String> properties;
+  private Record sampleRecord = null;
 
   HiveFileWriterFactory(
-      Table table,
-      FileFormat dataFileFormat,
-      Schema dataSchema,
-      SortOrder dataSortOrder,
-      FileFormat deleteFileFormat,
-      int[] equalityFieldIds,
-      Schema equalityDeleteRowSchema,
-      SortOrder equalityDeleteSortOrder,
-      Schema positionDeleteRowSchema) {
-    super(
-        table,
-        dataFileFormat,
-        dataSchema,
-        dataSortOrder,
-        deleteFileFormat,
-        equalityFieldIds,
-        equalityDeleteRowSchema,
-        equalityDeleteSortOrder,
-        positionDeleteRowSchema);
+      Table table, FileFormat dataFileFormat, Schema dataSchema, FileFormat deleteFileFormat) {
+    this.table = table;
+    this.dataFileFormat = dataFileFormat;
+    this.dataSchema = dataSchema;
+    this.properties = table.properties();
+
+    GenericFileWriterFactory.Builder builder =
+        new GenericFileWriterFactory.Builder(table)
+            .dataFileFormat(dataFileFormat)
+            .dataSchema(dataSchema)
+            .deleteFileFormat(deleteFileFormat);
+
+    this.delegate = builder.build();
+  }
+
+  static Builder builderFor(Table table) {
+    return new Builder(table);
   }
 
   @Override
-  protected void configureDataWrite(Avro.DataWriteBuilder builder) {
-    builder.createWriterFunc(DataWriter::create);
+  public DataWriter<Record> newDataWriter(
+      EncryptedOutputFile file, PartitionSpec spec, StructLike partition) {
+    // Iceberg's GenericAppenderFactory/RegistryBasedFileWriterFactory does not currently support
+    // injecting a custom variantShreddingFunc, so we must instantiate Parquet.writeData directly
+    // when variant shredding is enabled for the table.
+    if (VariantUtil.shouldUseVariantShredding(dataFileFormat, properties, dataSchema)) {
+      try {
+        return Parquet.writeData(file)
+            .schema(dataSchema)
+            .createWriterFunc(GenericParquetWriter::create)
+            .setAll(properties)
+            .metricsConfig(MetricsConfig.forTable(table))
+            .withSpec(spec)
+            .withPartition(partition)
+            .withKeyMetadata(file.keyMetadata())
+            .variantShreddingFunc(VariantUtil.variantShreddingFunc(sampleRecord, dataSchema))
+            .overwrite()
+            .build();
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+    return delegate.newDataWriter(file, spec, partition);
   }
 
   @Override
-  protected void configureEqualityDelete(Avro.DeleteWriteBuilder builder) {
-
+  public EqualityDeleteWriter<Record> newEqualityDeleteWriter(
+      EncryptedOutputFile file, PartitionSpec spec, StructLike partition) {
+    return delegate.newEqualityDeleteWriter(file, spec, partition);
   }
 
   @Override
-  protected void configurePositionDelete(Avro.DeleteWriteBuilder builder) {
-    builder.createWriterFunc(DataWriter::create);
+  public PositionDeleteWriter<Record> newPositionDeleteWriter(
+      EncryptedOutputFile file, PartitionSpec spec, StructLike partition) {
+    return delegate.newPositionDeleteWriter(file, spec, partition);
   }
 
-  @Override
-  protected void configureDataWrite(Parquet.DataWriteBuilder builder) {
-    builder.createWriterFunc(GenericParquetWriter::buildWriter);
+  static class Builder {
+    private final Table table;
+    private FileFormat dataFileFormat;
+    private Schema dataSchema;
+    private FileFormat deleteFileFormat;
+
+    Builder(Table table) {
+      this.table = table;
+    }
+
+    Builder dataFileFormat(FileFormat newDataFileFormat) {
+      this.dataFileFormat = newDataFileFormat;
+      return this;
+    }
+
+    Builder dataSchema(Schema newDataSchema) {
+      this.dataSchema = newDataSchema;
+      return this;
+    }
+
+    Builder deleteFileFormat(FileFormat newDeleteFileFormat) {
+      this.deleteFileFormat = newDeleteFileFormat;
+      return this;
+    }
+
+    HiveFileWriterFactory build() {
+      return new HiveFileWriterFactory(table, dataFileFormat, dataSchema, deleteFileFormat);
+    }
   }
 
-  @Override
-  protected void configureEqualityDelete(Parquet.DeleteWriteBuilder builder) {
-
-  }
-
-  @Override
-  protected void configurePositionDelete(Parquet.DeleteWriteBuilder builder) {
-    builder.createWriterFunc(GenericParquetWriter::buildWriter);
-  }
-
-  @Override
-  protected void configureDataWrite(ORC.DataWriteBuilder builder) {
-    builder.createWriterFunc(GenericOrcWriter::buildWriter);
-  }
-
-  @Override
-  protected void configureEqualityDelete(ORC.DeleteWriteBuilder deleteWriteBuilder) {
-
-  }
-
-  @Override
-  protected void configurePositionDelete(ORC.DeleteWriteBuilder deleteWriteBuilder) {
-    deleteWriteBuilder.createWriterFunc(GenericOrcWriter::buildWriter);
+  /**
+   * Set a sample record to use for data-driven variant shredding schema generation.
+   * Should be called before the Parquet writer is created.
+   */
+  public void initialize(Record record) {
+    if (sampleRecord == null) {
+      sampleRecord = record;
+    }
   }
 }

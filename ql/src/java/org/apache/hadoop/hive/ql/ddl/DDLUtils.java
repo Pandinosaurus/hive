@@ -9,38 +9,57 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.TableName;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.metastore.HiveMetaHook;
 import org.apache.hadoop.hive.metastore.TableType;
 import org.apache.hadoop.hive.metastore.api.Database;
+import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.metastore.api.SQLDefaultConstraint;
+import org.apache.hadoop.hive.metastore.api.hive_metastoreConstants;
+import org.apache.hadoop.hive.ql.ErrorMsg;
+import org.apache.hadoop.hive.ql.ddl.table.constraint.ConstraintsUtils;
 import org.apache.hadoop.hive.ql.hooks.WriteEntity;
 import org.apache.hadoop.hive.ql.hooks.Entity.Type;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.metadata.Partition;
 import org.apache.hadoop.hive.ql.metadata.Table;
+import org.apache.hadoop.hive.ql.parse.ASTErrorUtils;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
+import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer;
+import org.apache.hadoop.hive.ql.parse.PartitionTransform;
 import org.apache.hadoop.hive.ql.parse.ReplicationSpec;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
+import org.apache.hadoop.hive.ql.parse.StorageFormat.StorageHandlerTypes;
+import org.apache.hadoop.hive.ql.parse.TransformSpec;
 import org.apache.hadoop.hive.ql.session.SessionState;
+import org.apache.hadoop.hive.ql.session.SessionStateUtil;
 import org.apache.hadoop.hive.serde2.Deserializer;
 import org.apache.hive.common.util.ReflectionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.hadoop.hive.conf.HiveConf.ConfVars.HIVE_ICEBERG_STATS_SOURCE;
 
 /**
  * Utilities used by some DDLOperations.
@@ -185,5 +204,93 @@ public final class DDLUtils {
     table.setTableType(type);
     table.setTemporary(isTemporary);
     outputs.add(new WriteEntity(table, WriteEntity.WriteType.DDL_NO_LOCK));
+  }
+
+  public static void addDbAndTableToOutputs(Database database, Table table, Set<WriteEntity> outputs) {
+    outputs.add(new WriteEntity(database, WriteEntity.WriteType.DDL_SHARED));
+    outputs.add(new WriteEntity(table, WriteEntity.WriteType.DDL_NO_LOCK));
+  }
+
+  public static void setColumnsAndStorePartitionTransformSpecOfTable(
+          List<FieldSchema> columns, List<FieldSchema> partitionColumns,
+          HiveConf conf, Table tbl) {
+    Optional<List<FieldSchema>> cols = Optional.ofNullable(columns);
+    Optional<List<FieldSchema>> partCols = Optional.ofNullable(partitionColumns);
+    
+    if (tbl.hasNonNativePartitionSupport()) {
+      tbl.getSd().setCols(new ArrayList<>());
+      cols.ifPresent(c -> tbl.getSd().getCols().addAll(c));
+      if (partCols.isPresent() && !partCols.get().isEmpty()) {
+        // Add the partition columns to the normal columns and save the transform to the session state
+        tbl.getSd().getCols().addAll(partCols.get());
+        List<TransformSpec> spec = PartitionTransform.getPartitionTransformSpec(partCols.get());
+        SessionStateUtil.addResourceOrThrow(conf, hive_metastoreConstants.PARTITION_TRANSFORM_SPEC, spec);
+      }
+    } else {
+      cols.ifPresent(tbl::setFields);
+      partCols.ifPresent(tbl::setPartCols);
+    }
+  }
+
+  public static void validateTableIsIceberg(org.apache.hadoop.hive.ql.metadata.Table table)
+      throws SemanticException {
+    String tableType = table.getParameters().get(HiveMetaHook.TABLE_TYPE);
+    if (!HiveMetaHook.ICEBERG.equalsIgnoreCase(tableType)) {
+      throw new SemanticException(String.format("Not an iceberg table: %s (type=%s)",
+          table.getFullTableName(), tableType));
+    }
+  }
+
+  public static boolean isIcebergTable(Table table) {
+    return table.isNonNative() && 
+            table.getStorageHandler().getType() == StorageHandlerTypes.ICEBERG;
+  }
+
+  public static boolean isIcebergStatsSource(HiveConf conf) {
+    return conf.get(HIVE_ICEBERG_STATS_SOURCE.varname, HiveMetaHook.ICEBERG)
+            .equalsIgnoreCase(HiveMetaHook.ICEBERG);
+  }
+  
+  public static boolean hasTransformsInPartitionSpec(Table table) {
+    return isIcebergTable(table) && 
+      table.getStorageHandler().getPartitionTransformSpec(table).stream()
+          .anyMatch(spec -> spec.getTransformType() != TransformSpec.TransformType.IDENTITY);
+  }
+
+  public static void setDefaultColumnValues(Table table, TableName tableName,
+      List<ConstraintsUtils.ConstraintInfo> defaultConstraintsInfo, Configuration conf) throws SemanticException {
+    boolean isNativeColumnDefaultSupported = table.getStorageHandler() != null && table.getStorageHandler()
+        .supportsDefaultColumnValues(table.getParameters());
+    List<SQLDefaultConstraint> defaultConstraints = new ArrayList<>();
+    ConstraintsUtils.constraintInfosToDefaultConstraints(tableName, defaultConstraintsInfo, defaultConstraints,
+        isNativeColumnDefaultSupported);
+    SessionStateUtil.addResourceOrThrow(conf, SessionStateUtil.COLUMN_DEFAULTS, defaultConstraints);
+  }
+
+  /**
+   *
+   * @param dbNameNode A root node that contains database fields
+   * @return Return a Pair object which includes catalogName and dbName
+   * @throws SemanticException
+   */
+  public static Pair<String, String> getCatDbNamePair(ASTNode dbNameNode) throws SemanticException {
+    String catName = null;
+    String dbName;
+
+    if (dbNameNode.getChildCount() == 2) {
+      catName = BaseSemanticAnalyzer.unescapeIdentifier(dbNameNode.getChild(0).getText());
+      dbName = BaseSemanticAnalyzer.unescapeIdentifier(dbNameNode.getChild(1).getText());
+    } else if (dbNameNode.getChildCount() == 1) {
+      dbName = BaseSemanticAnalyzer.unescapeIdentifier(dbNameNode.getChild(0).getText());
+    } else {
+      dbName = BaseSemanticAnalyzer.unescapeIdentifier(dbNameNode.getText());
+    }
+
+    if ((catName != null && catName.contains(".")) || dbName.contains(".")) {
+      throw new SemanticException(ASTErrorUtils.getMsg(
+              ErrorMsg.OBJECTNAME_CONTAINS_DOT.getMsg(), dbNameNode));
+    }
+
+    return Pair.of(catName, dbName);
   }
 }

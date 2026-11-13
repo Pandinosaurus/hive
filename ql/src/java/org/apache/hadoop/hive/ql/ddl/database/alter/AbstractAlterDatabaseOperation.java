@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.database.alter;
@@ -25,6 +26,7 @@ import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.ddl.DDLOperation;
 import org.apache.hadoop.hive.ql.ddl.DDLOperationContext;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.parse.SemanticException;
 
 /**
  * Operation process of altering a database.
@@ -36,8 +38,9 @@ public abstract class AbstractAlterDatabaseOperation<T extends AbstractAlterData
 
   @Override
   public int execute() throws HiveException {
+    String catName = desc.getCatalogName();
     String dbName = desc.getDatabaseName();
-    Database database = context.getDb().getDatabase(dbName);
+    Database database = context.getDb().getDatabase(catName, dbName);
     if (database == null) {
       throw new HiveException(ErrorMsg.DATABASE_NOT_EXISTS, dbName);
     }

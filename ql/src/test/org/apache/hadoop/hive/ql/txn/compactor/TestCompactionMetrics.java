@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.txn.compactor;
 
@@ -51,7 +52,8 @@ import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.metrics.AcidMetricService;
 import org.apache.hadoop.hive.metastore.metrics.Metrics;
 import org.apache.hadoop.hive.metastore.metrics.MetricsConstants;
-import org.apache.hadoop.hive.metastore.txn.CompactionInfo;
+import org.apache.hadoop.hive.metastore.txn.TxnHandler;
+import org.apache.hadoop.hive.metastore.txn.entities.CompactionInfo;
 import org.apache.hadoop.hive.metastore.txn.ThrowingTxnHandler;
 import org.apache.hadoop.hive.metastore.txn.TxnStore;
 import org.apache.hadoop.hive.metastore.txn.TxnUtils;
@@ -85,7 +87,9 @@ public class TestCompactionMetrics  extends CompactorTest {
   public void setUp() throws Exception {
     MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.METRICS_ENABLED, true);
     MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.TXN_USE_MIN_HISTORY_LEVEL, true);
+    TxnHandler.ConfVars.setUseMinHistoryLevel(true);
     MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.COMPACTOR_INITIATOR_ON, true);
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.COMPACTOR_CLEANER_ON, true);
     // re-initialize metrics
     Metrics.shutdown();
     Metrics.initialize(conf);
@@ -664,11 +668,13 @@ public class TestCompactionMetrics  extends CompactorTest {
     Table t = newTable(dbName, tblName, false);
 
     MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.TXN_USE_MIN_HISTORY_LEVEL, false);
+    TxnHandler.ConfVars.setUseMinHistoryLevel(false);
     long start = System.currentTimeMillis();
     burnThroughTransactions(t.getDbName(), t.getTableName(), 24, new HashSet<>(Arrays.asList(22L, 23L, 24L)), null);
     openTxn(TxnType.REPL_CREATED);
 
     LockComponent comp = new LockComponent(LockType.SHARED_WRITE, LockLevel.TABLE, t.getDbName());
+    comp.setCatName(t.getCatName());
     comp.setTablename(t.getTableName());
     comp.setOperationType(DataOperationType.UPDATE);
 
@@ -835,7 +841,7 @@ public class TestCompactionMetrics  extends CompactorTest {
     String dbName = "default";
 
     Map<String, String> params = new HashMap<>();
-    params.put(hive_metastoreConstants.TABLE_NO_AUTO_COMPACT, "true");
+    params.put(hive_metastoreConstants.NO_AUTO_COMPACT, "true");
     Table disabledTbl = newTable(dbName, "comp_disabled", false, params);
     burnThroughTransactions(disabledTbl.getDbName(), disabledTbl.getTableName(), 1, null, null);
     burnThroughTransactions(disabledTbl.getDbName(), disabledTbl.getTableName(), 1, null, new HashSet<>(

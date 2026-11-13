@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap;
 
@@ -35,10 +37,6 @@ public class LlapInputSplit implements InputSplitWithLocationInfo {
   private String llapUser;
   private byte[] fragmentBytesSignature;
   private byte[] tokenBytes;
-  //only needed in cloud deployments for llap server to validate request from external llap clients.
-  //HS2 generates a JWT and populates this field while get_splits() call, this jwt gets validated at LLAP server
-  //when LlapInputSplit is submitted.
-  private String jwt;
 
   public LlapInputSplit() {
   }
@@ -46,7 +44,7 @@ public class LlapInputSplit implements InputSplitWithLocationInfo {
   public LlapInputSplit(int splitNum, byte[] planBytes, byte[] fragmentBytes,
                         byte[] fragmentBytesSignature, SplitLocationInfo[] locations,
                         LlapDaemonInfo[] llapDaemonInfos, Schema schema,
-                        String llapUser, byte[] tokenBytes, String jwt) {
+                        String llapUser, byte[] tokenBytes) {
     this.planBytes = planBytes;
     this.fragmentBytes = fragmentBytes;
     this.fragmentBytesSignature = fragmentBytesSignature;
@@ -56,7 +54,6 @@ public class LlapInputSplit implements InputSplitWithLocationInfo {
     this.splitNum = splitNum;
     this.llapUser = llapUser;
     this.tokenBytes = tokenBytes;
-    this.jwt = jwt;
   }
 
   public Schema getSchema() {
@@ -105,10 +102,6 @@ public class LlapInputSplit implements InputSplitWithLocationInfo {
     this.schema = schema;
   }
 
-  public String getJwt() {
-    return jwt;
-  }
-
   @Override
   public void write(DataOutput out) throws IOException {
     out.writeInt(splitNum);
@@ -143,9 +136,8 @@ public class LlapInputSplit implements InputSplitWithLocationInfo {
       out.writeInt(0);
     }
 
-    if (jwt != null) {
-      out.writeUTF(jwt);
-    }
+    // Retain the retired JWT field in the wire format for older readers.
+    out.writeUTF("");
   }
 
   @Override
@@ -185,7 +177,9 @@ public class LlapInputSplit implements InputSplitWithLocationInfo {
       tokenBytes = new byte[length];
       in.readFully(tokenBytes);
     }
-    jwt = in.readUTF();
+
+    // Discard the retired JWT field kept for wire compatibility.
+    in.readUTF();
   }
 
   @Override

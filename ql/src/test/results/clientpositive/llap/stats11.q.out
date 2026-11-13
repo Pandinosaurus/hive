@@ -93,7 +93,7 @@ Partition Parameters:
 	numFiles            	1                   
 	numRows             	0                   
 	rawDataSize         	0                   
-	totalSize           	1358                
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -137,7 +137,7 @@ Partition Parameters:
 	numFiles            	2                   
 	numRows             	0                   
 	rawDataSize         	0                   
-	totalSize           	2750                
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -181,7 +181,7 @@ Partition Parameters:
 	numFiles            	3                   
 	numRows             	0                   
 	rawDataSize         	0                   
-	totalSize           	4200                
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -225,7 +225,7 @@ Partition Parameters:
 	numFiles            	4                   
 	numRows             	0                   
 	rawDataSize         	0                   
-	totalSize           	5812                
+	totalSize           	#Masked#
 #### A masked pattern was here ####
 	 	 
 # Storage Information	 	 
@@ -307,7 +307,7 @@ POSTHOOK: Input: default@srcbucket_mapjoin_n15
 POSTHOOK: Input: default@srcbucket_mapjoin_part_n16
 POSTHOOK: Input: default@srcbucket_mapjoin_part_n16@ds=2008-04-08
 POSTHOOK: Output: default@bucketmapjoin_tmp_result_n7
-OPTIMIZED SQL: SELECT `t0`.`key`, `t0`.`value`, `t2`.`value` AS `value1`
+OPTIMIZED SQL: SELECT `t0`.`key` AS `a.key`, `t0`.`value` AS `a.value`, `t2`.`value` AS `b.value`
 FROM (SELECT `key`, `value`
 FROM `default`.`srcbucket_mapjoin_n15`
 WHERE `key` IS NOT NULL) AS `t0`
@@ -725,7 +725,7 @@ POSTHOOK: Input: default@srcbucket_mapjoin_n15
 POSTHOOK: Input: default@srcbucket_mapjoin_part_n16
 POSTHOOK: Input: default@srcbucket_mapjoin_part_n16@ds=2008-04-08
 POSTHOOK: Output: default@bucketmapjoin_tmp_result_n7
-OPTIMIZED SQL: SELECT `t0`.`key`, `t0`.`value`, `t2`.`value` AS `value1`
+OPTIMIZED SQL: SELECT `t0`.`key` AS `a.key`, `t0`.`value` AS `a.value`, `t2`.`value` AS `b.value`
 FROM (SELECT `key`, `value`
 FROM `default`.`srcbucket_mapjoin_n15`
 WHERE `key` IS NOT NULL) AS `t0`

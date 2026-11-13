@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec;
 
@@ -64,7 +65,7 @@ public class TestLimitOperator {
     }
 
     HiveConf conf = new HiveConf();
-    HiveConf.setVar(conf, HiveConf.ConfVars.HIVEQUERYID, "query-" + random.nextInt(10000));
+    HiveConf.setVar(conf, HiveConf.ConfVars.HIVE_QUERY_ID, "query-" + random.nextInt(10000));
     HiveConf.setVar(conf, HiveConf.ConfVars.HIVE_EXECUTION_ENGINE, "tez");
     conf.set(TezProcessor.HIVE_TEZ_VERTEX_NAME, "Map 1");
 

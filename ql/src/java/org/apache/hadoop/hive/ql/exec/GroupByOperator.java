@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -119,6 +120,7 @@ public class GroupByOperator extends Operator<GroupByDesc> implements IConfigure
   private transient int groupbyMapAggrInterval;
   private transient long numRowsCompareHashAggr;
   private transient float minReductionHashAggr;
+  private transient float hashAggrFlushPercent;
 
   private transient int outputKeyLength;
 
@@ -206,7 +208,7 @@ public class GroupByOperator extends Operator<GroupByDesc> implements IConfigure
     numRowsHashTbl = 0;
 
     heartbeatInterval = HiveConf.getIntVar(hconf,
-        HiveConf.ConfVars.HIVESENDHEARTBEAT);
+        HiveConf.ConfVars.HIVE_SEND_HEARTBEAT);
     countAfterReport = 0;
     ObjectInspector rowInspector = inputObjInspectors[0];
 
@@ -367,11 +369,12 @@ public class GroupByOperator extends Operator<GroupByDesc> implements IConfigure
       keyPositionsSize = new ArrayList<Integer>();
       aggrPositions = new List[aggregations.length];
       groupbyMapAggrInterval = HiveConf.getIntVar(hconf,
-          HiveConf.ConfVars.HIVEGROUPBYMAPINTERVAL);
+          HiveConf.ConfVars.HIVE_GROUPBY_MAP_INTERVAL);
 
       // compare every groupbyMapAggrInterval rows
       numRowsCompareHashAggr = groupbyMapAggrInterval;
       minReductionHashAggr = conf.getMinReductionHashAggr();
+      hashAggrFlushPercent = conf.getHashAggrFlushPercent();
     }
 
     List<String> fieldNames = new ArrayList<String>(conf.getOutputColumnNames());
@@ -951,9 +954,6 @@ public class GroupByOperator extends Operator<GroupByDesc> implements IConfigure
   private void flushHashTable(boolean complete) throws HiveException {
     countAfterReport = 0;
 
-    // Currently, the algorithm flushes 10% of the entries - this can be
-    // changed in the future
-
     if (complete) {
       for (Map.Entry<KeyWrapper, AggregationBuffer[]> entry : hashAggregations.entrySet()) {
         forward(entry.getKey().getKeyArray(), entry.getValue());
@@ -964,7 +964,8 @@ public class GroupByOperator extends Operator<GroupByDesc> implements IConfigure
     }
 
     int oldSize = hashAggregations.size();
-    LOG.info("Hash Tbl flush: #hash table = {}", oldSize);
+    int flushSize = (int) (oldSize * hashAggrFlushPercent);
+    LOG.trace("Hash Tbl flush: #hash table = {}, flush size = {}", oldSize, flushSize);
 
     Iterator<Map.Entry<KeyWrapper, AggregationBuffer[]>> iter = hashAggregations
         .entrySet().iterator();
@@ -974,8 +975,8 @@ public class GroupByOperator extends Operator<GroupByDesc> implements IConfigure
       forward(m.getKey().getKeyArray(), m.getValue());
       iter.remove();
       numDel++;
-      if (numDel * 10 >= oldSize) {
-        LOG.info("Hash Table flushed: new size = {}", hashAggregations.size());
+      if (numDel >= flushSize) {
+        LOG.trace("Hash Table flushed: new size = {}", hashAggregations.size());
         return;
       }
     }
@@ -1129,7 +1130,7 @@ public class GroupByOperator extends Operator<GroupByDesc> implements IConfigure
     int groupingSetPosition = desc.getGroupingSetPosition();
     List<Long> listGroupingSets = desc.getListGroupingSets();
     // groupingSets are known at map/reducer side; but have to do real processing
-    // hence grouppingSetsPresent is true only at map side
+    // hence groupingSetsPresent is true only at map side
     if (groupingSetPosition >= 0 && listGroupingSets != null) {
       Long emptyGrouping = (1L << groupingSetPosition) - 1;
       if (listGroupingSets.contains(emptyGrouping)) {

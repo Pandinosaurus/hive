@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.common;
@@ -42,8 +43,12 @@ public class ValidTxnWriteIdList {
     this.txnId = txnId;
   }
 
-  public ValidTxnWriteIdList(String value) {
-    readFromString(value);
+  public ValidTxnWriteIdList() {}
+
+  public static ValidTxnWriteIdList fromValue(String value) {
+    ValidTxnWriteIdList txnWrtList = new ValidTxnWriteIdList();
+    txnWrtList.readFromString(value);
+    return txnWrtList;
   }
 
   @Override
@@ -63,6 +68,12 @@ public class ValidTxnWriteIdList {
     return null;
   }
 
+  public Long getMinOpenWriteId(String table) {
+    ValidWriteIdList tableValidWriteIdList = getTableValidWriteIdList(table);
+    Long minOpenWriteId = tableValidWriteIdList.getMinOpenWriteId();
+    return minOpenWriteId != null ? minOpenWriteId : tableValidWriteIdList.getHighWatermark() + 1;
+  }
+
   public boolean isEmpty() {
     return tablesValidWriteIdList.isEmpty();
   }
@@ -80,7 +91,7 @@ public class ValidTxnWriteIdList {
     this.txnId = Long.parseLong(tblWriteIdStrList[0]);
     for (int index = 1; index < tblWriteIdStrList.length; index++) {
       String tableStr = tblWriteIdStrList[index];
-      ValidWriteIdList validWriteIdList = new ValidReaderWriteIdList(tableStr);
+      ValidWriteIdList validWriteIdList = ValidReaderWriteIdList.fromValue(tableStr);
       addTableValidWriteIdList(validWriteIdList);
     }
   }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
  
 package org.apache.hadoop.hive.metastore.security;
@@ -39,6 +40,7 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.security.token.delegation.AbstractDelegationTokenSecretManager.DelegationTokenInformation;
 import org.apache.hadoop.security.token.delegation.DelegationKey;
 import org.apache.hadoop.util.StringUtils;
+import org.apache.hadoop.hive.common.IPStackUtils;
 import org.apache.thrift.transport.TSaslServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Assert;
@@ -129,7 +131,8 @@ public class TestHadoopAuthBridge23 {
       builder.append(ip);
       builder.append(',');
     }
-    builder.append("127.0.1.1,");
+    builder.append(IPStackUtils.resolveLoopbackAddress());
+    builder.append(",");
     builder.append(InetAddress.getLocalHost().getCanonicalHostName());
     conf.setStrings(DefaultImpersonationProvider.getTestProvider().getProxySuperuserIpConfKey(superUserShortName),
         builder.toString());
@@ -204,13 +207,22 @@ public class TestHadoopAuthBridge23 {
       // expected
     }
 
-    // token expiration
+    // token Renewal
     MyTokenStore.TOKEN_STORE.addToken(d,
         new DelegationTokenInformation(0, t.getPassword()));
     Assert.assertNotNull(MyTokenStore.TOKEN_STORE.getToken(d));
-    anotherManager.removeExpiredTokens();
+    anotherManager.renewOrRemoveExpiredTokens();
+    Assert.assertTrue(MyTokenStore.TOKEN_STORE.getToken(d).getRenewDate() > 0);
+
+    // test Expiration
+    DelegationTokenIdentifier e = new DelegationTokenIdentifier();
+    e.setMaxDate(0);
+    MyTokenStore.TOKEN_STORE.addToken(e,
+            new DelegationTokenInformation(0, t.getPassword()));
+    Assert.assertNotNull(MyTokenStore.TOKEN_STORE.getToken(e));
+    anotherManager.renewOrRemoveExpiredTokens();
     Assert.assertNull("Expired token not removed",
-        MyTokenStore.TOKEN_STORE.getToken(d));
+        MyTokenStore.TOKEN_STORE.getToken(e));
 
     // key expiration - create an already expired key
     anotherManager.startThreads(); // generates initial key

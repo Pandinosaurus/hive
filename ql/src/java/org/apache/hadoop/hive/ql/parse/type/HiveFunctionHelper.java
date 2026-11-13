@@ -9,25 +9,31 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.type;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.apache.calcite.plan.RelOptPredicateList;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexCall;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.rex.RexSimplify;
+import org.apache.calcite.rex.RexUnknownAs;
 import org.apache.calcite.rex.RexUtil;
 import org.apache.calcite.rex.RexVisitor;
 import org.apache.calcite.rex.RexVisitorImpl;
@@ -45,6 +51,7 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRexExecutorImpl;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveExtractDate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFloorDate;
+import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveIn;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveToDateSqlOperator;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveToUnixTimestampSqlOperator;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveUnixTimestampSqlOperator;
@@ -64,13 +71,13 @@ import org.apache.hadoop.hive.ql.udf.generic.GenericUDF;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFBaseBinary;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFBaseCompare;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFBetween;
-import org.apache.hadoop.hive.ql.udf.generic.GenericUDFCoalesce;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFIn;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFOPAnd;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFOPEqual;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFOPEqualNS;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFOPNotEqualNS;
 import org.apache.hadoop.hive.ql.udf.generic.GenericUDFOPOr;
+import org.apache.hadoop.hive.ql.udf.generic.GenericUDTF;
 import org.apache.hadoop.hive.serde2.objectinspector.ConstantObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category;
@@ -87,6 +94,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
+import org.apache.hadoop.io.IntWritable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,12 +139,16 @@ public class HiveFunctionHelper implements FunctionHelper {
       inputsOIs[i] = createObjectInspector(inputs.get(i));
     }
     // 2) Initialize and obtain return type
-    ObjectInspector oi = fi.getGenericUDF() != null ?
-        fi.getGenericUDF().initializeAndFoldConstants(inputsOIs) :
+    GenericUDF genericUDF = fi.getGenericUDF();
+    ObjectInspector oi = genericUDF != null ?
+        genericUDF.initializeAndFoldConstants(inputsOIs) :
         fi.getGenericUDTF().initialize(inputsOIs);
     // 3) Convert to RelDataType
     return TypeConverter.convert(
-        TypeInfoUtils.getTypeInfoFromObjectInspector(oi), rexBuilder.getTypeFactory());
+        TypeInfoUtils.getTypeInfoFromObjectInspector(oi),
+        FunctionRegistry.isNullable(genericUDF),
+        rexBuilder.getTypeFactory()
+    );
   }
 
   /**
@@ -252,7 +264,7 @@ public class HiveFunctionHelper implements FunctionHelper {
           fi.getGenericUDF(), argsTypes.build(), returnType);
       if (calciteOp.getKind() == SqlKind.CASE) {
         // If it is a case operator, we need to rewrite it
-        inputs = RexNodeConverter.rewriteCaseChildren(functionText, inputs, rexBuilder);
+        inputs = RexNodeConverter.rewriteCaseChildren(inputs, rexBuilder);
         // Adjust branch types by inserting explicit casts if the actual is ambiguous
         inputs = RexNodeConverter.adjustCaseBranchTypes(inputs, returnType, rexBuilder);
         checkForStatefulFunctions(inputs);
@@ -262,7 +274,7 @@ public class HiveFunctionHelper implements FunctionHelper {
       } else if (HiveFloorDate.ALL_FUNCTIONS.contains(calciteOp)) {
         // If it is a floor <date> operator, we need to rewrite it
         inputs = RexNodeConverter.rewriteFloorDateChildren(calciteOp, inputs, rexBuilder);
-      } else if (calciteOp.getKind() == SqlKind.IN) {
+      } else if (HiveIn.INSTANCE.equals(calciteOp)) {
         // if it is a single item in an IN clause, transform A IN (B) to A = B
         // from IN [A,B] => EQUALS [A,B]
         // if it is more than an single item in an IN clause,
@@ -328,7 +340,10 @@ public class HiveFunctionHelper implements FunctionHelper {
           RexUtil.flatten(call.getOperands(), call.getOperator()));
     }
 
-    return expr;
+    // Avoid creating incorrect expressions like $1 < NULL or $1 = NULL or NULL = NULL
+    // which may be problematic for Calcite later on
+    RexSimplify rexSimplify = new RexSimplify(rexBuilder, RelOptPredicateList.EMPTY, RexUtil.EXECUTOR);
+    return rexSimplify.simplifyComparisonWithNull(expr, RexUnknownAs.UNKNOWN);
   }
 
   private void checkForStatefulFunctions(List<RexNode> exprs)
@@ -341,12 +356,7 @@ public class HiveFunctionHelper implements FunctionHelper {
         // doing this check.
         GenericUDF nodeUDF = SqlFunctionConverter.getHiveUDF(
             call.getOperator(), call.getType(), call.getOperands().size());
-        if (nodeUDF == null) {
-          throw new AssertionError("Cannot retrieve function " + call.getOperator().getName()
-              + " within StatefulFunctionsChecker");
-        }
-        // Stateful?
-        if (FunctionRegistry.isStateful(nodeUDF)) {
+        if (nodeUDF != null && FunctionRegistry.isStateful(nodeUDF)) {
           throw new Util.FoundOne(call);
         }
         return super.visitCall(call);
@@ -368,20 +378,30 @@ public class HiveFunctionHelper implements FunctionHelper {
    */
   @Override
   public AggregateInfo getAggregateFunctionInfo(boolean isDistinct, boolean isAllColumns,
-      String aggregateName, List<RexNode> aggregateParameters)
+                                                String aggregateName, List<RexNode> aggregateParameters,
+                                                List<FieldCollation> fieldCollations)
       throws SemanticException {
     Mode udafMode = SemanticAnalyzer.groupByDescModeToUDAFMode(
         GroupByDesc.Mode.COMPLETE, isDistinct);
     List<ObjectInspector> aggParameterOIs = new ArrayList<>();
+    Iterator<FieldCollation> obKeyIterator = fieldCollations.iterator();
     for (RexNode aggParameter : aggregateParameters) {
       aggParameterOIs.add(createObjectInspector(aggParameter));
+      if (obKeyIterator.hasNext()) {
+        FieldCollation fieldCollation = obKeyIterator.next();
+        aggParameterOIs.add(createObjectInspector(fieldCollation.getSortExpression()));
+        aggParameterOIs.add(PrimitiveObjectInspectorFactory.getPrimitiveWritableConstantObjectInspector(
+                TypeInfoFactory.intTypeInfo, new IntWritable(fieldCollation.getSortDirection())));
+        aggParameterOIs.add(PrimitiveObjectInspectorFactory.getPrimitiveWritableConstantObjectInspector(
+                TypeInfoFactory.intTypeInfo, new IntWritable(fieldCollation.getNullOrdering().getCode())));
+      }
     }
     GenericUDAFEvaluator genericUDAFEvaluator = SemanticAnalyzer.getGenericUDAFEvaluator2(
         aggregateName, aggParameterOIs, null, isDistinct, isAllColumns);
     assert (genericUDAFEvaluator != null);
     GenericUDAFInfo udaf = SemanticAnalyzer.getGenericUDAFInfo2(
         genericUDAFEvaluator, udafMode, aggParameterOIs);
-    return new AggregateInfo(aggregateParameters, udaf.returnType, aggregateName, isDistinct);
+    return new AggregateInfo(aggregateParameters, udaf.returnType, aggregateName, isDistinct, fieldCollations);
   }
 
   /**
@@ -436,6 +456,23 @@ public class HiveFunctionHelper implements FunctionHelper {
 
     return returnType != null ?
         new AggregateInfo(aggregateParameters, returnType, aggregateName, isDistinct) : null;
+  }
+
+  public RexCall getUDTFFunction(String functionName, List<RexNode> operands)
+      throws SemanticException {
+    // Extract the argument types for the operands into a list
+    List<RelDataType> operandTypes = Lists.transform(operands, RexNode::getType);
+
+    FunctionInfo functionInfo = FunctionRegistry.getFunctionInfo(functionName);
+    GenericUDTF genericUDTF = functionInfo.getGenericUDTF();
+    Preconditions.checkNotNull(genericUDTF, "Generic UDTF not found: " + functionName);
+
+    RelDataType udtfRetType = getReturnType(functionInfo, operands);
+
+    SqlOperator calciteOp = SqlFunctionConverter.getCalciteOperator(functionName, genericUDTF,
+        ImmutableList.copyOf(operandTypes), udtfRetType);
+
+    return (RexCall) rexBuilder.makeCall(calciteOp, operands);
   }
 
   private ObjectInspector createObjectInspector(RexNode expr) {

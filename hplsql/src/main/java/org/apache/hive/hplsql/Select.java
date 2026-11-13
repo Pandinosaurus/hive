@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.hplsql;
@@ -67,11 +68,15 @@ public class Select {
     boolean oldBuildSql = exec.buildSql; 
     exec.buildSql = true;
     StringBuilder sql = new StringBuilder();
-    if (ctx.cte_select_stmt() != null) {
-      sql.append(evalPop(ctx.cte_select_stmt()).toString());
-      sql.append("\n");
+    if (exec.getOffline()) {
+      sql.append(exec.getText(ctx));
+    } else {
+      if (ctx.cte_select_stmt() != null) {
+        sql.append(evalPop(ctx.cte_select_stmt()).toString());
+        sql.append("\n");
+      }
+      sql.append(evalPop(ctx.fullselect_stmt()).toString());
     }
-    sql.append(evalPop(ctx.fullselect_stmt()).toString());
     exec.buildSql = oldBuildSql;
     if (!(ctx.parent instanceof HplsqlParser.StmtContext)) {           // No need to execute at this stage
       exec.stackPush(sql);
@@ -121,8 +126,8 @@ public class Select {
               exec.signal(Signal.Type.TOO_MANY_ROWS);
             }
           } else {
-            exec.setSqlCode(SqlCodes.NO_DATA_FOUND);
-            exec.signal(Signal.Type.NOTFOUND);
+            exec.setSqlNoData();
+            exec.signal(Signal.Type.NOTFOUND, null, null);
           }
         }
       } else if (ctx.parent instanceof HplsqlParser.StmtContext) { // Print all results for standalone SELECT statement
@@ -152,7 +157,7 @@ public class Select {
           exec.setSqlSuccess();
         } else {
           evalNull();
-          exec.setSqlCode(SqlCodes.NO_DATA_FOUND);
+          exec.setSqlNoData();
         }
       }
     } catch (QueryException e) {

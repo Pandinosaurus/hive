@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse;
@@ -43,10 +44,14 @@ public class UnparseTranslator {
   private final NavigableMap<Integer, Translation> translations;
   private final List<CopyTranslation> copyTranslations;
   private boolean enabled;
-  private Configuration conf;
+  private Quotation quotation;
 
-  public UnparseTranslator(Configuration conf) {
-    this.conf = conf;
+  public UnparseTranslator(Configuration configuration) {
+    this(Quotation.from(configuration));
+  }
+
+  public UnparseTranslator(Quotation quotation) {
+    this.quotation = quotation;
     translations = new TreeMap<Integer, Translation>();
     copyTranslations = new ArrayList<CopyTranslation>();
   }
@@ -54,7 +59,7 @@ public class UnparseTranslator {
   /**
    * Enable this translator.
    */
-  void enable() {
+  public void enable() {
     enabled = true;
   }
 
@@ -161,12 +166,12 @@ public class UnparseTranslator {
     else {
       // transform the table reference to an absolute reference (i.e., "db.table")
       StringBuilder replacementText = new StringBuilder();
-      replacementText.append(HiveUtils.unparseIdentifier(currentDatabaseName, conf));
+      replacementText.append(HiveUtils.unparseIdentifier(currentDatabaseName, quotation));
       replacementText.append('.');
 
       ASTNode identifier = (ASTNode)tableName.getChild(0);
       String identifierText = BaseSemanticAnalyzer.unescapeIdentifier(identifier.getText());
-      replacementText.append(HiveUtils.unparseIdentifier(identifierText, conf));
+      replacementText.append(HiveUtils.unparseIdentifier(identifierText, quotation));
 
       addTranslation(identifier, replacementText.toString());
     }
@@ -185,7 +190,7 @@ public class UnparseTranslator {
     assert (identifier.getToken().getType() == HiveParser.Identifier);
     String replacementText = identifier.getText();
     replacementText = BaseSemanticAnalyzer.unescapeIdentifier(replacementText);
-    replacementText = HiveUtils.unparseIdentifier(replacementText, conf);
+    replacementText = HiveUtils.unparseIdentifier(replacementText, quotation);
     addTranslation(identifier, replacementText);
   }
 
@@ -239,7 +244,7 @@ public class UnparseTranslator {
     applyTranslations(tokenRewriteStream, TokenRewriteStream.DEFAULT_PROGRAM_NAME);
   }
 
-  void applyTranslations(TokenRewriteStream tokenRewriteStream, String programName) {
+  public void applyTranslations(TokenRewriteStream tokenRewriteStream, String programName) {
     for (Map.Entry<Integer, Translation> entry : translations.entrySet()) {
       if (entry.getKey() > 0) { // negative means the key didn't exist in the original
                                 // stream (i.e.: we changed the tree)

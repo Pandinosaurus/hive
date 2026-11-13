@@ -6,17 +6,21 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Metadata related to Msck.
@@ -32,6 +36,8 @@ public class MsckInfo {
   private final boolean addPartitions;
   private final boolean dropPartitions;
   private final long partitionExpirySeconds;
+
+  private Map<String, String> smallFilesStats = new HashMap<>();
 
   public MsckInfo(String catalogName, String dbName, String tableName, byte[] filterExp, String resFile,
                   boolean repairPartitions, boolean addPartitions,
@@ -81,5 +87,11 @@ public class MsckInfo {
 
   public long getPartitionExpirySeconds() {
     return partitionExpirySeconds;
+  }
+
+  public Map<String, String> getSmallFilesStats() { return smallFilesStats; }
+
+  public void setSmallFilesStats(Map<String, String> smallFilesStats){
+    this.smallFilesStats = smallFilesStats;
   }
 }

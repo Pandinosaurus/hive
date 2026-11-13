@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.common.io.CacheTag;
+import org.apache.hadoop.hive.common.io.encoded.MemoryBufferOrBuffers;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.llap.io.api.LlapProxy;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
@@ -33,6 +35,7 @@ import org.apache.hadoop.hive.ql.io.SyntheticFileId;
 import org.apache.hadoop.hive.ql.io.orc.OrcSplit;
 import org.apache.hadoop.hive.ql.io.orc.VectorizedOrcInputFormat;
 import org.apache.hadoop.hive.ql.io.parquet.VectorizedParquetInputFormat;
+import org.apache.hadoop.hive.ql.io.parquet.vector.VectorizedParquetRecordReader;
 import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapred.FileSplit;
@@ -42,23 +45,35 @@ import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hive.iceberg.org.apache.orc.OrcConf;
-import org.apache.hive.iceberg.org.apache.parquet.hadoop.ParquetFileReader;
-import org.apache.hive.iceberg.org.apache.parquet.schema.MessageType;
+import org.apache.iceberg.FileContent;
 import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.FileScanTask;
+import org.apache.iceberg.MetadataColumns;
 import org.apache.iceberg.PartitionField;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
+import org.apache.iceberg.data.CachingDeleteLoader;
+import org.apache.iceberg.data.DeleteLoader;
+import org.apache.iceberg.encryption.EncryptingFileIO;
+import org.apache.iceberg.expressions.Expression;
+import org.apache.iceberg.hive.HiveSchemaUtil;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.CloseableIterator;
-import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.mr.hive.HiveIcebergInputFormat;
 import org.apache.iceberg.mr.mapred.MapredIcebergInputFormat;
 import org.apache.iceberg.orc.VectorizedReadUtils;
+import org.apache.iceberg.parquet.HiveParquetUtil;
 import org.apache.iceberg.parquet.ParquetSchemaUtil;
 import org.apache.iceberg.parquet.TypeWithSchemaVisitor;
+import org.apache.iceberg.parquet.VariantParquetFilters;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
+import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Types;
 import org.apache.orc.impl.OrcTail;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.schema.MessageType;
 
 /**
  * Utility class to create vectorized readers for Hive.
@@ -72,11 +87,34 @@ public class HiveVectorizedReader {
 
   }
 
-  public static <D> CloseableIterable<D> reader(InputFile inputFile, FileScanTask task, Map<Integer, ?> idToConstant,
-      TaskAttemptContext context) {
+  public static CloseableIterable<HiveBatchContext> reader(Table table, Path path, FileScanTask task,
+      Map<Integer, ?> idToConstant, TaskAttemptContext context, Expression residual, Schema readSchema) {
+
+    HiveDeleteFilter deleteFilter = null;
+    Schema requiredSchema = readSchema;
+
+    if (!task.deletes().isEmpty()) {
+      deleteFilter =
+          new HiveDeleteFilter(EncryptingFileIO.combine(table.io(), table.encryption()), task, table.schema(),
+              prepareSchemaForDeleteFilter(readSchema), context.getConfiguration()) {
+            @Override
+            protected DeleteLoader newDeleteLoader() {
+              return new CachingDeleteLoader(
+                  deleteFile -> EncryptingFileIO.combine(table.io(), table.encryption()).newInputFile(deleteFile),
+                  context.getConfiguration());
+            }
+          };
+      requiredSchema = deleteFilter.requiredSchema();
+      // TODO: take requiredSchema and adjust readColumnIds below accordingly for equality delete cases
+      // and remove below limitation
+      if (task.deletes().stream().anyMatch(d -> d.content() == FileContent.EQUALITY_DELETES)) {
+        throw new UnsupportedOperationException("Vectorized reading with equality deletes is not supported yet.");
+      }
+    }
+
+
     // Tweaks on jobConf here are relevant for this task only, so we need to copy it first as context's conf is reused..
-    JobConf job = new JobConf((JobConf) context.getConfiguration());
-    Path path = new Path(inputFile.location());
+    JobConf job = new JobConf(context.getConfiguration());
     FileFormat format = task.file().format();
     Reporter reporter = ((MapredIcebergInputFormat.CompatibilityTaskAttemptContextImpl) context).getLegacyReporter();
 
@@ -127,50 +165,75 @@ public class HiveVectorizedReader {
       // TODO: Iceberg currently does not track the last modification time of a file. Until that's added,
       // we need to set Long.MIN_VALUE as last modification time in the fileId triplet.
       SyntheticFileId fileId = new SyntheticFileId(path, task.file().fileSizeInBytes(), Long.MIN_VALUE);
+      fileId.toJobConf(job);
       RecordReader<NullWritable, VectorizedRowBatch> recordReader = null;
 
       switch (format) {
         case ORC:
-          recordReader = orcRecordReader(job, reporter, task, inputFile, path, start, length, readColumnIds, fileId);
+          recordReader = orcRecordReader(job, reporter, task, path, start, length, readColumnIds,
+              fileId, residual, table.name());
           break;
 
         case PARQUET:
-          recordReader = parquetRecordReader(job, reporter, task, path, start, length);
+          recordReader = parquetRecordReader(job, reporter, task, path, start, length, fileId,
+              getInitialColumnDefaults(table.schema().columns()),
+              HiveIcebergInputFormat.residualForReaderPruning(task, job),
+              table.io());
           break;
         default:
           throw new UnsupportedOperationException("Vectorized Hive reading unimplemented for format: " + format);
       }
 
-      return createVectorizedRowBatchIterable(recordReader, job, partitionColIndices, partitionValues);
+      CloseableIterable<HiveBatchContext> vrbIterable =
+          createVectorizedRowBatchIterable(recordReader, job, partitionColIndices, partitionValues, task);
+
+      return deleteFilter != null ? deleteFilter.filterBatch(vrbIterable) : vrbIterable;
 
     } catch (IOException ioe) {
-      throw new RuntimeException("Error creating vectorized record reader for " + inputFile, ioe);
+      throw new RuntimeException("Error creating vectorized record reader for " + path, ioe);
     }
   }
 
+  static Map<String, Object> getInitialColumnDefaults(List<Types.NestedField> columns) {
+    Map<String, Object> columnDefaults = Maps.newHashMap();
+
+    for (Types.NestedField column : columns) {
+      if (column.initialDefault() != null) {
+        columnDefaults.put(column.name(), column.initialDefault());
+      } else if (column.type().isStructType()) {
+        Map<String, Object> structDefaults =
+            HiveSchemaUtil.getStructInitialDefaults(column.type().asStructType());
+        if (!structDefaults.isEmpty()) {
+          columnDefaults.put(column.name(), structDefaults);
+        }
+      }
+    }
+    return columnDefaults;
+  }
+
   private static RecordReader<NullWritable, VectorizedRowBatch> orcRecordReader(JobConf job, Reporter reporter,
-      FileScanTask task, InputFile inputFile, Path path, long start, long length, List<Integer> readColumnIds,
-      SyntheticFileId fileId) throws IOException {
+      FileScanTask task, Path path, long start, long length, List<Integer> readColumnIds,
+      SyntheticFileId fileId, Expression residual, String tableName) throws IOException {
     RecordReader<NullWritable, VectorizedRowBatch> recordReader = null;
 
     // Need to turn positional schema evolution off since we use column name based schema evolution for projection
     // and Iceberg will make a mapping between the file schema and the current reading schema.
     job.setBoolean(OrcConf.FORCE_POSITIONAL_EVOLUTION.getHiveConfName(), false);
+    // Row positions are derived from the batch index, and ORC's row-level filter can drop rows and whole batches.
+    job.setBoolean(OrcConf.ALLOW_SARG_TO_FILTER.getHiveConfName(), false);
 
     // Metadata information has to be passed along in the OrcSplit. Without specifying this, the vectorized
     // reader will assume that the ORC file ends at the task's start + length, and might fail reading the tail..
-    ByteBuffer serializedOrcTail = VectorizedReadUtils.getSerializedOrcTail(inputFile, fileId, job);
+    ByteBuffer serializedOrcTail = VectorizedReadUtils.getSerializedOrcTail(path, fileId, job);
     OrcTail orcTail = VectorizedReadUtils.deserializeToOrcTail(serializedOrcTail);
 
     VectorizedReadUtils.handleIcebergProjection(task, job,
-        VectorizedReadUtils.deserializeToShadedOrcTail(serializedOrcTail).getSchema());
+        VectorizedReadUtils.deserializeToShadedOrcTail(serializedOrcTail).getSchema(), residual);
 
     // If LLAP enabled, try to retrieve an LLAP record reader - this might yield to null in some special cases
     if (HiveConf.getBoolVar(job, HiveConf.ConfVars.LLAP_IO_ENABLED, LlapProxy.isDaemon()) &&
         LlapProxy.getIo() != null) {
-      // Required to prevent LLAP from dealing with decimal64, HiveIcebergInputFormat.getSupportedFeatures()
-      HiveConf.setVar(job, HiveConf.ConfVars.HIVE_VECTORIZED_INPUT_FORMAT_SUPPORTS_ENABLED, "");
-      recordReader = LlapProxy.getIo().llapVectorizedOrcReaderForPath(fileId, path, null, readColumnIds,
+      recordReader = LlapProxy.getIo().orc().vectorizedReaderForPath(fileId, path, null, readColumnIds,
           job, start, length, reporter);
     }
 
@@ -184,11 +247,29 @@ public class HiveVectorizedReader {
   }
 
   private static RecordReader<NullWritable, VectorizedRowBatch> parquetRecordReader(JobConf job, Reporter reporter,
-      FileScanTask task, Path path, long start, long length) throws IOException {
+      FileScanTask task, Path path, long start, long length, SyntheticFileId fileId,
+      Map<String, Object> initialColumnDefaults, Expression residual, FileIO io) throws IOException {
     InputSplit split = new FileSplit(path, start, length, job);
     VectorizedParquetInputFormat inputFormat = new VectorizedParquetInputFormat();
 
-    MessageType fileSchema = ParquetFileReader.readFooter(job, path).getFileMetaData().getSchema();
+    MemoryBufferOrBuffers footerData = null;
+    if (HiveConf.getBoolVar(job, HiveConf.ConfVars.LLAP_IO_ENABLED, LlapProxy.isDaemon()) &&
+        LlapProxy.getIo() != null && LlapProxy.getIo().usingLowLevelCache()) {
+      LlapProxy.getIo().initCacheOnlyInputFormat(inputFormat);
+      // No per-fragment counters on the Iceberg vectorized path yet; footer lookups are
+      // recorded as cache traffic but not as META hits/misses in the LLAP IO summary.
+      // Tagged as VectorizedParquetRecordReader tags the data it caches for this file, so purging the
+      // table's entries covers the footer too.
+      CacheTag cacheTag = VectorizedParquetRecordReader.cacheTagOfParquetFile(path, job, job);
+      footerData = LlapProxy.getIo().parquet().getFooterBuffersFromCache(path, job, cacheTag, fileId, null);
+    }
+
+    ParquetMetadata parquetMetadata = HiveParquetUtil.readFooter(task.file(), io, job, footerData);
+    MessageType fileSchema = parquetMetadata.getFileMetaData().getSchema();
+    ParquetMetadata prunedMetadata =
+        VariantParquetFilters.pruneVariantRowGroups(parquetMetadata, fileSchema, residual);
+    inputFormat.setMetadata(prunedMetadata);
+
     MessageType typeWithIds = null;
     Schema expectedSchema = task.spec().schema();
 
@@ -203,17 +284,21 @@ public class HiveVectorizedReader {
     TypeWithSchemaVisitor.visit(expectedSchema.asStruct(), typeWithIds, psv);
     job.set(IOConstants.COLUMNS, psv.retrieveColumnNameList());
 
-    return inputFormat.getRecordReader(split, job, reporter);
+    inputFormat.seInitialColumnDefaults(initialColumnDefaults);
+    RecordReader<NullWritable, VectorizedRowBatch> reader = inputFormat.getRecordReader(split, job, reporter);
+    return ParquetVariantRecordReader
+        .tryWrap(reader, job, task, path, start, length, prunedMetadata)
+        .orElse(reader);
   }
 
-  private static <D> CloseableIterable<D> createVectorizedRowBatchIterable(
+  private static CloseableIterable<HiveBatchContext> createVectorizedRowBatchIterable(
       RecordReader<NullWritable, VectorizedRowBatch> hiveRecordReader, JobConf job, int[] partitionColIndices,
-      Object[] partitionValues) {
+      Object[] partitionValues, FileScanTask task) {
 
-    VectorizedRowBatchIterator iterator =
-        new VectorizedRowBatchIterator(hiveRecordReader, job, partitionColIndices, partitionValues);
+    HiveBatchIterator iterator =
+        new HiveBatchIterator(hiveRecordReader, job, partitionColIndices, partitionValues, task);
 
-    return new CloseableIterable<D>() {
+    return new CloseableIterable<>() {
 
       @Override
       public CloseableIterator iterator() {
@@ -225,6 +310,17 @@ public class HiveVectorizedReader {
         iterator.close();
       }
     };
+  }
+
+  /**
+   * We need to add IS_DELETED metadata field so that DeleteFilter marks deleted rows rather than filering them out.
+   * @param schema original schema
+   * @return adjusted schema
+   */
+  private static Schema prepareSchemaForDeleteFilter(Schema schema) {
+    List<Types.NestedField> columns = Lists.newArrayList(schema.columns());
+    columns.add(MetadataColumns.IS_DELETED);
+    return new Schema(columns);
   }
 
 }

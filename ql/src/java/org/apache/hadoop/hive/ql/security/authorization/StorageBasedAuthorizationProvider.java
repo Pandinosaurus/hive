@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.security.authorization;
@@ -24,8 +25,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
-
-import javax.security.auth.login.LoginException;
 
 import org.apache.hadoop.hive.metastore.HMSHandler;
 import org.apache.hadoop.hive.metastore.IHMSHandler;
@@ -178,8 +177,7 @@ public class StorageBasedAuthorizationProvider extends HiveAuthorizationProvider
 
   private static boolean userHasProxyPrivilege(String user, Configuration conf) {
     try {
-      if (MetaStoreServerUtils.checkUserHasHostProxyPrivileges(user, conf,
-              HMSHandler.getIPAddress())) {
+      if (MetaStoreServerUtils.checkUserHasHostProxyPrivileges(user, conf, HMSHandler.getIPAddress())) {
         LOG.info("user {} has host proxy privilege.", user);
         return true;
       }
@@ -381,10 +379,6 @@ public class StorageBasedAuthorizationProvider extends HiveAuthorizationProvider
 
       checkPermissions(getConf(), path, actions);
 
-    } catch (AccessControlException ex) {
-      throw authorizationException(ex);
-    } catch (LoginException ex) {
-      throw authorizationException(ex);
     } catch (IOException ex) {
       throw hiveException(ex);
     }
@@ -396,7 +390,7 @@ public class StorageBasedAuthorizationProvider extends HiveAuthorizationProvider
    * If the given path does not exists, it checks for its parent folder.
    */
   protected void checkPermissions(final Configuration conf, final Path path,
-      final EnumSet<FsAction> actions) throws IOException, LoginException, HiveException {
+      final EnumSet<FsAction> actions) throws IOException, HiveException {
 
     if (path == null) {
       throw new IllegalArgumentException("path is null");
@@ -473,10 +467,6 @@ public class StorageBasedAuthorizationProvider extends HiveAuthorizationProvider
 
   private HiveException hiveException(Exception e) {
     return new HiveException(e);
-  }
-
-  private AuthorizationException authorizationException(Exception e) {
-    return new AuthorizationException(e);
   }
 
   private static AccessControlException accessControlException(Exception e) {

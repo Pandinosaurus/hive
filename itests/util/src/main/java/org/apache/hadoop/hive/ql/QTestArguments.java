@@ -9,17 +9,22 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql;
 
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.QTestMiniClusters.FsType;
 import org.apache.hadoop.hive.ql.QTestMiniClusters.QTestSetup;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * QTestArguments composite used as arguments holder for QTestUtil initialization.
@@ -35,6 +40,8 @@ public final class QTestArguments {
   private boolean withLlapIo;
   private FsType fsType;
   private QTestSetup qtestSetup;
+
+  private Map<HiveConf.ConfVars,String> customConfigValueMap;
 
   private QTestArguments() {
   }
@@ -111,6 +118,14 @@ public final class QTestArguments {
     this.qtestSetup = qtestSetup;
   }
 
+  private void setCustomConfigValueMap(Map<HiveConf.ConfVars,String> customConfigValueMap){
+    this.customConfigValueMap = customConfigValueMap;
+  }
+
+  public Map<HiveConf.ConfVars, String> getCustomConfs() {
+    return this.customConfigValueMap;
+  }
+
   /**
    * QTestArgumentsBuilder used for QTestArguments construction.
    */
@@ -126,7 +141,9 @@ public final class QTestArguments {
     private FsType fsType;
     private QTestSetup qtestSetup;
 
-    private QTestArgumentsBuilder(){
+    private Map<HiveConf.ConfVars, String> customConfigValueMap;
+
+    private QTestArgumentsBuilder() {
     }
 
     public static QTestArgumentsBuilder instance() {
@@ -178,6 +195,11 @@ public final class QTestArguments {
       return this;
     }
 
+    public QTestArgumentsBuilder withCustomConfigValueMap(Map<HiveConf.ConfVars, String> customConfigValueMap) {
+      this. customConfigValueMap =  customConfigValueMap;
+      return this;
+    }
+
     public QTestArguments build() {
       QTestArguments testArguments = new QTestArguments();
       testArguments.setOutDir(outDir);
@@ -194,6 +216,7 @@ public final class QTestArguments {
       testArguments.setQTestSetup(
           qtestSetup != null ? qtestSetup : new QTestSetup());
 
+      testArguments.setCustomConfigValueMap(customConfigValueMap != null ? customConfigValueMap : new HashMap<>());
       return testArguments;
     }
   }

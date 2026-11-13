@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.rules.jdbc;
 
@@ -21,7 +22,6 @@ import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.rel.core.Filter;
 import org.apache.calcite.rel.core.Join;
-import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelFactories;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.jdbc.HiveJdbcConverter;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveJoin;
@@ -39,9 +39,9 @@ public class JDBCFilterJoinRule extends HiveFilterJoinRule {
   public JDBCFilterJoinRule() {
     super(RelOptRule.operand(HiveFilter.class,
             RelOptRule.operand(HiveJoin.class,
-              RelOptRule.operand(HiveJdbcConverter.class, RelOptRule.any()),
-              RelOptRule.operand(HiveJdbcConverter.class, RelOptRule.any()))),
-        "JDBCFilterJoinRule", true, HiveRelFactories.HIVE_BUILDER);
+                RelOptRule.operand(HiveJdbcConverter.class, RelOptRule.any()),
+                RelOptRule.operand(HiveJdbcConverter.class, RelOptRule.any()))),
+        "JDBCFilterJoinRule");
   }
 
   @Override

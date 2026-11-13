@@ -9,21 +9,22 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
 import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.ACCESSTYPE_NONE;
 import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.ACCESSTYPE_READONLY;
 import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.ACCESSTYPE_READWRITE;
-import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.CTAS_LEGACY_CONFIG;
 import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.TABLE_IS_TRANSACTIONAL;
 import static org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.TABLE_TRANSACTIONAL_PROPERTIES;
 import static org.apache.hadoop.hive.metastore.utils.MetaStoreUtils.EXTERNAL_TABLE_PURGE;
+import static org.apache.hadoop.hive.metastore.utils.MetaStoreUtils.isIcebergTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +43,7 @@ import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
+import org.apache.hadoop.hive.metastore.txn.TxnUtils;
 import org.apache.hadoop.hive.metastore.utils.FileUtils;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.slf4j.Logger;
@@ -614,6 +616,14 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
 
   }
 
+  private void validateIfAcidTablePermitted(Table table) throws MetaException {
+    if (!MetastoreConf.getBoolVar(hmsHandler.getConf(), ConfVars.METASTORE_SUPPORT_ACID) &&
+        TxnUtils.isTransactionalTable(table)) {
+      throw new MetaException("ACID tables are not permitted when the "
+          + ConfVars.METASTORE_SUPPORT_ACID.getHiveName() + " property is set to false");
+    }
+  }
+
   @Override
   public Table transformCreateTable(Table table, List<String> processorCapabilities, String processorId) throws MetaException {
     if (!defaultCatalog.equalsIgnoreCase(table.getCatName())) {
@@ -624,15 +634,12 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
     Table newTable = new Table(table);
     LOG.info("Starting translation for CreateTable for processor " + processorId + " with " + processorCapabilities
         + " on table " + newTable.getTableName());
-    Map<String, String> params = table.getParameters();
+    Map<String, String> params = newTable.getParameters();
     if (params == null) {
       params = new HashMap<>();
+      newTable.setParameters(params);
     }
     String tableType = newTable.getTableType();
-    String txnal = null;
-    String txn_properties = null;
-    boolean isInsertAcid = false;
-
     String dbName = table.getDbName();
     Database db = null;
     try {
@@ -641,21 +648,16 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
       throw new MetaException("Database " + dbName + " for table " + table.getTableName() + " could not be found");
     }
 
-      if (TableType.MANAGED_TABLE.name().equals(tableType)) {
+    if (TableType.MANAGED_TABLE.name().equals(tableType)) {
       LOG.debug("Table is a MANAGED_TABLE");
-      txnal = params.get(TABLE_IS_TRANSACTIONAL);
-      txn_properties = params.get(TABLE_TRANSACTIONAL_PROPERTIES);
-      isInsertAcid = (txn_properties != null && txn_properties.equalsIgnoreCase("insert_only"));
-      boolean ctas_legacy_config = params.containsKey(CTAS_LEGACY_CONFIG) && params.get(CTAS_LEGACY_CONFIG).equalsIgnoreCase("true") ? true : false;
-      if (((txnal == null || txnal.equalsIgnoreCase("FALSE")) && !isInsertAcid) || (ctas_legacy_config && (txnal == null || txnal.equalsIgnoreCase("FALSE")))) { // non-ACID MANAGED TABLE
+      if (!Boolean.parseBoolean(params.get(TABLE_IS_TRANSACTIONAL))) { // non-ACID MANAGED TABLE
         LOG.info("Converting " + newTable.getTableName() + " to EXTERNAL tableType for " + processorId);
         newTable.setTableType(TableType.EXTERNAL_TABLE.toString());
         params.remove(TABLE_IS_TRANSACTIONAL);
         params.remove(TABLE_TRANSACTIONAL_PROPERTIES);
-        params.put("EXTERNAL", "TRUE");
+        params.put(HiveMetaHook.EXTERNAL, "TRUE");
         params.put(EXTERNAL_TABLE_PURGE, "TRUE");
-        params.put("TRANSLATED_TO_EXTERNAL", "TRUE");
-        newTable.setParameters(params);
+        params.put(HiveMetaHook.TRANSLATED_TO_EXTERNAL, "TRUE");
         LOG.info("Modified table params are:" + params.toString());
 
         if (getLocation(table) == null) {
@@ -671,6 +673,7 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
           // should we check tbl directory existence?
         }
       } else { // ACID table
+        validateIfAcidTablePermitted(newTable);
         // if the property 'EXTERNAL_TABLES_ONLY'='true' is set on the database, then creating managed/ACID tables are prohibited. See HIVE-25724 for more details.
         if (db.getParameters().containsKey(EXTERNALTABLESONLY) &&
                 db.getParameters().get(EXTERNALTABLESONLY).equalsIgnoreCase("true")) {
@@ -681,9 +684,8 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
           throw new MetaException("Processor has no capabilities, cannot create an ACID table.");
         }
 
-
-        newTable = validateTablePaths(table);
-        if (isInsertAcid) { // MICRO_MANAGED Tables
+        validateTablePaths(newTable);
+        if (MetaStoreUtils.isInsertOnlyTableParam(newTable.getParameters())) { // MICRO_MANAGED Tables
           if (processorCapabilities.contains(HIVEMANAGEDINSERTWRITE)) {
             LOG.debug("Processor has required capabilities to be able to create INSERT-only tables");
             return newTable;
@@ -703,7 +705,8 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
       }
     } else if (TableType.EXTERNAL_TABLE.name().equals(tableType)) {
       LOG.debug("Table to be created is of type " + tableType);
-      newTable = validateTablePaths(table);
+      params.put(HiveMetaHook.EXTERNAL, "TRUE");
+      validateTablePaths(newTable);
     }
     LOG.info("Transformer returning table:" + newTable.toString());
     return newTable;
@@ -743,14 +746,15 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
     LOG.info("Starting translation for Alter table for processor " + processorId + " with " + processorCapabilities
         + " on table " + newTable.getTableName());
 
-
+    validateIfAcidTablePermitted(newTable);
     if (tableLocationChanged(oldTable, newTable)) {
       validateTablePaths(newTable);
     }
 
     Database oldDb = getDbForTable(oldTable);
     boolean isTranslatedToExternalFollowsRenames = MetastoreConf.getBoolVar(hmsHandler.getConf(),
-        ConfVars.METASTORE_METADATA_TRANSFORMER_TRANSLATED_TO_EXTERNAL_FOLLOWS_RENAMES);
+        ConfVars.METASTORE_METADATA_TRANSFORMER_TRANSLATED_TO_EXTERNAL_FOLLOWS_RENAMES) &&
+        !isIcebergTable(newTable.getParameters());
 
     if (isTranslatedToExternalFollowsRenames && isTableRename(oldTable, newTable)
         && isTranslatedToExternalTable(oldTable)
@@ -772,7 +776,7 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
       return hmsHandler.get_database_core(oldTable.getCatName(), oldTable.getDbName());
     } catch (NoSuchObjectException e) {
       throw new MetaException(
-          "Database " + oldTable.getTableName() + " for table " + oldTable.getTableName() + " could not be found");
+          "Database " + oldTable.getDbName() + " for table " + oldTable.getTableName() + " could not be found");
     }
   }
 
@@ -782,8 +786,8 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
 
   private boolean isTranslatedToExternalTable(Table table) {
     Map<String, String> p = table.getParameters();
-    return p != null && MetaStoreUtils.isPropertyTrue(p, "EXTERNAL")
-        && MetaStoreUtils.isPropertyTrue(p, "TRANSLATED_TO_EXTERNAL") && table.getSd() != null
+    return p != null && MetaStoreUtils.isPropertyTrue(p, HiveMetaHook.EXTERNAL)
+        && MetaStoreUtils.isPropertyTrue(p, HiveMetaHook.TRANSLATED_TO_EXTERNAL) && table.getSd() != null
         && table.getSd().isSetLocation();
   }
 
@@ -895,7 +899,7 @@ public class MetastoreDefaultTransformer implements IMetaStoreMetadataTransforme
     try {
       db = hmsHandler.get_database_core(table.getCatName(), table.getDbName());
     } catch (NoSuchObjectException e) {
-      throw new MetaException("Database " + table.getTableName() + " for table " + table.getTableName() + " could not be found");
+      throw new MetaException("Database " + table.getDbName() + " for table " + table.getTableName() + " could not be found");
     }
 
     if (TableType.MANAGED_TABLE.name().equals(table.getTableType())) {

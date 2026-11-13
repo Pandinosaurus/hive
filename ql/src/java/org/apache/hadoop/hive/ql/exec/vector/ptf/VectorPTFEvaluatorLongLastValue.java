@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector.ptf;
@@ -36,7 +37,7 @@ import com.google.common.base.Preconditions;
 public class VectorPTFEvaluatorLongLastValue extends VectorPTFEvaluatorBase {
 
   protected boolean isGroupResultNull;
-  protected long lastValue;
+  protected Long lastValue = null;
 
   public VectorPTFEvaluatorLongLastValue(WindowFrameDef windowFrameDef,
       VectorExpression inputVecExpr, int outputColumnNum) {
@@ -48,7 +49,6 @@ public class VectorPTFEvaluatorLongLastValue extends VectorPTFEvaluatorBase {
   public void evaluateGroupBatch(VectorizedRowBatch batch)
       throws HiveException {
 
-    evaluateInputExpr(batch);
 
     // Last row of last batch determines isGroupResultNull and long lastValue.
 
@@ -61,23 +61,32 @@ public class VectorPTFEvaluatorLongLastValue extends VectorPTFEvaluatorBase {
     }
     LongColumnVector longColVector = ((LongColumnVector) batch.cols[inputColumnNum]);
     if (longColVector.isRepeating) {
-
       if (longColVector.noNulls || !longColVector.isNull[0]) {
         lastValue = longColVector.vector[0];
         isGroupResultNull = false;
       } else {
-        isGroupResultNull = true;
+        isGroupResultNull = doesRespectNulls() || lastValue == null;
       }
     } else if (longColVector.noNulls) {
       lastValue = longColVector.vector[size - 1];
       isGroupResultNull = false;
-    } else {
+    } else if (doesRespectNulls()) {
       final int lastBatchIndex = size - 1;
       if (!longColVector.isNull[lastBatchIndex]) {
         lastValue = longColVector.vector[lastBatchIndex];
         isGroupResultNull = false;
       } else {
         isGroupResultNull = true;
+      }
+    } else {
+      // If we do not respect nulls, we can keep checking from the end of the batch
+      isGroupResultNull = lastValue == null;
+      for (int i = size-1; i >= 0; i--) {
+        if (!longColVector.isNull[i]) {
+          lastValue = longColVector.vector[i];
+          isGroupResultNull = false;
+          break;
+        }
       }
     }
   }
@@ -106,7 +115,7 @@ public class VectorPTFEvaluatorLongLastValue extends VectorPTFEvaluatorBase {
   @Override
   public void resetEvaluator() {
     isGroupResultNull = true;
-    lastValue = 0;
+    lastValue = null;
   }
 
   public boolean isCacheableForRange() {

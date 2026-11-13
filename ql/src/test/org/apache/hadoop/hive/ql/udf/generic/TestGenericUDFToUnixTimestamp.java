@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.udf.generic;
@@ -167,7 +168,8 @@ public class TestGenericUDFToUnixTimestamp {
     runAndVerify(udf2,
         new Text("1400-02-01 00:00:00 ICT"),
         new Text("yyyy-MM-dd HH:mm:ss z"),
-        new LongWritable(TimestampTZUtil.parse("1400-01-31 09:00:22", ZoneId.systemDefault()).getEpochSecond()));
+        new LongWritable(TimestampTZUtil.parse("1400-01-31 09:24:58", ZoneId.systemDefault()).getEpochSecond()));                   // jdk8 & jdk17 use different IANA TZdata versions resulting
+                                                                                                                                       // in different zone rules for conversion of historical ICT time
     runAndVerify(udf2,
         new Text("1400-02-01 00:00:00 UTC"),
         new Text("yyyy-MM-dd HH:mm:ss z"),

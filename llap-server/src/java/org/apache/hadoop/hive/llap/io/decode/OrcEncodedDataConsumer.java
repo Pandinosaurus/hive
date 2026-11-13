@@ -6,12 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.io.decode;
 
@@ -58,16 +61,16 @@ import org.apache.orc.TypeDescription;
 import org.apache.orc.impl.SchemaEvolution;
 import org.apache.orc.impl.TreeReaderFactory;
 import org.apache.orc.impl.TreeReaderFactory.StructTreeReader;
-import org.apache.orc.impl.TreeReaderFactory.TreeReader;
 import org.apache.orc.impl.WriterImpl;
 import org.apache.orc.OrcProto;
-
+import org.apache.orc.impl.reader.tree.TypeReader;
 
 public class OrcEncodedDataConsumer
   extends EncodedDataConsumer<OrcBatchKey, OrcEncodedColumnBatch> {
-  private TreeReaderFactory.TreeReader[] columnReaders;
+  private TypeReader[] columnReaders;
   private int previousStripeIndex = -1;
   private ConsumerFileMetadata fileMetadata; // We assume one request is only for one file.
+  private long[] stripeStartRows; // row number in the file where each stripe starts; null without file positions
   private CompressionCodec codec;
   private List<ConsumerStripeMetadata> stripes;
   private SchemaEvolution evolution;
@@ -93,6 +96,12 @@ public class OrcEncodedDataConsumer
   public void setFileMetadata(ConsumerFileMetadata f) {
     assert fileMetadata == null;
     fileMetadata = f;
+    if (!f.getStripes().isEmpty()) {
+      stripeStartRows = new long[f.getStripes().size()];
+      for (int i = 1; i < stripeStartRows.length; ++i) {
+        stripeStartRows[i] = stripeStartRows[i - 1] + f.getStripes().get(i - 1).getNumberOfRows();
+      }
+    }
     stripes = new ArrayList<>(f.getStripeCount());
     codec = WriterImpl.createCodec(fileMetadata.getCompressionKind());
   }
@@ -135,6 +144,13 @@ public class OrcEncodedDataConsumer
       }
       int maxBatchesRG = (int) ((nonNullRowCount / VectorizedRowBatch.DEFAULT_SIZE) + 1);
       int batchSize = VectorizedRowBatch.DEFAULT_SIZE;
+      long rgStartRow = Long.MIN_VALUE;
+      if (stripeStartRows != null) {
+        rgStartRow = stripeStartRows[currentStripeIndex];
+        if (rgIdx != OrcEncodedColumnBatch.ALL_RGS) {
+          rgStartRow += (long) rgIdx * fileMetadata.getRowIndexStride();
+        }
+      }
       TypeDescription fileSchema = fileMetadata.getSchema();
 
       if (columnReaders == null || !sameStripe || noIndex) {
@@ -151,10 +167,10 @@ public class OrcEncodedDataConsumer
           if (batchSize == 0) break;
         }
 
-        ColumnVectorBatch cvb = cvbPool.take();
-        cvb.filterContext.reset();
+        ColumnVectorBatch cvb = takeBatch(batchSize);
         // assert cvb.cols.length == batch.getColumnIxs().length; // Must be constant per split.
-        cvb.size = batchSize;
+        cvb.setStartRowInFile(stripeStartRows == null ?
+            Long.MIN_VALUE : rgStartRow + (long) i * VectorizedRowBatch.DEFAULT_SIZE);
         for (int idx = 0; idx < columnReaders.length; ++idx) {
           /*
            * Currently, ORC's TreeReaderFactory class does this:
@@ -191,9 +207,9 @@ public class OrcEncodedDataConsumer
            *     it doesn't get confused.
            *
            */
-          TreeReader reader = columnReaders[idx];
+          TypeReader reader = columnReaders[idx];
           ColumnVector cv = prepareColumnVector(cvb, idx, batchSize);
-          reader.nextVector(cv, null, batchSize);
+          reader.nextVector(cv, null, batchSize, cvb.filterContext, TypeReader.ReadPhase.ALL);
         }
 
         // we are done reading a batch, send it to consumer for processing
@@ -299,18 +315,22 @@ public class OrcEncodedDataConsumer
     }
   }
 
-  private void positionInStreams(TreeReaderFactory.TreeReader[] columnReaders,
+  private void positionInStreams(TypeReader[] columnReaders,
       OrcBatchKey batchKey, ConsumerStripeMetadata stripeMetadata) throws IOException {
     PositionProvider[] pps = createPositionProviders(columnReaders, batchKey, stripeMetadata);
-    if (pps == null) return;
-    for (int i = 0; i < columnReaders.length; i++) {
-      if (columnReaders[i] == null) continue;
+    if (pps == null) {
+      return;
+    }
+    for (TypeReader columnReader : columnReaders) {
+      if (columnReader == null) {
+        continue;
+      }
       // TODO: we could/should trace seek destinations; pps needs a "peek" method
-      columnReaders[i].seek(pps);
+      columnReader.seek(pps, TypeReader.ReadPhase.ALL);
     }
   }
 
-  private void repositionInStreams(TreeReaderFactory.TreeReader[] columnReaders,
+  private void repositionInStreams(TypeReader[] columnReaders,
       EncodedColumnBatch<OrcBatchKey> batch, boolean sameStripe,
       ConsumerStripeMetadata stripeMetadata) throws IOException {
     PositionProvider[] pps = createPositionProviders(
@@ -318,9 +338,10 @@ public class OrcEncodedDataConsumer
     if (LlapIoImpl.ORC_LOGGER.isTraceEnabled()) {
       LlapIoImpl.ORC_LOGGER.trace("Created pps {}", Arrays.toString(pps));
     }
-    if (pps == null) return;
-    for (int i = 0; i < columnReaders.length; i++) {
-      TreeReader reader = columnReaders[i];
+    if (pps == null) {
+      return;
+    }
+    for (TypeReader reader : columnReaders) {
       if (reader == null) continue;
       // Note: we assume this never happens for SerDe reader - the batch would never have vectors.
       // That is always true now; but it wasn't some day, the below would throw in getColumnData.
@@ -329,9 +350,9 @@ public class OrcEncodedDataConsumer
       // SettableTreeReader so that we can avoid this check.
       if (reader instanceof EncodedTreeReaderFactory.TimestampStreamReader && !sameStripe) {
         ((EncodedTreeReaderFactory.TimestampStreamReader) reader)
-                .updateTimezone(stripeMetadata.getWriterTimezone());
+            .updateTimezone(stripeMetadata.getWriterTimezone());
       }
-      reader.seek(pps);
+      reader.seek(pps, TypeReader.ReadPhase.ALL);
     }
   }
 
@@ -352,16 +373,14 @@ public class OrcEncodedDataConsumer
   }
 
   private PositionProvider[] createPositionProviders(
-      TreeReaderFactory.TreeReader[] columnReaders, OrcBatchKey batchKey,
+      TypeReader[] columnReaders, OrcBatchKey batchKey,
       ConsumerStripeMetadata stripeMetadata) throws IOException {
     if (columnReaders.length == 0) return null;
     PositionProvider[] pps = null;
     if (!stripeMetadata.supportsRowIndexes()) {
       PositionProvider singleRgPp = new IndexlessPositionProvider();
       pps = new PositionProvider[stripeMetadata.getEncodings().size()];
-      for (int i = 0; i < pps.length; ++i) {
-        pps[i] = singleRgPp;
-      }
+      Arrays.fill(pps, singleRgPp);
     } else {
       int rowGroupIndex = batchKey.rgIx;
       if (rowGroupIndex == OrcEncodedColumnBatch.ALL_RGS) {
@@ -387,6 +406,7 @@ public class OrcEncodedDataConsumer
     this.evolution = evolution;
   }
 
+  @Override
   public SchemaEvolution getSchemaEvolution() {
     return evolution;
   }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.utils;
@@ -40,12 +41,21 @@ import org.apache.hadoop.hive.metastore.client.builder.DatabaseBuilder;
 import org.apache.hadoop.hive.metastore.client.builder.PartitionBuilder;
 import org.apache.hadoop.hive.metastore.client.builder.TableBuilder;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.test.appender.ListAppender;
 import org.apache.thrift.TException;
 import org.hamcrest.core.IsNot;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -66,6 +76,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -78,6 +89,8 @@ public class TestMetaStoreServerUtils {
 
   private static final String DB_NAME = "db1";
   private static final String TABLE_NAME = "tbl1";
+  private static ListAppender listAppender;
+  public static final String STATS_CALC_CALL_LOG_MSG_FORMAT = "Calling updateTableStatsSlow for table {0}.{1}.{2}";
 
   private final Map<String, String> paramsWithStats = ImmutableMap.of(
       NUM_FILES, "1",
@@ -93,6 +106,34 @@ public class TestMetaStoreServerUtils {
     } catch (TException e) {
       e.printStackTrace();
     }
+  }
+
+  @BeforeClass
+  public static void initLoggerAppender() {
+    LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+    org.apache.logging.log4j.core.config.Configuration configuration = loggerContext.getConfiguration();
+    LoggerConfig rootLoggerConfig = configuration.getLoggerConfig("");
+    listAppender = new ListAppender("testAppender");
+    rootLoggerConfig.addAppender(listAppender, Level.ALL, null);
+  }
+
+  @Before
+  public void startLoggerAppender() {
+    listAppender.start();
+  }
+
+  @After
+  public void stopLoggerAppender() {
+    listAppender.stop();
+    listAppender.clear();
+  }
+
+  private boolean messageWasLogged(String message){
+    return listAppender.getEvents()
+            .stream()
+            .map(x -> x.getMessage().getFormattedMessage())
+            .collect(Collectors.toList())
+            .contains(message);
   }
 
   @Test
@@ -127,13 +168,13 @@ public class TestMetaStoreServerUtils {
     FieldSchema col1a = new FieldSchema("col1", "string", "col1 but with a different comment");
     FieldSchema col2 = new FieldSchema("col2", "string", "col2 comment");
     FieldSchema col3 = new FieldSchema("col3", "string", "col3 comment");
-    Assert.assertTrue(MetaStoreServerUtils.columnsIncludedByNameType(Arrays.asList(col1), Arrays.asList(col1)));
-    Assert.assertTrue(MetaStoreServerUtils.columnsIncludedByNameType(Arrays.asList(col1), Arrays.asList(col1a)));
-    Assert.assertTrue(MetaStoreServerUtils.columnsIncludedByNameType(Arrays.asList(col1, col2), Arrays.asList(col1, col2)));
-    Assert.assertTrue(MetaStoreServerUtils.columnsIncludedByNameType(Arrays.asList(col1, col2), Arrays.asList(col2, col1)));
-    Assert.assertTrue(MetaStoreServerUtils.columnsIncludedByNameType(Arrays.asList(col1, col2), Arrays.asList(col1, col2, col3)));
-    Assert.assertTrue(MetaStoreServerUtils.columnsIncludedByNameType(Arrays.asList(col1, col2), Arrays.asList(col3, col2, col1)));
-    Assert.assertFalse(MetaStoreServerUtils.columnsIncludedByNameType(Arrays.asList(col1, col2), Arrays.asList(col1)));
+    Assert.assertTrue(MetaStoreServerUtils.findStaleColumns(Arrays.asList(col1), Arrays.asList(col1)).isEmpty());
+    Assert.assertTrue(MetaStoreServerUtils.findStaleColumns(Arrays.asList(col1), Arrays.asList(col1a)).isEmpty());
+    Assert.assertTrue(MetaStoreServerUtils.findStaleColumns(Arrays.asList(col1, col2), Arrays.asList(col1, col2)).isEmpty());
+    Assert.assertTrue(MetaStoreServerUtils.findStaleColumns(Arrays.asList(col1, col2), Arrays.asList(col2, col1)).isEmpty());
+    Assert.assertTrue(MetaStoreServerUtils.findStaleColumns(Arrays.asList(col1, col2), Arrays.asList(col1, col2, col3)).isEmpty());
+    Assert.assertTrue(MetaStoreServerUtils.findStaleColumns(Arrays.asList(col1, col2), Arrays.asList(col3, col2, col1)).isEmpty());
+    Assert.assertFalse(MetaStoreServerUtils.findStaleColumns(Arrays.asList(col1, col2), Arrays.asList(col1)).isEmpty());
   }
 
   /**
@@ -292,6 +333,71 @@ public class TestMetaStoreServerUtils {
         .build(null);
     MetaStoreServerUtils.updateTableStatsSlow(db, tbl2, wh, false, false, null);
     verify(wh, never()).getFileStatusesForUnpartitionedTable(db, tbl2);
+  }
+  
+  /**
+   * Verify that updateTableStatsForCreateTable() does not invoke calculation of table statistics when
+   * <ol>
+   *   <li>Stats auto source in envContext is set to false</li>
+   * </ol>
+   */
+  @Test
+  public void testUpdateTableStatsForCreateTableDoesNotInvokeStatsCalc() throws TException {
+    // DO_NOT_UPDATE_STATS in env context is set to true => doesn't invoke stats calculation
+    Map<String, String> params = new HashMap<>(paramsWithStats);
+    Warehouse wh = mock(Warehouse.class);
+
+    Table tbl = new TableBuilder()
+            .setDbName(DB_NAME)
+            .setTableName(TABLE_NAME)
+            .addCol("id", "int")
+            .setTableParams(params)
+            .build(null);     
+
+    EnvironmentContext env = new EnvironmentContext();
+    env.putToProperties(StatsSetupConst.DO_NOT_UPDATE_STATS, StatsSetupConst.TRUE);
+
+    MetaStoreServerUtils.updateTableStatsForCreateTable(wh, db, tbl, env,
+            MetastoreConf.newMetastoreConf(), new Path("/tmp/0"), false);
+
+    assertFalse(messageWasLogged(MessageFormat.format(
+            STATS_CALC_CALL_LOG_MSG_FORMAT, tbl.getCatName(), tbl.getDbName(), tbl.getTableName())));
+  }
+
+  /**
+   * Verify that updateTableStatsForCreateTable() invokes calculation of table statistics when
+   * <ol>
+   *   <li>Stats auto source in envContext is not set</li>
+   *   <li>Stats auto source in envContext is set to true</li>
+   * </ol>
+   */
+  @Test
+  public void testUpdateTableStatsForCreateTableInvokeStatsCalc() throws TException {
+    // DO_NOT_UPDATE_STATS in env context is not defined => invoke stats calculation
+    Map<String, String> params = new HashMap<>(paramsWithStats);
+    Warehouse wh = mock(Warehouse.class);
+
+    Table tbl = new TableBuilder()
+            .setDbName(DB_NAME)
+            .setTableName(TABLE_NAME)
+            .addCol("id", "int")
+            .setTableParams(params)
+            .build(null);
+
+    MetaStoreServerUtils.updateTableStatsForCreateTable(wh, db, tbl, null,
+            MetastoreConf.newMetastoreConf(), new Path("/tmp/0"), false);
+
+    assertTrue(messageWasLogged(MessageFormat.format(
+            STATS_CALC_CALL_LOG_MSG_FORMAT, tbl.getCatName(), tbl.getDbName(), tbl.getTableName())));
+
+    // DO_NOT_UPDATE_STATS in env context is set to false => invoke stats calculation
+    EnvironmentContext env = new EnvironmentContext();
+    env.putToProperties(StatsSetupConst.DO_NOT_UPDATE_STATS, StatsSetupConst.FALSE);
+
+    MetaStoreServerUtils.updateTableStatsForCreateTable(wh, db, tbl, env,
+            MetastoreConf.newMetastoreConf(), new Path("/tmp/0"), false);
+    assertTrue(messageWasLogged(MessageFormat.format(
+            STATS_CALC_CALL_LOG_MSG_FORMAT, tbl.getCatName(), tbl.getDbName(), tbl.getTableName())));
   }
 
   @Test
@@ -846,20 +952,55 @@ public class TestMetaStoreServerUtils {
 
   @Test
   public void testConversionToSignificantNumericTypes() {
-    assertEquals("1", MetaStoreServerUtils.getNormalisedPartitionValue("0001", "tinyint"));
-    assertEquals("1", MetaStoreServerUtils.getNormalisedPartitionValue("0001", "smallint"));
-    assertEquals("10", MetaStoreServerUtils.getNormalisedPartitionValue("00010", "int"));
-    assertEquals("-10", MetaStoreServerUtils.getNormalisedPartitionValue("-00010", "int"));
+    Configuration metastoreConf = MetastoreConf.newMetastoreConf();
+    assertEquals("1", MetaStoreServerUtils.getNormalisedPartitionValue("0001", "tinyint", metastoreConf));
+    assertEquals("1", MetaStoreServerUtils.getNormalisedPartitionValue("0001", "smallint", metastoreConf));
+    assertEquals("10", MetaStoreServerUtils.getNormalisedPartitionValue("00010", "int", metastoreConf));
+    assertEquals("-10", MetaStoreServerUtils.getNormalisedPartitionValue("-00010", "int", metastoreConf));
 
-    assertEquals("10", MetaStoreServerUtils.getNormalisedPartitionValue("00010", "bigint"));
-    assertEquals("-10", MetaStoreServerUtils.getNormalisedPartitionValue("-00010", "bigint"));
+    assertEquals("10", MetaStoreServerUtils.getNormalisedPartitionValue("00010", "bigint", metastoreConf));
+    assertEquals("-10", MetaStoreServerUtils.getNormalisedPartitionValue("-00010", "bigint", metastoreConf));
 
-    assertEquals("1.01", MetaStoreServerUtils.getNormalisedPartitionValue("0001.0100", "float"));
-    assertEquals("-1.01", MetaStoreServerUtils.getNormalisedPartitionValue("-0001.0100", "float"));
-    assertEquals("1.01", MetaStoreServerUtils.getNormalisedPartitionValue("0001.010000", "double"));
-    assertEquals("-1.01", MetaStoreServerUtils.getNormalisedPartitionValue("-0001.010000", "double"));
-    assertEquals("1.01", MetaStoreServerUtils.getNormalisedPartitionValue("0001.0100", "decimal"));
-    assertEquals("-1.01", MetaStoreServerUtils.getNormalisedPartitionValue("-0001.0100", "decimal"));
+    assertEquals("1.01", MetaStoreServerUtils.getNormalisedPartitionValue("0001.0100", "float", metastoreConf));
+    assertEquals("-1.01", MetaStoreServerUtils.getNormalisedPartitionValue("-0001.0100", "float", metastoreConf));
+    assertEquals("1.01", MetaStoreServerUtils.getNormalisedPartitionValue("0001.010000", "double", metastoreConf));
+    assertEquals("-1.01", MetaStoreServerUtils.getNormalisedPartitionValue("-0001.010000", "double", metastoreConf));
+    assertEquals("1.01", MetaStoreServerUtils.getNormalisedPartitionValue("0001.0100", "decimal", metastoreConf));
+    assertEquals("-1.01", MetaStoreServerUtils.getNormalisedPartitionValue("-0001.0100", "decimal", metastoreConf));
+    assertEquals("-1.01", MetaStoreServerUtils.getNormalisedPartitionValue("-0001.0100", "decimal(10,10)", metastoreConf));
+    assertEquals("__HIVE_DEFAULT_PARTITION__", MetaStoreServerUtils.getNormalisedPartitionValue(
+        "__HIVE_DEFAULT_PARTITION__", "decimal", metastoreConf));
+  }
+
+  @Test
+  public void testConversionFromStringToNumeric() {
+    Configuration metastoreConf = MetastoreConf.newMetastoreConf();
+    Assert.assertThrows(NumberFormatException.class, () -> MetaStoreServerUtils.getNormalisedPartitionValue(
+            "Random_Partition", "double", metastoreConf));
+    Assert.assertThrows(NumberFormatException.class, () -> MetaStoreServerUtils.getNormalisedPartitionValue(
+            "Random_Partition", "int", metastoreConf));
+    Assert.assertThrows(NumberFormatException.class, () -> MetaStoreServerUtils.getNormalisedPartitionValue(
+            "Random_Partition", "smallint", metastoreConf));
+    Assert.assertThrows(NumberFormatException.class, () -> MetaStoreServerUtils.getNormalisedPartitionValue(
+            "Random_Partition", "bigint", metastoreConf));
+    Assert.assertThrows(NumberFormatException.class, () -> MetaStoreServerUtils.getNormalisedPartitionValue(
+            "Random_Partition", "float", metastoreConf));
+    Assert.assertThrows(NumberFormatException.class, () -> MetaStoreServerUtils.getNormalisedPartitionValue(
+            "Random_Partition", "decimal", metastoreConf));
+
+    MetastoreConf.setVar(metastoreConf, MetastoreConf.ConfVars.MSCK_PATH_VALIDATION, "skip");
+      assertNull(MetaStoreServerUtils.getNormalisedPartitionValue(
+              "Random_Partition", "int", metastoreConf));
+      assertNull(MetaStoreServerUtils.getNormalisedPartitionValue(
+              "Random_Partition", "smallint", metastoreConf));
+      assertNull(MetaStoreServerUtils.getNormalisedPartitionValue(
+              "Random_Partition", "bigint", metastoreConf));
+      assertNull(MetaStoreServerUtils.getNormalisedPartitionValue(
+              "Random_Partition", "float", metastoreConf));
+      assertNull(MetaStoreServerUtils.getNormalisedPartitionValue(
+              "Random_Partition", "double", metastoreConf));
+      assertNull(MetaStoreServerUtils.getNormalisedPartitionValue(
+              "Random_Partition", "decimal", metastoreConf));
   }
 
   @Test
@@ -883,6 +1024,34 @@ public class TestMetaStoreServerUtils {
 
     sd.setLocation("s3a://bucket/other_path");
     Assert.assertTrue(MetaStoreUtils.validateTblStorage(sd));
+  }
+
+  @Test
+  public void testSameColumns() {
+    FieldSchema col1 = new FieldSchema("col1", "string", "col1 comment");
+    FieldSchema Col1 = new FieldSchema("Col1", "string", "col1 comment");
+    FieldSchema col2 = new FieldSchema("col2", "string", "col2 comment");
+    Assert.assertTrue(MetaStoreServerUtils.areSameColumns(null, null));
+    Assert.assertFalse(MetaStoreServerUtils.areSameColumns(Arrays.asList(col1), null));
+    Assert.assertFalse(MetaStoreServerUtils.areSameColumns(null, Arrays.asList(col1)));
+    Assert.assertTrue(MetaStoreServerUtils.areSameColumns(Arrays.asList(col1), Arrays.asList(col1)));
+    Assert.assertTrue(MetaStoreServerUtils.areSameColumns(Arrays.asList(col1, col2), Arrays.asList(col1, col2)));
+    Assert.assertTrue(MetaStoreServerUtils.areSameColumns(Arrays.asList(Col1, col2), Arrays.asList(col1, col2)));
+  }
+
+  @Test
+  public void testPrefixColumns() {
+    FieldSchema col1 = new FieldSchema("col1", "string", "col1 comment");
+    FieldSchema Col1 = new FieldSchema("Col1", "string", "col1 comment");
+    FieldSchema col2 = new FieldSchema("col2", "string", "col2 comment");
+    FieldSchema col3 = new FieldSchema("col3", "string", "col3 comment");
+    Assert.assertTrue(MetaStoreServerUtils.arePrefixColumns(null, null));
+    Assert.assertFalse(MetaStoreServerUtils.arePrefixColumns(Arrays.asList(col1), null));
+    Assert.assertFalse(MetaStoreServerUtils.arePrefixColumns(null, Arrays.asList(col1)));
+    Assert.assertTrue(MetaStoreServerUtils.arePrefixColumns(Arrays.asList(col1), Arrays.asList(col1)));
+    Assert.assertTrue(MetaStoreServerUtils.arePrefixColumns(Arrays.asList(col1, col2), Arrays.asList(col1, col2, col3)));
+    Assert.assertTrue(MetaStoreServerUtils.arePrefixColumns(Arrays.asList(Col1, col2), Arrays.asList(col1, col2, col3)));
+    Assert.assertFalse(MetaStoreServerUtils.arePrefixColumns(Arrays.asList(col1, col2, col3), Arrays.asList(col1, col2)));
   }
 }
 

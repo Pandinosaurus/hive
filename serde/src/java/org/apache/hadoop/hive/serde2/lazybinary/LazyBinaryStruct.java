@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.serde2.lazybinary;
 
@@ -210,7 +211,8 @@ public class LazyBinaryStruct extends LazyBinaryNonPrimitive<LazyBinaryStructObj
     private final int fieldIndex;
     private final RecordInfo recordInfo = new LazyBinaryUtils.RecordInfo();
     private byte[] fieldBytes;
-    private int fieldStart, fieldLength;
+    private int fieldStart;
+    private int fieldLength;
     public SingleFieldGetter(LazyBinaryStructObjectInspector soi, int fieldIndex) {
       this.soi = soi;
       this.fieldIndex = fieldIndex;
@@ -221,7 +223,7 @@ public class LazyBinaryStruct extends LazyBinaryNonPrimitive<LazyBinaryStructObj
       fieldBytes = src.getBytes();
       int length = src.getLength();
       byte nullByte = fieldBytes[0];
-      int lastFieldByteEnd = 1, fieldStart = -1, fieldLength = -1;
+      int lastFieldByteEnd = 1;
       for (int i = 0; i <= fieldIndex; i++) {
         if ((nullByte & (1 << (i % 8))) != 0) {
           LazyBinaryUtils.checkObjectByteInfo(fieldRefs.get(i)

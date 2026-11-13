@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
@@ -26,15 +27,23 @@ import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.hooks.ReadEntity;
 import org.apache.hadoop.hive.ql.hooks.WriteEntity;
+import org.apache.hadoop.hive.ql.io.AcidUtils;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
+import org.apache.hadoop.hive.ql.parse.ImportSemanticAnalyzer;
 import org.apache.hadoop.hive.ql.parse.repl.metric.ReplicationMetricCollector;
+import org.apache.hadoop.hive.ql.plan.BaseCopyWork;
+import org.apache.hadoop.hive.ql.plan.DeferredWorkContext;
 import org.apache.hadoop.hive.ql.plan.Explain.Level;
+
+import java.util.Collections;
+import java.util.TreeMap;
 
 /**
  * MoveWork.
  *
  */
 @Explain(displayName = "Move Operator", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
-public class MoveWork implements Serializable {
+public class MoveWork implements Serializable, BaseCopyWork {
   private static final long serialVersionUID = 1L;
   private LoadTableDesc loadTableWork;
   private LoadFileDesc loadFileWork;
@@ -207,5 +216,26 @@ public class MoveWork implements Serializable {
 
   public boolean getIsInReplicationScope() {
     return this.isInReplicationScope;
+  }
+
+  public void initializeFromDeferredContext(DeferredWorkContext deferredContext) throws HiveException {
+    if (!deferredContext.isCalculated()) {
+      // Read metadata from metastore and populate the members of the context
+      ImportSemanticAnalyzer.setupDeferredContextFromMetadata(deferredContext);
+    }
+
+    if (deferredContext.inReplScope && AcidUtils.isTransactionalTable(deferredContext.table)) {
+      LoadMultiFilesDesc loadFilesWork = new LoadMultiFilesDesc(
+          Collections.singletonList(deferredContext.destPath),
+          Collections.singletonList(deferredContext.tgtPath),
+          true, null, null);
+      setMultiFilesDesc(loadFilesWork);
+      setNeedCleanTarget(deferredContext.replace);
+    } else {
+      LoadTableDesc loadTableWork = new LoadTableDesc(
+          deferredContext.loadPath, Utilities.getTableDesc(deferredContext.table), new TreeMap<>(), deferredContext.loadFileType, deferredContext.writeId);
+      loadTableWork.setStmtId(deferredContext.stmtId);
+      setLoadTableWork(loadTableWork);
+    }
   }
 }

@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.utils;
 
@@ -78,6 +79,7 @@ public class FilterUtils {
    * Filter the list of databases if filtering is enabled. Otherwise, return original list
    * @param isFilterEnabled true: filtering is enabled; false: filtring is disabled.
    * @param filterHook: the object that does filtering
+   * @param catName: the catalog name of the databases
    * @param dbNames: the list of database names to filter
    * @return the list of database names that current user has access if filtering is enabled;
    *         otherwise, the original list
@@ -86,13 +88,36 @@ public class FilterUtils {
   public static List<String> filterDbNamesIfEnabled(
       boolean isFilterEnabled,
       MetaStoreFilterHook filterHook,
+      String catName,
       List<String> dbNames) throws MetaException {
 
     if (isFilterEnabled) {
-      return filterHook.filterDatabases(dbNames);
+      return filterHook.filterDatabases(catName, dbNames);
     }
 
     return dbNames;
+  }
+
+  /**
+   * Filter the list of database objects if filtering is enabled. Otherwise, return original list
+   *
+   * @param isFilterEnabled true: filtering is enabled; false: filtering is disabled.
+   * @param filterHook:     the object that does filtering
+   * @param databases:      the list of database objects to filter
+   * @return the list of database objects that current user has access if filtering is enabled;
+   * otherwise, the original list
+   * @throws MetaException
+   */
+  public static List<Database> filterDatabaseObjectsIfEnabled(
+      boolean isFilterEnabled,
+      MetaStoreFilterHook filterHook,
+      List<Database> databases) throws MetaException {
+
+    if (isFilterEnabled) {
+      return filterHook.filterDatabaseObjects(databases);
+    }
+
+    return databases;
   }
 
   /**
@@ -110,7 +135,7 @@ public class FilterUtils {
       List<String> connectorNames) throws MetaException {
 
     if (isFilterEnabled) {
-      return filterHook.filterDatabases(connectorNames); // TODO add a new ATZ call
+      return filterHook.filterDataConnectors(connectorNames);
     }
     return connectorNames;
   }
@@ -186,25 +211,20 @@ public class FilterUtils {
    * Filter list of meta data of tables if filtering is enabled. Otherwise, return original list
    * @param isFilterEnabled true: filtering is enabled; false: filtring is disabled.
    * @param filterHook: the object that does filtering
-   * @param catName: the catalog name
-   * @param dbName: the database name
    * @param tableMetas: the list of meta data of tables
    * @return the list of table meta data that current user has access if filtering is enabled;
    *         otherwise, the original list
    * @throws MetaException
    * @throws NoSuchObjectException
    */
-  public static List<TableMeta> filterTableMetasIfEnabled(
-      boolean isFilterEnabled, MetaStoreFilterHook filterHook,
-      String catName, String dbName, List<TableMeta> tableMetas)
-      throws MetaException, NoSuchObjectException {
+  public static List<TableMeta> filterTableMetasIfEnabled(boolean isFilterEnabled, MetaStoreFilterHook filterHook,
+      List<TableMeta> tableMetas) throws MetaException, NoSuchObjectException {
     if (tableMetas == null || tableMetas.isEmpty()) {
       return tableMetas;
     }
 
     if (isFilterEnabled) {
-      return filterHook.filterTableMetas(
-          catName, dbName, tableMetas);
+      return filterHook.filterTableMetas(tableMetas);
     }
 
     return tableMetas;
@@ -379,7 +399,7 @@ public class FilterUtils {
       throw new NoSuchObjectException("dbName is not valid");
     }
 
-    List<String> filteredDb = filterDbNamesIfEnabled(isFilterEnabled, filterHook,
+    List<String> filteredDb = filterDbNamesIfEnabled(isFilterEnabled, filterHook, catName,
         Collections.singletonList(dbName));
 
     if (filteredDb.isEmpty()) {

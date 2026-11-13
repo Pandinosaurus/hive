@@ -7,13 +7,14 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.serde2.avro;
 
@@ -22,6 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -38,6 +40,7 @@ import static org.apache.hadoop.hive.serde2.avro.AvroSerdeUtils.getOtherTypeFrom
 import static org.apache.hadoop.hive.serde2.avro.AvroSerdeUtils.isNullableType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestAvroSerdeUtils {
@@ -151,17 +154,101 @@ public class TestAvroSerdeUtils {
   }
 
   @Test
-  public void determineSchemaTriesToOpenUrl() throws AvroSerdeException, IOException {
+  public void determineSchemaRejectsUnknownSchemeUrl() throws AvroSerdeException, IOException {
     Configuration conf = new Configuration();
     Properties props = new Properties();
     props.put(AvroTableProperties.SCHEMA_URL.getPropName(), "not:///a.real.url");
 
     try {
       AvroSerdeUtils.determineSchemaOrThrowException(conf, props);
-      fail("Should have tried to open that URL");
+      fail("Should have rejected unknown scheme URL");
     } catch (AvroSerdeException e) {
-      assertEquals("Unable to read schema from given path: not:///a.real.url", e.getMessage());
+      assertTrue(e.getMessage().contains("not permitted"));
     }
+  }
+
+  @Test
+  public void determineSchemaRejectsHttpByDefault() throws IOException {
+    Configuration conf = new Configuration();
+    Properties props = new Properties();
+    props.put(AvroTableProperties.SCHEMA_URL.getPropName(),
+        "http://169.254.169.254/latest/meta-data/");
+
+    try {
+      determineSchemaOrThrowException(conf, props);
+      fail("Should have rejected HTTP schema URL");
+    } catch (AvroSerdeException e) {
+      assertTrue(e.getMessage().contains("not permitted"));
+    }
+  }
+
+  @Test
+  public void determineSchemaRejectsHttpsByDefault() throws IOException {
+    Configuration conf = new Configuration();
+    Properties props = new Properties();
+    props.put(AvroTableProperties.SCHEMA_URL.getPropName(), "https://internal-service/admin");
+
+    try {
+      determineSchemaOrThrowException(conf, props);
+      fail("Should have rejected HTTPS schema URL");
+    } catch (AvroSerdeException e) {
+      assertTrue(e.getMessage().contains("not permitted"));
+    }
+  }
+
+  @Test
+  public void determineSchemaRejectsFileUrl() throws IOException {
+    Configuration conf = new Configuration();
+    Properties props = new Properties();
+    props.put(AvroTableProperties.SCHEMA_URL.getPropName(), "file:///etc/passwd");
+
+    try {
+      determineSchemaOrThrowException(conf, props);
+      fail("Should have rejected file:// schema URL");
+    } catch (AvroSerdeException e) {
+      assertTrue(e.getMessage().contains("not permitted"));
+    }
+  }
+
+  @Test
+  public void determineSchemaRejectsHttpWhenHostNotAllowlisted() throws IOException {
+    HiveConf conf = new HiveConf();
+    conf.setBoolVar(HiveConf.ConfVars.HIVE_AVRO_SCHEMA_URL_REMOTE_HTTP_ENABLED, true);
+    conf.setVar(HiveConf.ConfVars.HIVE_AVRO_SCHEMA_URL_HTTP_ALLOWED_HOSTS, "schema.example.com");
+    Properties props = new Properties();
+    props.put(AvroTableProperties.SCHEMA_URL.getPropName(),
+        "http://169.254.169.254/latest/meta-data/");
+
+    try {
+      determineSchemaOrThrowException(conf, props);
+      fail("Should have rejected HTTP host not in allowlist");
+    } catch (AvroSerdeException e) {
+      assertTrue(e.getMessage().contains("not in the permitted host list"));
+    }
+  }
+
+  @Test
+  public void determineSchemaAllowsHttpWhenHostAllowlisted() throws IOException {
+    HiveConf conf = new HiveConf();
+    conf.setBoolVar(HiveConf.ConfVars.HIVE_AVRO_SCHEMA_URL_REMOTE_HTTP_ENABLED, true);
+    conf.setVar(HiveConf.ConfVars.HIVE_AVRO_SCHEMA_URL_HTTP_ALLOWED_HOSTS, "127.0.0.1");
+    Properties props = new Properties();
+    props.put(AvroTableProperties.SCHEMA_URL.getPropName(), "http://127.0.0.1:1/schema.avsc");
+
+    try {
+      determineSchemaOrThrowException(conf, props);
+      fail("Expected fetch failure after HTTP validation passed");
+    } catch (AvroSerdeException e) {
+      assertTrue(e.getMessage().contains("Unable to read schema from given path"));
+    }
+  }
+
+  @Test
+  public void isFilesystemSchemaUrlIdentifiesFilesystemUrls() {
+    assertTrue(AvroSerdeUtils.isFilesystemSchemaUrl("hdfs://nn/schema.avsc"));
+    assertTrue(AvroSerdeUtils.isFilesystemSchemaUrl("/tmp/schema.avsc"));
+    assertTrue(!AvroSerdeUtils.isFilesystemSchemaUrl("http://example.com/schema.avsc"));
+    assertTrue(!AvroSerdeUtils.isFilesystemSchemaUrl("file:///etc/passwd"));
   }
 
   @Test
@@ -195,9 +282,9 @@ public class TestAvroSerdeUtils {
     props.put(AvroTableProperties.SCHEMA_URL.getPropName(), "not:///a.real.url");
     try {
       determineSchemaOrThrowException(conf, props);
-      fail("Should have tried to open that bogus URL");
+      fail("Should have rejected unknown scheme URL");
     } catch (AvroSerdeException e) {
-      assertEquals("Unable to read schema from given path: not:///a.real.url", e.getMessage());
+      assertTrue(e.getMessage().contains("not permitted"));
     }
   }
 
@@ -221,6 +308,11 @@ public class TestAvroSerdeUtils {
               AvroSerdeUtils.getSchemaFromFS(onHDFS, miniDfs.getFileSystem().getConf());
       Schema expectedSchema = AvroSerdeUtils.getSchemaFor(schemaString);
       assertEquals(expectedSchema, schemaFromHDFS);
+
+      Properties props = new Properties();
+      props.put(AvroTableProperties.SCHEMA_URL.getPropName(), onHDFS);
+      Schema resolved = determineSchemaOrThrowException(miniDfs.getFileSystem().getConf(), props);
+      assertEquals(expectedSchema, resolved);
     } finally {
       if(miniDfs != null) miniDfs.shutdown();
     }

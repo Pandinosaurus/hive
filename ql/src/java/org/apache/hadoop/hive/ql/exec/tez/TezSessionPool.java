@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.tez;
 
@@ -103,7 +104,13 @@ class TezSessionPool<SessionType extends TezSessionPoolSession> {
 
     this.deltaRemaining = new AtomicInteger(initialSize);
 
-    final int threadCount = HiveConf.getIntVar(initConf, ConfVars.HIVE_SERVER2_TEZ_SESSION_MAX_INIT_THREADS);
+    int threadCount = 1;
+    if (!HiveConf.getBoolVar(initConf, ConfVars.HIVE_SERVER2_TEZ_USE_EXTERNAL_SESSIONS)) {
+      // Don't use multiple threads for external sessions.
+      threadCount = Math.min(initialSize,
+        HiveConf.getIntVar(initConf, ConfVars.HIVE_SERVER2_TEZ_SESSION_MAX_INIT_THREADS));
+    }
+
     this.executorService = MoreExecutors
         .listeningDecorator(new ThreadPoolExecutor(0, threadCount, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
             new ThreadFactoryBuilder().setDaemon(true).setNameFormat("tez-session-init-%d").build()));
@@ -298,7 +305,7 @@ class TezSessionPool<SessionType extends TezSessionPoolSession> {
       bySessionId.put(session.getSessionId(), session);
       HiveConf conf = session.getConf();
       conf.set(ConfVars.LLAP_TASK_SCHEDULER_AM_REGISTRY_NAME.varname, amRegistryName);
-      conf.set(ConfVars.HIVESESSIONID.varname, session.getSessionId());
+      conf.set(ConfVars.HIVE_SESSION_ID.varname, session.getSessionId());
     }
   }
 
@@ -488,7 +495,7 @@ class TezSessionPool<SessionType extends TezSessionPoolSession> {
   /**
    * Should be called when the session is no longer needed, to remove it from bySessionId.
    */
-  public void notifyClosed(TezSessionState session) {
+  public void notifyClosed(SessionType session) {
     bySessionId.remove(session.getSessionId());
   }
 }

@@ -99,8 +99,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.customer_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (c_custkey) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`c_custkey`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -116,7 +116,7 @@ EXPLAIN CBO SELECT c_custkey from customer_removal_n0 where c_nation IN ('USA', 
 
 EXPLAIN VECTORIZED SELECT c_custkey from customer_removal_n0 where c_nation IN ('USA', 'INDIA') group by c_custkey;
 CBO PLAN:HiveProject(c_custkey=[$0])
-  HiveFilter(condition=[IN($4, _UTF-16LE'USA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE", _UTF-16LE'INDIA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE")])
+  HiveFilter(condition=[IN($4, 'INDIA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE", 'USA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE")])
     HiveTableScan(table=[[default, customer_removal_n0]], table:alias=[customer_removal_n0])
 
 PLAN VECTORIZATION:
@@ -133,9 +133,9 @@ STAGE PLANS:
       Processor Tree:
         TableScan
           alias: customer_removal_n0
-          filterExpr: (c_nation) IN ('USA', 'INDIA') (type: boolean)
+          filterExpr: (c_nation) IN ('INDIA', 'USA') (type: boolean)
           Filter Operator
-            predicate: (c_nation) IN ('USA', 'INDIA') (type: boolean)
+            predicate: (c_nation) IN ('INDIA', 'USA') (type: boolean)
             Select Operator
               expressions: c_custkey (type: bigint)
               outputColumnNames: _col0
@@ -170,8 +170,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.customer_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (c_custkey) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`c_custkey`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -187,7 +187,7 @@ EXPLAIN CBO SELECT c_custkey from customer_removal_n0 where c_nation IN ('USA', 
 
 EXPLAIN VECTORIZED SELECT c_custkey from customer_removal_n0 where c_nation IN ('USA', 'INDIA') group by c_custkey, c_nation;
 CBO PLAN:HiveProject(c_custkey=[$0])
-  HiveFilter(condition=[IN($4, _UTF-16LE'USA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE", _UTF-16LE'INDIA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE")])
+  HiveFilter(condition=[IN($4, 'INDIA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE", 'USA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE")])
     HiveTableScan(table=[[default, customer_removal_n0]], table:alias=[customer_removal_n0])
 
 PLAN VECTORIZATION:
@@ -204,9 +204,9 @@ STAGE PLANS:
       Processor Tree:
         TableScan
           alias: customer_removal_n0
-          filterExpr: (c_nation) IN ('USA', 'INDIA') (type: boolean)
+          filterExpr: (c_nation) IN ('INDIA', 'USA') (type: boolean)
           Filter Operator
-            predicate: (c_nation) IN ('USA', 'INDIA') (type: boolean)
+            predicate: (c_nation) IN ('INDIA', 'USA') (type: boolean)
             Select Operator
               expressions: c_custkey (type: bigint)
               outputColumnNames: _col0
@@ -251,8 +251,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dates_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (d_datekey,d_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`dates_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`d_datekey`,`d_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -334,8 +334,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dates_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (d_datekey,d_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`dates_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`d_datekey`,`d_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -480,8 +480,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dates_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (d_datekey,d_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`dates_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`d_datekey`,`d_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -626,8 +626,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dates_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (d_datekey,d_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`dates_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`d_datekey`,`d_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -645,7 +645,7 @@ d_sellingseason order by d_datekey limit 10;
 
 EXPLAIN VECTORIZED SELECT count(d_datekey) from dates_removal_n0 where d_year IN (1985, 2004) group by d_id, d_daynuminmonth, d_datekey,
 d_sellingseason order by d_datekey limit 10;
-CBO PLAN:HiveProject(_o__c0=[$0])
+CBO PLAN:HiveProject(_c0=[$0])
   HiveSortLimit(sort0=[$1], dir0=[ASC], fetch=[10])
     HiveProject(_o__c0=[$2], (tok_table_or_col d_datekey)=[$0])
       HiveAggregate(group=[{0, 1}], agg#0=[count()])
@@ -897,62 +897,62 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.customer_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (c_custkey) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS SET('numRows'='1','rawDataSize'='22' );
-ALTER TABLE default.dates_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (d_datekey,d_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS SET('numRows'='2','rawDataSize'='102' );
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_address SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_address BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_city SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_city BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_custkey SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_custkey BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_mktsegment SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_mktsegment BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_name SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_name BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_nation SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_nation BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_phone SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_phone BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_region SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_region BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_date SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_date BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_datekey SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_datekey BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_daynuminmonth SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_daynuminmonth BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_daynuminweek SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_daynuminweek BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_daynuminyear SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_daynuminyear BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_dayofweek SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_dayofweek BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_holidayfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_holidayfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_id SET('lowValue'='0','highValue'='1','numNulls'='0','numDVs'='2' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_id BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SIDgz8///////wE= 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_lastdayinmonthfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_lastdayinmonthfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_lastdayinweekfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_lastdayinweekfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_month SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_month BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_monthnuminyear SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_monthnuminyear BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_sellingseason SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_sellingseason BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_weekdayfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_weekdayfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_weeknuminyear SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_weeknuminyear BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_year SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_year BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_yearmonth SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_yearmonth BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_yearmonthnum SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_yearmonthnum BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`c_custkey`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS SET('numRows'='1','rawDataSize'='22' );
+ALTER TABLE `default`.`dates_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`d_datekey`,`d_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS SET('numRows'='2','rawDataSize'='102' );
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_custkey` SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_custkey` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_name` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_name` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_address` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_address` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_city` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_city` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_nation` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_nation` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_region` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_region` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_phone` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_phone` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_mktsegment` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_mktsegment` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_datekey` SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_datekey` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_id` SET('lowValue'='0','highValue'='1','numNulls'='0','numDVs'='2' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_id` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SIDgz8///////wE= 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_date` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_date` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_dayofweek` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_dayofweek` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_month` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_month` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_year` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_year` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_yearmonthnum` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_yearmonthnum` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_yearmonth` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_yearmonth` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_daynuminweek` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_daynuminweek` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_daynuminmonth` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_daynuminmonth` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_daynuminyear` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_daynuminyear` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_monthnuminyear` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_monthnuminyear` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_weeknuminyear` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_weeknuminyear` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_sellingseason` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_sellingseason` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_lastdayinweekfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_lastdayinweekfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_lastdayinmonthfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_lastdayinmonthfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_holidayfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_holidayfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_weekdayfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_weekdayfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
 
 
 
@@ -1107,44 +1107,44 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dates_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (d_datekey,d_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS SET('numRows'='2','rawDataSize'='102' );
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_date SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_date BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_datekey SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_datekey BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_daynuminmonth SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_daynuminmonth BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_daynuminweek SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_daynuminweek BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_daynuminyear SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_daynuminyear BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_dayofweek SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_dayofweek BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_holidayfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_holidayfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_id SET('lowValue'='0','highValue'='1','numNulls'='0','numDVs'='2' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_id BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SIDgz8///////wE= 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_lastdayinmonthfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_lastdayinmonthfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_lastdayinweekfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_lastdayinweekfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_month SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_month BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_monthnuminyear SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_monthnuminyear BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_sellingseason SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_sellingseason BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_weekdayfl SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_weekdayfl BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_weeknuminyear SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_weeknuminyear BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_year SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_year BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_yearmonth SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_yearmonth BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.dates_removal_n0 UPDATE STATISTICS FOR COLUMN d_yearmonthnum SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.dates_removal_n0 FOR COLUMN d_yearmonthnum BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`d_datekey`,`d_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS SET('numRows'='2','rawDataSize'='102' );
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_datekey` SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_datekey` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_id` SET('lowValue'='0','highValue'='1','numNulls'='0','numDVs'='2' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_id` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SIDgz8///////wE= 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_date` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_date` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_dayofweek` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_dayofweek` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_month` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_month` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_year` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_year` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_yearmonthnum` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_yearmonthnum` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_yearmonth` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_yearmonth` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_daynuminweek` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_daynuminweek` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_daynuminmonth` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_daynuminmonth` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_daynuminyear` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_daynuminyear` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_monthnuminyear` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_monthnuminyear` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_weeknuminyear` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_weeknuminyear` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_sellingseason` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_sellingseason` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_lastdayinweekfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_lastdayinweekfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_lastdayinmonthfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_lastdayinmonthfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_holidayfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_holidayfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`dates_removal_n0` UPDATE STATISTICS FOR COLUMN `d_weekdayfl` SET('lowValue'='0','highValue'='0','numNulls'='2','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`dates_removal_n0` FOR COLUMN `d_weekdayfl` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
 
 
 
@@ -1192,17 +1192,17 @@ STAGE PLANS:
                   Statistics: Num rows: 2 Data size: 104 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
                     predicate: (d_year) IN (1985, 2004) (type: boolean)
-                    Statistics: Num rows: 1 Data size: 96 Basic stats: COMPLETE Column stats: COMPLETE
+                    Statistics: Num rows: 2 Data size: 104 Basic stats: COMPLETE Column stats: COMPLETE
                     Top N Key Operator
                       sort order: ++
                       keys: d_datekey (type: bigint), d_sellingseason (type: string)
                       null sort order: zz
-                      Statistics: Num rows: 1 Data size: 96 Basic stats: COMPLETE Column stats: COMPLETE
+                      Statistics: Num rows: 2 Data size: 104 Basic stats: COMPLETE Column stats: COMPLETE
                       top n: 10
                       Select Operator
                         expressions: d_datekey (type: bigint), d_sellingseason (type: string)
                         outputColumnNames: d_datekey, d_sellingseason
-                        Statistics: Num rows: 1 Data size: 96 Basic stats: COMPLETE Column stats: COMPLETE
+                        Statistics: Num rows: 2 Data size: 104 Basic stats: COMPLETE Column stats: COMPLETE
                         Group By Operator
                           keys: d_datekey (type: bigint), d_sellingseason (type: string)
                           minReductionHashAggr: 0.4
@@ -1310,24 +1310,24 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.customer_removal_n0 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (c_custkey) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS SET('numRows'='1','rawDataSize'='22' );
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_address SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_address BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_city SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_city BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_custkey SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_custkey BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_mktsegment SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_mktsegment BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_name SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_name BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_nation SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_nation BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_phone SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_phone BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
-ALTER TABLE default.customer_removal_n0 UPDATE STATISTICS FOR COLUMN c_region SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.customer_removal_n0 FOR COLUMN c_region BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`c_custkey`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS SET('numRows'='1','rawDataSize'='22' );
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_custkey` SET('lowValue'='3','highValue'='3','numNulls'='0','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_custkey` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBgq/rqgE= 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_name` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_name` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_address` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_address` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_city` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_city` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_nation` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_nation` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_region` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_region` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_phone` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_phone` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
+ALTER TABLE `default`.`customer_removal_n0` UPDATE STATISTICS FOR COLUMN `c_mktsegment` SET('avgColLen'='0.0','maxColLen'='0','numNulls'='1','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`customer_removal_n0` FOR COLUMN `c_mktsegment` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEA 
 
 
 
@@ -1347,9 +1347,9 @@ group by c_custkey, c_nation;
 
 EXPLAIN VECTORIZED SELECT count(c_custkey) from customer_removal_n0 where c_nation IN ('USA', 'INDIA')
 group by c_custkey, c_nation;
-CBO PLAN:HiveProject(_o__c0=[$1])
+CBO PLAN:HiveProject(_c0=[$1])
   HiveAggregate(group=[{0}], agg#0=[count()])
-    HiveFilter(condition=[IN($4, _UTF-16LE'USA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE", _UTF-16LE'INDIA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE")])
+    HiveFilter(condition=[IN($4, 'INDIA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE", 'USA':VARCHAR(2147483647) CHARACTER SET "UTF-16LE")])
       HiveTableScan(table=[[default, customer_removal_n0]], table:alias=[customer_removal_n0])
 
 PLAN VECTORIZATION:
@@ -1372,10 +1372,10 @@ STAGE PLANS:
             Map Operator Tree:
                 TableScan
                   alias: customer_removal_n0
-                  filterExpr: (c_nation) IN ('USA', 'INDIA') (type: boolean)
+                  filterExpr: (c_nation) IN ('INDIA', 'USA') (type: boolean)
                   Statistics: Num rows: 1 Data size: 92 Basic stats: COMPLETE Column stats: COMPLETE
                   Filter Operator
-                    predicate: (c_nation) IN ('USA', 'INDIA') (type: boolean)
+                    predicate: (c_nation) IN ('INDIA', 'USA') (type: boolean)
                     Statistics: Num rows: 1 Data size: 92 Basic stats: COMPLETE Column stats: COMPLETE
                     Select Operator
                       expressions: c_custkey (type: bigint)
@@ -1442,18 +1442,22 @@ STAGE PLANS:
 PREHOOK: query: DROP TABLE customer_removal_n0
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@customer_removal_n0
+PREHOOK: Output: database:default
 PREHOOK: Output: default@customer_removal_n0
 POSTHOOK: query: DROP TABLE customer_removal_n0
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@customer_removal_n0
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@customer_removal_n0
 PREHOOK: query: DROP TABLE dates_removal_n0
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@dates_removal_n0
+PREHOOK: Output: database:default
 PREHOOK: Output: default@dates_removal_n0
 POSTHOOK: query: DROP TABLE dates_removal_n0
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@dates_removal_n0
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@dates_removal_n0
 PREHOOK: query: create table dest_g21 (key1 int, value1 double, primary key(key1) disable rely)
 PREHOOK: type: CREATETABLE
@@ -1496,12 +1500,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -1560,12 +1564,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -1577,7 +1581,7 @@ EXPLAIN CBO select key1 from dest_g21 where value1 > 1 group by key1, value1;
 
 EXPLAIN VECTORIZED select key1 from dest_g21 where value1 > 1 group by key1, value1;
 CBO PLAN:HiveProject(key1=[$0])
-  HiveFilter(condition=[>($1, 1E0)])
+  HiveFilter(condition=[>($1, 1.0E0)])
     HiveTableScan(table=[[default, dest_g21]], table:alias=[dest_g21])
 
 PLAN VECTORIZATION:
@@ -1625,12 +1629,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -1690,12 +1694,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -1709,7 +1713,7 @@ EXPLAIN CBO select count(key1) from dest_g21 group by key1, value1;
 
 
 EXPLAIN VECTORIZED select count(key1) from dest_g21 group by key1, value1;
-CBO PLAN:HiveProject(_o__c0=[$1])
+CBO PLAN:HiveProject(_c0=[$1])
   HiveAggregate(group=[{0}], agg#0=[count()])
     HiveTableScan(table=[[default, dest_g21]], table:alias=[dest_g21])
 
@@ -1819,12 +1823,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -1835,9 +1839,9 @@ EXPLAIN CBO select count(key1) from dest_g21 where value1 > 1 group by key1, val
 
 
 EXPLAIN VECTORIZED select count(key1) from dest_g21 where value1 > 1 group by key1, value1;
-CBO PLAN:HiveProject(_o__c0=[$1])
+CBO PLAN:HiveProject(_c0=[$1])
   HiveAggregate(group=[{0}], agg#0=[count()])
-    HiveFilter(condition=[>($1, 1E0)])
+    HiveFilter(condition=[>($1, 1.0E0)])
       HiveTableScan(table=[[default, dest_g21]], table:alias=[dest_g21])
 
 PLAN VECTORIZATION:
@@ -1950,12 +1954,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -1969,12 +1973,12 @@ EXPLAIN CBO select t1.key1 from dest_g21 t1 join dest_g21 t2 on t1.key1 = t2.key
 
 
 EXPLAIN VECTORIZED select t1.key1 from dest_g21 t1 join dest_g21 t2 on t1.key1 = t2.key1 where t2.value1 > 2 group by t1.key1, t1.value1;
-CBO PLAN:HiveProject(key1=[$0])
+CBO PLAN:HiveProject(t1.key1=[$0])
   HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
     HiveProject(key1=[$0], value1=[$1])
       HiveTableScan(table=[[default, dest_g21]], table:alias=[t1])
     HiveProject(key1=[$0])
-      HiveFilter(condition=[>($1, 2E0)])
+      HiveFilter(condition=[>($1, 2.0E0)])
         HiveTableScan(table=[[default, dest_g21]], table:alias=[t2])
 
 PLAN VECTORIZATION:
@@ -2100,12 +2104,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -2116,13 +2120,13 @@ EXPLAIN CBO select count(t1.key1) from dest_g21 t1 join dest_g21 t2 on t1.key1 =
 
 
 EXPLAIN VECTORIZED select count(t1.key1) from dest_g21 t1 join dest_g21 t2 on t1.key1 = t2.key1 where t2.value1 > 2 group by t1.key1, t1.value1;
-CBO PLAN:HiveProject(_o__c0=[$1])
+CBO PLAN:HiveProject(_c0=[$1])
   HiveAggregate(group=[{0}], agg#0=[count()])
     HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
       HiveProject(key1=[$0], value1=[$1])
         HiveTableScan(table=[[default, dest_g21]], table:alias=[t1])
       HiveProject(key1=[$0])
-        HiveFilter(condition=[>($1, 2E0)])
+        HiveFilter(condition=[>($1, 2.0E0)])
           HiveTableScan(table=[[default, dest_g21]], table:alias=[t2])
 
 PLAN VECTORIZATION:
@@ -2282,12 +2286,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -2350,12 +2354,12 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN key1 SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN key1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
-ALTER TABLE default.dest_g21 UPDATE STATISTICS FOR COLUMN value1 SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
--- BIT VECTORS PRESENT FOR default.dest_g21 FOR COLUMN value1 BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='6','rawDataSize'='28' );
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `key1` SET('lowValue'='1','highValue'='6','numNulls'='0','numDVs'='6' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `key1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAYGwfO+SIGmu+f//////wHC9+jHAf6diLP//////wG/9IJOg97xwAI= 
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS FOR COLUMN `value1` SET('numNulls'='2','numDVs'='3','highValue'='4.0','lowValue'='1.0' );
+-- BIT VECTORS PRESENT FOR `default`.`dest_g21` FOR COLUMN `value1` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwvmagwOBp7a0Av65vtz9/////wE= 
 
 
 
@@ -2369,9 +2373,10 @@ EXPLAIN CBO select key1, sm from (select key1, count(key1), sum(key1) as sm from
 
 
 EXPLAIN VECTORIZED select key1, sm from (select key1, count(key1), sum(key1) as sm from dest_g21 where value1 < 4.5 group by key1, value1) sub;
-CBO PLAN:HiveAggregate(group=[{0}], agg#0=[sum($0)])
-  HiveFilter(condition=[<($1, 4.5E0)])
-    HiveTableScan(table=[[default, dest_g21]], table:alias=[dest_g21])
+CBO PLAN:HiveProject(key1=[$0], sm=[$1])
+  HiveAggregate(group=[{0}], agg#0=[sum($0)])
+    HiveFilter(condition=[<($1, 4.5E0)])
+      HiveTableScan(table=[[default, dest_g21]], table:alias=[dest_g21])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -2459,10 +2464,12 @@ STAGE PLANS:
 PREHOOK: query: DROP table dest_g21
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@dest_g21
+PREHOOK: Output: database:default
 PREHOOK: Output: default@dest_g21
 POSTHOOK: query: DROP table dest_g21
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@dest_g21
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@dest_g21
 PREHOOK: query: CREATE TABLE tconst(i int NOT NULL disable rely, j INT NOT NULL disable norely, d_year string)
 PREHOOK: type: CREATETABLE
@@ -2507,14 +2514,14 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.tconst UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
-ALTER TABLE default.tconst CHANGE COLUMN i i int CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN d_year SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN d_year BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN i SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN i BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN j SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN j BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
+ALTER TABLE `default`.`tconst` CHANGE COLUMN `i` `i` int CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `i` SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `i` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `j` SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `j` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `d_year` SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `d_year` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
 
 
 
@@ -2636,14 +2643,14 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.tconst UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
-ALTER TABLE default.tconst CHANGE COLUMN i i int CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN d_year SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN d_year BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN i SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN i BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN j SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN j BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
+ALTER TABLE `default`.`tconst` CHANGE COLUMN `i` `i` int CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `i` SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `i` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `j` SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `j` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `d_year` SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `d_year` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
 
 
 
@@ -2766,14 +2773,14 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.tconst UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
-ALTER TABLE default.tconst CHANGE COLUMN i i int CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN d_year SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN d_year BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN i SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN i BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN j SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN j BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
+ALTER TABLE `default`.`tconst` CHANGE COLUMN `i` `i` int CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `i` SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `i` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `j` SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `j` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `d_year` SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `d_year` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
 
 
 
@@ -2895,14 +2902,14 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.tconst UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
-ALTER TABLE default.tconst CHANGE COLUMN i i int CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN d_year SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN d_year BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN i SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN i BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN j SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN j BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
+ALTER TABLE `default`.`tconst` CHANGE COLUMN `i` `i` int CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `i` SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `i` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `j` SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `j` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `d_year` SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `d_year` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
 
 
 
@@ -2916,7 +2923,7 @@ EXPLAIN CBO select sum(t1.i) from tconst t1 join tconst t2 on t1.i=t2.j group by
 
 
 EXPLAIN VECTORIZED select sum(t1.i) from tconst t1 join tconst t2 on t1.i=t2.j group by t1.i, t1.d_year;
-CBO PLAN:HiveProject(_o__c0=[$2])
+CBO PLAN:HiveProject(_c0=[$2])
   HiveAggregate(group=[{0, 1}], agg#0=[sum($0)])
     HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
       HiveProject(i=[$0], d_year=[$2])
@@ -3084,14 +3091,14 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.tconst UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
-ALTER TABLE default.tconst CHANGE COLUMN i i int CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN d_year SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN d_year BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN i SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN i BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
-ALTER TABLE default.tconst UPDATE STATISTICS FOR COLUMN j SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
--- BIT VECTORS PRESENT FOR default.tconst FOR COLUMN j BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS SET('numRows'='3','rawDataSize'='25' );
+ALTER TABLE `default`.`tconst` CHANGE COLUMN `i` `i` int CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `i` SET('lowValue'='1','highValue'='3','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `i` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwfO+SMG7rGLC0vSOAw== 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `j` SET('lowValue'='1','highValue'='3','numNulls'='1','numDVs'='2' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `j` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAICwfO+SMG7rGI= 
+ALTER TABLE `default`.`tconst` UPDATE STATISTICS FOR COLUMN `d_year` SET('avgColLen'='4.0','maxColLen'='4','numNulls'='0','numDVs'='3' );
+-- BIT VECTORS PRESENT FOR `default`.`tconst` FOR COLUMN `d_year` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAMDwrjb8gb/vrr2+f////8BgaCT+///////AQ== 
 
 
 
@@ -3105,7 +3112,7 @@ EXPLAIN CBO select sum(t1.i) from tconst t1 join tconst t2 on t1.i=t2.i group by
 
 
 EXPLAIN VECTORIZED select sum(t1.i) from tconst t1 join tconst t2 on t1.i=t2.i group by t1.i, t1.d_year;
-CBO PLAN:HiveProject(_o__c0=[$2])
+CBO PLAN:HiveProject(_c0=[$2])
   HiveAggregate(group=[{0, 1}], agg#0=[sum($0)])
     HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
       HiveProject(i=[$0], d_year=[$2])
@@ -3247,10 +3254,12 @@ STAGE PLANS:
 PREHOOK: query: DROP TABLE tconst
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@tconst
+PREHOOK: Output: database:default
 PREHOOK: Output: default@tconst
 POSTHOOK: query: DROP TABLE tconst
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@tconst
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@tconst
 PREHOOK: query: create table dest_g21 (key1 int NOT NULL disable rely, value1 double, UNIQUE(key1) disable rely)
 PREHOOK: type: CREATETABLE
@@ -3283,9 +3292,9 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g21 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.dest_g21 ADD CONSTRAINT #### A masked pattern was here #### UNIQUE (key1) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.dest_g21 CHANGE COLUMN key1 key1 int CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`dest_g21` ADD CONSTRAINT `#### A masked pattern was here ####` UNIQUE (`key1`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g21` CHANGE COLUMN `key1` `key1` int CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select key1 from dest_g21 group by key1, value1;
@@ -3346,8 +3355,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.dest_g24 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.dest_g24 ADD CONSTRAINT #### A masked pattern was here #### UNIQUE (key1) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`dest_g24` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`dest_g24` ADD CONSTRAINT `#### A masked pattern was here ####` UNIQUE (`key1`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select key1 from dest_g24 group by key1, value1;
@@ -3442,18 +3451,22 @@ STAGE PLANS:
 PREHOOK: query: DROP TABLE dest_g21
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@dest_g21
+PREHOOK: Output: database:default
 PREHOOK: Output: default@dest_g21
 POSTHOOK: query: DROP TABLE dest_g21
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@dest_g21
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@dest_g21
 PREHOOK: query: DROP TABLE dest_g24
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@dest_g24
+PREHOOK: Output: database:default
 PREHOOK: Output: default@dest_g24
 POSTHOOK: query: DROP TABLE dest_g24
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@dest_g24
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@dest_g24
 PREHOOK: query: CREATE TABLE `customer`(
   `c_customer_sk` int,
@@ -3626,6 +3639,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -3661,43 +3704,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -3741,13 +3754,14 @@ group by c_customer_id
 ,c_birth_country
 ,c_login
 ,c_email_address;
-CBO PLAN:HiveAggregate(group=[{1}])
-  HiveJoin(condition=[=($0, $8)], joinType=[inner], algorithm=[none], cost=[not available])
-    HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
-      HiveTableScan(table=[[default, customer]], table:alias=[customer])
-    HiveProject(ss_customer_sk=[$3])
-      HiveFilter(condition=[IS NOT NULL($3)])
-        HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
+CBO PLAN:HiveProject(c_customer_id=[$0])
+  HiveAggregate(group=[{1}])
+    HiveJoin(condition=[=($0, $8)], joinType=[inner], algorithm=[none], cost=[not available])
+      HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
+        HiveTableScan(table=[[default, customer]], table:alias=[customer])
+      HiveProject(ss_customer_sk=[$3])
+        HiveFilter(condition=[IS NOT NULL($3)])
+          HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -3910,6 +3924,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -3945,43 +3989,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -4025,13 +4039,14 @@ group by c_customer_id
 ,c_birth_country
 ,c_login
 ,c_email_address;
-CBO PLAN:HiveAggregate(group=[{2}])
-  HiveJoin(condition=[=($1, $0)], joinType=[inner], algorithm=[none], cost=[not available])
-    HiveProject(ss_customer_sk=[$3])
-      HiveFilter(condition=[IS NOT NULL($3)])
-        HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
-    HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
-      HiveTableScan(table=[[default, customer]], table:alias=[customer])
+CBO PLAN:HiveProject(c_customer_id=[$0])
+  HiveAggregate(group=[{2}])
+    HiveJoin(condition=[=($1, $0)], joinType=[inner], algorithm=[none], cost=[not available])
+      HiveProject(ss_customer_sk=[$3])
+        HiveFilter(condition=[IS NOT NULL($3)])
+          HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
+      HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
+        HiveTableScan(table=[[default, customer]], table:alias=[customer])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -4224,6 +4239,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -4259,43 +4304,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -4385,12 +4400,12 @@ where t_s_secyear.sale_type = 's'
 order by t_s_secyear.customer_preferred_cust_flag
 limit 100;
 CBO PLAN:HiveSortLimit(sort0=[$0], dir0=[ASC], fetch=[100])
-  HiveProject(customer_preferred_cust_flag=[$1])
+  HiveProject(t_s_secyear.customer_preferred_cust_flag=[$1])
     HiveAggregate(group=[{1, 4}])
       HiveJoin(condition=[=($0, $8)], joinType=[inner], algorithm=[none], cost=[not available])
         HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
           HiveTableScan(table=[[default, customer]], table:alias=[customer])
-        HiveProject(ss_customer_sk=[$3], /=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
+        HiveProject(ss_customer_sk=[$3], $f7=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
           HiveFilter(condition=[IS NOT NULL($3)])
             HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
 
@@ -4619,6 +4634,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -4654,43 +4699,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -4783,12 +4798,12 @@ where t_s_secyear.sale_type = 's'
 order by t_s_secyear.customer_preferred_cust_flag
 limit 100;
 CBO PLAN:HiveSortLimit(sort0=[$0], dir0=[ASC], fetch=[100])
-  HiveProject(customer_preferred_cust_flag=[$1])
+  HiveProject(t_s_secyear.customer_preferred_cust_flag=[$1])
     HiveAggregate(group=[{1, 4}])
       HiveJoin(condition=[=($0, $8)], joinType=[inner], algorithm=[none], cost=[not available])
         HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
           HiveTableScan(table=[[default, customer]], table:alias=[customer])
-        HiveProject(ss_customer_sk=[$3], /=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
+        HiveProject(ss_customer_sk=[$3], $f7=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
           HiveFilter(condition=[IS NOT NULL($3)])
             HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
 
@@ -5101,30 +5116,25 @@ POSTHOOK: Input: default@date_dim
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
-CREATE TABLE `default`.`store_sales`(
-  `ss_sold_date_sk` int, 
-  `ss_sold_time_sk` int, 
-  `ss_item_sk` int, 
-  `ss_customer_sk` int, 
-  `ss_cdemo_sk` int, 
-  `ss_hdemo_sk` int, 
-  `ss_addr_sk` int, 
-  `ss_store_sk` int, 
-  `ss_promo_sk` int, 
-  `ss_ticket_number` int, 
-  `ss_quantity` int, 
-  `ss_wholesale_cost` decimal(7,2), 
-  `ss_list_price` decimal(7,2), 
-  `ss_sales_price` decimal(7,2), 
-  `ss_ext_discount_amt` decimal(7,2), 
-  `ss_ext_sales_price` decimal(7,2), 
-  `ss_ext_wholesale_cost` decimal(7,2), 
-  `ss_ext_list_price` decimal(7,2), 
-  `ss_ext_tax` decimal(7,2), 
-  `ss_coupon_amt` decimal(7,2), 
-  `ss_net_paid` decimal(7,2), 
-  `ss_net_paid_inc_tax` decimal(7,2), 
-  `ss_net_profit` decimal(7,2))
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
 ROW FORMAT SERDE 
   'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
 STORED AS INPUTFORMAT 
@@ -5176,25 +5186,30 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
+CREATE TABLE `default`.`store_sales`(
+  `ss_sold_date_sk` int, 
+  `ss_sold_time_sk` int, 
+  `ss_item_sk` int, 
+  `ss_customer_sk` int, 
+  `ss_cdemo_sk` int, 
+  `ss_hdemo_sk` int, 
+  `ss_addr_sk` int, 
+  `ss_store_sk` int, 
+  `ss_promo_sk` int, 
+  `ss_ticket_number` int, 
+  `ss_quantity` int, 
+  `ss_wholesale_cost` decimal(7,2), 
+  `ss_list_price` decimal(7,2), 
+  `ss_sales_price` decimal(7,2), 
+  `ss_ext_discount_amt` decimal(7,2), 
+  `ss_ext_sales_price` decimal(7,2), 
+  `ss_ext_wholesale_cost` decimal(7,2), 
+  `ss_ext_list_price` decimal(7,2), 
+  `ss_ext_tax` decimal(7,2), 
+  `ss_coupon_amt` decimal(7,2), 
+  `ss_net_paid` decimal(7,2), 
+  `ss_net_paid_inc_tax` decimal(7,2), 
+  `ss_net_profit` decimal(7,2))
 ROW FORMAT SERDE 
   'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
 STORED AS INPUTFORMAT 
@@ -5206,14 +5221,14 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.date_dim UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`date_dim` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -5333,7 +5348,7 @@ and t_s_firstyear.year_total > 0
 order by t_s_secyear.customer_preferred_cust_flag
 limit 100;
 CBO PLAN:HiveSortLimit(sort0=[$0], dir0=[ASC], fetch=[100])
-  HiveProject(customer_preferred_cust_flag=[$1])
+  HiveProject(t_s_secyear.customer_preferred_cust_flag=[$1])
     HiveJoin(condition=[=($0, $2)], joinType=[inner], algorithm=[none], cost=[not available])
       HiveProject(c_customer_id=[$0], c_preferred_cust_flag=[$1])
         HiveAggregate(group=[{1, 4}])
@@ -5341,7 +5356,7 @@ CBO PLAN:HiveSortLimit(sort0=[$0], dir0=[ASC], fetch=[100])
             HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
               HiveTableScan(table=[[default, customer]], table:alias=[customer])
             HiveJoin(condition=[=($0, $3)], joinType=[inner], algorithm=[none], cost=[not available])
-              HiveProject(ss_sold_date_sk=[$0], ss_customer_sk=[$3], /=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
+              HiveProject(ss_sold_date_sk=[$0], ss_customer_sk=[$3], $f8=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
                 HiveFilter(condition=[AND(IS NOT NULL($3), IS NOT NULL($0))])
                   HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
               HiveProject(d_date_sk=[$0])
@@ -5354,7 +5369,7 @@ CBO PLAN:HiveSortLimit(sort0=[$0], dir0=[ASC], fetch=[100])
               HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
                 HiveTableScan(table=[[default, customer]], table:alias=[customer])
               HiveJoin(condition=[=($0, $3)], joinType=[inner], algorithm=[none], cost=[not available])
-                HiveProject(ss_sold_date_sk=[$0], ss_customer_sk=[$3], /=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
+                HiveProject(ss_sold_date_sk=[$0], ss_customer_sk=[$3], $f8=[/(+(-(-($17, $16), $14), $15), 2:DECIMAL(10, 0))])
                   HiveFilter(condition=[AND(IS NOT NULL($3), IS NOT NULL($0))])
                     HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
                 HiveProject(d_date_sk=[$0])
@@ -5753,6 +5768,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -5788,43 +5833,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -5889,12 +5904,13 @@ C_CUSTOMER_SK
 ,	C_LOGIN
 ,	C_EMAIL_ADDRESS
 ;
-CBO PLAN:HiveSemiJoin(condition=[=($0, $1)], joinType=[semi])
-  HiveProject(c_customer_sk=[$0])
-    HiveTableScan(table=[[default, customer]], table:alias=[customer])
-  HiveProject(ss_customer_sk=[$3])
-    HiveFilter(condition=[IS NOT NULL($3)])
-      HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
+CBO PLAN:HiveProject(c_customer_sk=[$0])
+  HiveSemiJoin(condition=[=($0, $1)], joinType=[semi])
+    HiveProject(c_customer_sk=[$0])
+      HiveTableScan(table=[[default, customer]], table:alias=[customer])
+    HiveProject(ss_customer_sk=[$3])
+      HiveFilter(condition=[IS NOT NULL($3)])
+        HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -6045,6 +6061,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -6080,43 +6126,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -6372,6 +6388,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -6407,43 +6453,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -6696,6 +6712,36 @@ POSTHOOK: Input: default@customer
 POSTHOOK: Input: default@store_sales
 #### A masked pattern was here ####
 
+CREATE TABLE `default`.`customer`(
+  `c_customer_sk` int, 
+  `c_customer_id` string, 
+  `c_current_cdemo_sk` int, 
+  `c_current_hdemo_sk` int, 
+  `c_current_addr_sk` int, 
+  `c_first_shipto_date_sk` int, 
+  `c_first_sales_date_sk` int, 
+  `c_salutation` string, 
+  `c_first_name` string, 
+  `c_last_name` string, 
+  `c_preferred_cust_flag` string, 
+  `c_birth_day` int, 
+  `c_birth_month` int, 
+  `c_birth_year` int, 
+  `c_birth_country` string, 
+  `c_login` string, 
+  `c_email_address` string, 
+  `c_last_review_date` string)
+ROW FORMAT SERDE 
+  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
+STORED AS INPUTFORMAT 
+  'org.apache.hadoop.mapred.TextInputFormat' 
+OUTPUTFORMAT 
+  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
+LOCATION
+#### A masked pattern was here ####
+TBLPROPERTIES (
+  'bucketing_version'='2', 
+#### A masked pattern was here ####
 CREATE TABLE `default`.`store_sales`(
   `ss_sold_date_sk` int, 
   `ss_sold_time_sk` int, 
@@ -6731,43 +6777,13 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-CREATE TABLE `default`.`customer`(
-  `c_customer_sk` int, 
-  `c_customer_id` string, 
-  `c_current_cdemo_sk` int, 
-  `c_current_hdemo_sk` int, 
-  `c_current_addr_sk` int, 
-  `c_first_shipto_date_sk` int, 
-  `c_first_sales_date_sk` int, 
-  `c_salutation` string, 
-  `c_first_name` string, 
-  `c_last_name` string, 
-  `c_preferred_cust_flag` string, 
-  `c_birth_day` int, 
-  `c_birth_month` int, 
-  `c_birth_year` int, 
-  `c_birth_country` string, 
-  `c_login` string, 
-  `c_email_address` string, 
-  `c_last_review_date` string)
-ROW FORMAT SERDE 
-  'org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe' 
-STORED AS INPUTFORMAT 
-  'org.apache.hadoop.mapred.TextInputFormat' 
-OUTPUTFORMAT 
-  'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION
-#### A masked pattern was here ####
-TBLPROPERTIES (
-  'bucketing_version'='2', 
-#### A masked pattern was here ####
-ALTER TABLE default.store_sales ADD CONSTRAINT pk_ss PRIMARY KEY (ss_item_sk,ss_ticket_number) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.store_sales UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.customer ADD CONSTRAINT pk_c PRIMARY KEY (c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.store_sales ADD CONSTRAINT ss_c FOREIGN KEY (ss_customer_sk) REFERENCES default.customer(c_customer_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer ADD CONSTRAINT uk1 UNIQUE (c_customer_id) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.customer CHANGE COLUMN c_customer_id c_customer_id string CONSTRAINT cid_nn NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `pk_c` PRIMARY KEY (`c_customer_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `pk_ss` PRIMARY KEY (`ss_item_sk`,`ss_ticket_number`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`customer` ADD CONSTRAINT `uk1` UNIQUE (`c_customer_id`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`customer` CHANGE COLUMN `c_customer_id` `c_customer_id` string CONSTRAINT `cid_nn` NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`store_sales` ADD CONSTRAINT `ss_c` FOREIGN KEY (`ss_customer_sk`) REFERENCES `default`.`customer`(`c_customer_sk`) DISABLE NOVALIDATE RELY;
 
 
 
@@ -6829,13 +6845,14 @@ C_EMAIL_ADDRESS
 ,	C_BIRTH_COUNTRY
 ,	C_LOGIN
 ;
-CBO PLAN:HiveAggregate(group=[{1}])
-  HiveJoin(condition=[=($0, $8)], joinType=[inner], algorithm=[none], cost=[not available])
-    HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
-      HiveTableScan(table=[[default, customer]], table:alias=[customer])
-    HiveProject(ss_customer_sk=[$3])
-      HiveFilter(condition=[IS NOT NULL($3)])
-        HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
+CBO PLAN:HiveProject(c_customer_id=[$0])
+  HiveAggregate(group=[{1}])
+    HiveJoin(condition=[=($0, $8)], joinType=[inner], algorithm=[none], cost=[not available])
+      HiveProject(c_customer_sk=[$0], c_customer_id=[$1], c_first_name=[$8], c_last_name=[$9], c_preferred_cust_flag=[$10], c_birth_country=[$14], c_login=[$15], c_email_address=[$16])
+        HiveTableScan(table=[[default, customer]], table:alias=[customer])
+      HiveProject(ss_customer_sk=[$3])
+        HiveFilter(condition=[IS NOT NULL($3)])
+          HiveTableScan(table=[[default, store_sales]], table:alias=[store_sales])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -7021,14 +7038,14 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.web_sales ADD CONSTRAINT pk1 PRIMARY KEY (ws_order_number,ws_item_sk) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.web_sales UPDATE STATISTICS SET('numRows'='2','rawDataSize'='14' );
-ALTER TABLE default.web_sales UPDATE STATISTICS FOR COLUMN ws_item_sk SET('lowValue'='1','highValue'='1','numNulls'='0','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.web_sales FOR COLUMN ws_item_sk BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBwfO+SA== 
-ALTER TABLE default.web_sales UPDATE STATISTICS FOR COLUMN ws_order_number SET('lowValue'='1','highValue'='1','numNulls'='0','numDVs'='1' );
--- BIT VECTORS PRESENT FOR default.web_sales FOR COLUMN ws_order_number BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBwfO+SA== 
-ALTER TABLE default.web_sales UPDATE STATISTICS FOR COLUMN ws_price SET('numNulls'='0','numDVs'='1','highValue'='1.2000000476837158','lowValue'='1.2000000476837158' );
--- BIT VECTORS PRESENT FOR default.web_sales FOR COLUMN ws_price BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBwbaGtAM= 
+ALTER TABLE `default`.`web_sales` ADD CONSTRAINT `pk1` PRIMARY KEY (`ws_order_number`,`ws_item_sk`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`web_sales` UPDATE STATISTICS SET('numRows'='2','rawDataSize'='14' );
+ALTER TABLE `default`.`web_sales` UPDATE STATISTICS FOR COLUMN `ws_order_number` SET('lowValue'='1','highValue'='1','numNulls'='0','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`web_sales` FOR COLUMN `ws_order_number` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBwfO+SA== 
+ALTER TABLE `default`.`web_sales` UPDATE STATISTICS FOR COLUMN `ws_item_sk` SET('lowValue'='1','highValue'='1','numNulls'='0','numDVs'='1' );
+-- BIT VECTORS PRESENT FOR `default`.`web_sales` FOR COLUMN `ws_item_sk` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBwfO+SA== 
+ALTER TABLE `default`.`web_sales` UPDATE STATISTICS FOR COLUMN `ws_price` SET('numNulls'='0','numDVs'='1','highValue'='1.2000000476837158','lowValue'='1.2000000476837158' );
+-- BIT VECTORS PRESENT FOR `default`.`web_sales` FOR COLUMN `ws_price` BUT THEY ARE NOT SUPPORTED YET. THE BASE64 VALUE FOR THE BITVECTOR IS SExMoAEBwbaGtAM= 
 
 
 EXPLAIN select count(distinct ws_order_number) from web_sales;
@@ -7036,10 +7053,11 @@ EXPLAIN select count(distinct ws_order_number) from web_sales;
 EXPLAIN CBO select count(distinct ws_order_number) from web_sales;
 
 EXPLAIN VECTORIZED select count(distinct ws_order_number) from web_sales;
-CBO PLAN:HiveAggregate(group=[{}], agg#0=[count()])
-  HiveProject(ws_order_number=[$0])
-    HiveAggregate(group=[{0}])
-      HiveTableScan(table=[[default, web_sales]], table:alias=[web_sales])
+CBO PLAN:HiveProject(_c0=[$0])
+  HiveAggregate(group=[{}], agg#0=[count()])
+    HiveProject(ws_order_number=[$0])
+      HiveAggregate(group=[{0}])
+        HiveTableScan(table=[[default, web_sales]], table:alias=[web_sales])
 
 PLAN VECTORIZATION:
   enabled: true
@@ -7148,10 +7166,12 @@ STAGE PLANS:
 PREHOOK: query: drop table web_sales
 PREHOOK: type: DROPTABLE
 PREHOOK: Input: default@web_sales
+PREHOOK: Output: database:default
 PREHOOK: Output: default@web_sales
 POSTHOOK: query: drop table web_sales
 POSTHOOK: type: DROPTABLE
 POSTHOOK: Input: default@web_sales
+POSTHOOK: Output: database:default
 POSTHOOK: Output: default@web_sales
 PREHOOK: query: CREATE TABLE table1_n13 (a STRING, b STRING, PRIMARY KEY (a) DISABLE)
 PREHOOK: type: CREATETABLE
@@ -7358,7 +7378,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table1_n13 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table1_n13` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7373,7 +7393,7 @@ EXPLAIN CBO select * from table1_n13;
 
 
 EXPLAIN VECTORIZED select * from table1_n13;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table1_n13.a=[$0], table1_n13.b=[$1])
   HiveTableScan(table=[[default, table1_n13]], table:alias=[table1_n13])
 
 PLAN VECTORIZATION:
@@ -7418,7 +7438,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table2_n8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table2_n8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7427,7 +7447,7 @@ EXPLAIN select * from table2_n8;
 EXPLAIN CBO select * from table2_n8;
 
 EXPLAIN VECTORIZED select * from table2_n8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2_n8.a=[$0], table2_n8.b=[$1])
   HiveTableScan(table=[[default, table2_n8]], table:alias=[table2_n8])
 
 PLAN VECTORIZATION:
@@ -7471,7 +7491,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table3_n1 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table3_n1` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7480,7 +7500,7 @@ EXPLAIN select * from table3_n1;
 EXPLAIN CBO select * from table3_n1;
 
 EXPLAIN VECTORIZED select * from table3_n1;
-CBO PLAN:HiveProject(x=[$0])
+CBO PLAN:HiveProject(table3_n1.x=[$0])
   HiveTableScan(table=[[default, table3_n1]], table:alias=[table3_n1])
 
 PLAN VECTORIZATION:
@@ -7525,7 +7545,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table4_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table4_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7534,7 +7554,7 @@ EXPLAIN select * from table4_n0;
 EXPLAIN CBO select * from table4_n0;
 
 EXPLAIN VECTORIZED select * from table4_n0;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table4_n0.x=[$0], table4_n0.y=[$1])
   HiveTableScan(table=[[default, table4_n0]], table:alias=[table4_n0])
 
 PLAN VECTORIZATION:
@@ -7578,7 +7598,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table5_n4 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table5_n4` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7587,7 +7607,7 @@ EXPLAIN select * from table5_n4;
 EXPLAIN CBO select * from table5_n4;
 
 EXPLAIN VECTORIZED select * from table5_n4;
-CBO PLAN:HiveProject(x=[$0])
+CBO PLAN:HiveProject(table5_n4.x=[$0])
   HiveTableScan(table=[[default, table5_n4]], table:alias=[table5_n4])
 
 PLAN VECTORIZATION:
@@ -7632,7 +7652,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table6_n3 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table6_n3` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7641,7 +7661,7 @@ EXPLAIN select * from table6_n3;
 EXPLAIN CBO select * from table6_n3;
 
 EXPLAIN VECTORIZED select * from table6_n3;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table6_n3.x=[$0], table6_n3.y=[$1])
   HiveTableScan(table=[[default, table6_n3]], table:alias=[table6_n3])
 
 PLAN VECTORIZATION:
@@ -7686,8 +7706,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table7_n3 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (a) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table7_n3 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table7_n3` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`a`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table7_n3` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7696,7 +7716,7 @@ EXPLAIN select * from table7_n3;
 EXPLAIN CBO select * from table7_n3;
 
 EXPLAIN VECTORIZED select * from table7_n3;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table7_n3.a=[$0], table7_n3.b=[$1])
   HiveTableScan(table=[[default, table7_n3]], table:alias=[table7_n3])
 
 PLAN VECTORIZATION:
@@ -7741,7 +7761,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7750,7 +7770,7 @@ EXPLAIN select * from table8;
 EXPLAIN CBO select * from table8;
 
 EXPLAIN VECTORIZED select * from table8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table8.a=[$0], table8.b=[$1])
   HiveTableScan(table=[[default, table8]], table:alias=[table8])
 
 PLAN VECTORIZATION:
@@ -7795,8 +7815,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table9 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (a,b) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table9 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table9` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`a`,`b`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table9` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7805,7 +7825,7 @@ EXPLAIN select * from table9;
 EXPLAIN CBO select * from table9;
 
 EXPLAIN VECTORIZED select * from table9;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table9.a=[$0], table9.b=[$1])
   HiveTableScan(table=[[default, table9]], table:alias=[table9])
 
 PLAN VECTORIZATION:
@@ -7850,7 +7870,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table10 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table10` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7859,7 +7879,7 @@ EXPLAIN select * from table10;
 EXPLAIN CBO select * from table10;
 
 EXPLAIN VECTORIZED select * from table10;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table10.a=[$0], table10.b=[$1])
   HiveTableScan(table=[[default, table10]], table:alias=[table10])
 
 PLAN VECTORIZATION:
@@ -7905,8 +7925,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table11 ADD CONSTRAINT pk11 PRIMARY KEY (a) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table11 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table11` ADD CONSTRAINT `pk11` PRIMARY KEY (`a`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table11` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7915,7 +7935,7 @@ EXPLAIN select * from table11;
 EXPLAIN CBO select * from table11;
 
 EXPLAIN VECTORIZED select * from table11;
-CBO PLAN:HiveProject(a=[$0], b=[$1], c=[$2])
+CBO PLAN:HiveProject(table11.a=[$0], table11.b=[$1], table11.c=[$2])
   HiveTableScan(table=[[default, table11]], table:alias=[table11])
 
 PLAN VECTORIZATION:
@@ -7960,7 +7980,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table12 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table12` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -7969,7 +7989,7 @@ EXPLAIN select * from table12;
 EXPLAIN CBO select * from table12;
 
 EXPLAIN VECTORIZED select * from table12;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table12.a=[$0], table12.b=[$1])
   HiveTableScan(table=[[default, table12]], table:alias=[table12])
 
 PLAN VECTORIZATION:
@@ -8015,8 +8035,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table13 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table13 CHANGE COLUMN a a string CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table13` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table13` CHANGE COLUMN `a` `a` string CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table13;
@@ -8024,7 +8044,7 @@ EXPLAIN select * from table13;
 EXPLAIN CBO select * from table13;
 
 EXPLAIN VECTORIZED select * from table13;
-CBO PLAN:HiveProject(b=[$0], a=[$1])
+CBO PLAN:HiveProject(table13.b=[$0], table13.a=[$1])
   HiveTableScan(table=[[default, table13]], table:alias=[table13])
 
 PLAN VECTORIZATION:
@@ -8069,8 +8089,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table14 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table14 CHANGE COLUMN a a string CONSTRAINT nn14_1 NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table14` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table14` CHANGE COLUMN `a` `a` string CONSTRAINT `nn14_1` NOT NULL DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table14;
@@ -8078,7 +8098,7 @@ EXPLAIN select * from table14;
 EXPLAIN CBO select * from table14;
 
 EXPLAIN VECTORIZED select * from table14;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table14.a=[$0], table14.b=[$1])
   HiveTableScan(table=[[default, table14]], table:alias=[table14])
 
 PLAN VECTORIZATION:
@@ -8123,7 +8143,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table15 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table15` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8132,7 +8152,7 @@ EXPLAIN select * from table15;
 EXPLAIN CBO select * from table15;
 
 EXPLAIN VECTORIZED select * from table15;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table15.a=[$0], table15.b=[$1])
   HiveTableScan(table=[[default, table15]], table:alias=[table15])
 
 PLAN VECTORIZATION:
@@ -8177,7 +8197,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table16 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table16` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8186,7 +8206,7 @@ EXPLAIN select * from table16;
 EXPLAIN CBO select * from table16;
 
 EXPLAIN VECTORIZED select * from table16;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table16.a=[$0], table16.b=[$1])
   HiveTableScan(table=[[default, table16]], table:alias=[table16])
 
 PLAN VECTORIZATION:
@@ -8231,8 +8251,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table17 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table17 ADD CONSTRAINT uk17_1 UNIQUE (a) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table17` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table17` ADD CONSTRAINT `uk17_1` UNIQUE (`a`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table17;
@@ -8240,7 +8260,7 @@ EXPLAIN select * from table17;
 EXPLAIN CBO select * from table17;
 
 EXPLAIN VECTORIZED select * from table17;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table17.a=[$0], table17.b=[$1])
   HiveTableScan(table=[[default, table17]], table:alias=[table17])
 
 PLAN VECTORIZATION:
@@ -8286,8 +8306,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table18 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table18 ADD CONSTRAINT uk18_1 UNIQUE (b) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table18` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table18` ADD CONSTRAINT `uk18_1` UNIQUE (`b`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table18;
@@ -8295,7 +8315,7 @@ EXPLAIN select * from table18;
 EXPLAIN CBO select * from table18;
 
 EXPLAIN VECTORIZED select * from table18;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table18.a=[$0], table18.b=[$1])
   HiveTableScan(table=[[default, table18]], table:alias=[table18])
 
 PLAN VECTORIZATION:
@@ -8340,9 +8360,9 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table19 ADD CONSTRAINT pk19_1 PRIMARY KEY (b) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table19 ADD CONSTRAINT fk19_2 FOREIGN KEY (a) REFERENCES default.table19(b) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table19` ADD CONSTRAINT `pk19_1` PRIMARY KEY (`b`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table19` ADD CONSTRAINT `fk19_2` FOREIGN KEY (`a`) REFERENCES `default`.`table19`(`b`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table19;
@@ -8350,7 +8370,7 @@ EXPLAIN select * from table19;
 EXPLAIN CBO select * from table19;
 
 EXPLAIN VECTORIZED select * from table19;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table19.a=[$0], table19.b=[$1])
   HiveTableScan(table=[[default, table19]], table:alias=[table19])
 
 PLAN VECTORIZATION:
@@ -8395,8 +8415,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table20 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table20 ADD CONSTRAINT uk20_1 UNIQUE (b) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table20` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table20` ADD CONSTRAINT `uk20_1` UNIQUE (`b`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table20;
@@ -8404,7 +8424,7 @@ EXPLAIN select * from table20;
 EXPLAIN CBO select * from table20;
 
 EXPLAIN VECTORIZED select * from table20;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table20.a=[$0], table20.b=[$1])
   HiveTableScan(table=[[default, table20]], table:alias=[table20])
 
 PLAN VECTORIZATION:
@@ -8450,7 +8470,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table21 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table21` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8459,7 +8479,7 @@ EXPLAIN select * from table21;
 EXPLAIN CBO select * from table21;
 
 EXPLAIN VECTORIZED select * from table21;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table21.a=[$0], table21.b=[$1])
   HiveTableScan(table=[[default, table21]], table:alias=[table21])
 
 PLAN VECTORIZATION:
@@ -8504,7 +8524,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table22 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table22` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8513,7 +8533,7 @@ EXPLAIN select * from table22;
 EXPLAIN CBO select * from table22;
 
 EXPLAIN VECTORIZED select * from table22;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table22.a=[$0], table22.b=[$1])
   HiveTableScan(table=[[default, table22]], table:alias=[table22])
 
 PLAN VECTORIZATION:
@@ -8558,7 +8578,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table1_n13 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table1_n13` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8570,7 +8590,7 @@ EXPLAIN CBO select * from table1_n13;
 
 
 EXPLAIN VECTORIZED select * from table1_n13;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table1_n13.a=[$0], table1_n13.b=[$1])
   HiveTableScan(table=[[default, table1_n13]], table:alias=[table1_n13])
 
 PLAN VECTORIZATION:
@@ -8615,7 +8635,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table2_n8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table2_n8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8624,7 +8644,7 @@ EXPLAIN select * from table2_n8;
 EXPLAIN CBO select * from table2_n8;
 
 EXPLAIN VECTORIZED select * from table2_n8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2_n8.a=[$0], table2_n8.b=[$1])
   HiveTableScan(table=[[default, table2_n8]], table:alias=[table2_n8])
 
 PLAN VECTORIZATION:
@@ -8668,7 +8688,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table3_n1 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table3_n1` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8677,7 +8697,7 @@ EXPLAIN select * from table3_n1;
 EXPLAIN CBO select * from table3_n1;
 
 EXPLAIN VECTORIZED select * from table3_n1;
-CBO PLAN:HiveProject(x=[$0])
+CBO PLAN:HiveProject(table3_n1.x=[$0])
   HiveTableScan(table=[[default, table3_n1]], table:alias=[table3_n1])
 
 PLAN VECTORIZATION:
@@ -8722,7 +8742,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table4_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table4_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8731,7 +8751,7 @@ EXPLAIN select * from table4_n0;
 EXPLAIN CBO select * from table4_n0;
 
 EXPLAIN VECTORIZED select * from table4_n0;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table4_n0.x=[$0], table4_n0.y=[$1])
   HiveTableScan(table=[[default, table4_n0]], table:alias=[table4_n0])
 
 PLAN VECTORIZATION:
@@ -8775,7 +8795,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table5_n4 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table5_n4` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8784,7 +8804,7 @@ EXPLAIN select * from table5_n4;
 EXPLAIN CBO select * from table5_n4;
 
 EXPLAIN VECTORIZED select * from table5_n4;
-CBO PLAN:HiveProject(x=[$0])
+CBO PLAN:HiveProject(table5_n4.x=[$0])
   HiveTableScan(table=[[default, table5_n4]], table:alias=[table5_n4])
 
 PLAN VECTORIZATION:
@@ -8829,7 +8849,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table6_n3 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table6_n3` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8838,7 +8858,7 @@ EXPLAIN select * from table6_n3;
 EXPLAIN CBO select * from table6_n3;
 
 EXPLAIN VECTORIZED select * from table6_n3;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table6_n3.x=[$0], table6_n3.y=[$1])
   HiveTableScan(table=[[default, table6_n3]], table:alias=[table6_n3])
 
 PLAN VECTORIZATION:
@@ -8883,8 +8903,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table7_n3 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (a) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table7_n3 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table7_n3` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`a`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table7_n3` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8893,7 +8913,7 @@ EXPLAIN select * from table7_n3;
 EXPLAIN CBO select * from table7_n3;
 
 EXPLAIN VECTORIZED select * from table7_n3;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table7_n3.a=[$0], table7_n3.b=[$1])
   HiveTableScan(table=[[default, table7_n3]], table:alias=[table7_n3])
 
 PLAN VECTORIZATION:
@@ -8938,7 +8958,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -8947,7 +8967,7 @@ EXPLAIN select * from table8;
 EXPLAIN CBO select * from table8;
 
 EXPLAIN VECTORIZED select * from table8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table8.a=[$0], table8.b=[$1])
   HiveTableScan(table=[[default, table8]], table:alias=[table8])
 
 PLAN VECTORIZATION:
@@ -8992,8 +9012,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table9 ADD CONSTRAINT #### A masked pattern was here #### PRIMARY KEY (a,b) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table9 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table9` ADD CONSTRAINT `#### A masked pattern was here ####` PRIMARY KEY (`a`,`b`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table9` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9002,7 +9022,7 @@ EXPLAIN select * from table9;
 EXPLAIN CBO select * from table9;
 
 EXPLAIN VECTORIZED select * from table9;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table9.a=[$0], table9.b=[$1])
   HiveTableScan(table=[[default, table9]], table:alias=[table9])
 
 PLAN VECTORIZATION:
@@ -9047,7 +9067,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table10 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table10` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9056,7 +9076,7 @@ EXPLAIN select * from table10;
 EXPLAIN CBO select * from table10;
 
 EXPLAIN VECTORIZED select * from table10;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table10.a=[$0], table10.b=[$1])
   HiveTableScan(table=[[default, table10]], table:alias=[table10])
 
 PLAN VECTORIZATION:
@@ -9102,8 +9122,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table11 ADD CONSTRAINT pk11 PRIMARY KEY (a) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table11 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table11` ADD CONSTRAINT `pk11` PRIMARY KEY (`a`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table11` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9112,7 +9132,7 @@ EXPLAIN select * from table11;
 EXPLAIN CBO select * from table11;
 
 EXPLAIN VECTORIZED select * from table11;
-CBO PLAN:HiveProject(a=[$0], b=[$1], c=[$2])
+CBO PLAN:HiveProject(table11.a=[$0], table11.b=[$1], table11.c=[$2])
   HiveTableScan(table=[[default, table11]], table:alias=[table11])
 
 PLAN VECTORIZATION:
@@ -9157,7 +9177,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table12 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table12` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9166,7 +9186,7 @@ EXPLAIN select * from table12;
 EXPLAIN CBO select * from table12;
 
 EXPLAIN VECTORIZED select * from table12;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table12.a=[$0], table12.b=[$1])
   HiveTableScan(table=[[default, table12]], table:alias=[table12])
 
 PLAN VECTORIZATION:
@@ -9212,8 +9232,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table13 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table13 CHANGE COLUMN a a string CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table13` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table13` CHANGE COLUMN `a` `a` string CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table13;
@@ -9221,7 +9241,7 @@ EXPLAIN select * from table13;
 EXPLAIN CBO select * from table13;
 
 EXPLAIN VECTORIZED select * from table13;
-CBO PLAN:HiveProject(b=[$0], a=[$1])
+CBO PLAN:HiveProject(table13.b=[$0], table13.a=[$1])
   HiveTableScan(table=[[default, table13]], table:alias=[table13])
 
 PLAN VECTORIZATION:
@@ -9266,8 +9286,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table14 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table14 CHANGE COLUMN a a string CONSTRAINT nn14_1 NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table14` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table14` CHANGE COLUMN `a` `a` string CONSTRAINT `nn14_1` NOT NULL DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table14;
@@ -9275,7 +9295,7 @@ EXPLAIN select * from table14;
 EXPLAIN CBO select * from table14;
 
 EXPLAIN VECTORIZED select * from table14;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table14.a=[$0], table14.b=[$1])
   HiveTableScan(table=[[default, table14]], table:alias=[table14])
 
 PLAN VECTORIZATION:
@@ -9320,7 +9340,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table15 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table15` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9329,7 +9349,7 @@ EXPLAIN select * from table15;
 EXPLAIN CBO select * from table15;
 
 EXPLAIN VECTORIZED select * from table15;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table15.a=[$0], table15.b=[$1])
   HiveTableScan(table=[[default, table15]], table:alias=[table15])
 
 PLAN VECTORIZATION:
@@ -9374,7 +9394,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table16 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table16` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9383,7 +9403,7 @@ EXPLAIN select * from table16;
 EXPLAIN CBO select * from table16;
 
 EXPLAIN VECTORIZED select * from table16;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table16.a=[$0], table16.b=[$1])
   HiveTableScan(table=[[default, table16]], table:alias=[table16])
 
 PLAN VECTORIZATION:
@@ -9428,8 +9448,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table17 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table17 ADD CONSTRAINT uk17_1 UNIQUE (a) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table17` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table17` ADD CONSTRAINT `uk17_1` UNIQUE (`a`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table17;
@@ -9437,7 +9457,7 @@ EXPLAIN select * from table17;
 EXPLAIN CBO select * from table17;
 
 EXPLAIN VECTORIZED select * from table17;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table17.a=[$0], table17.b=[$1])
   HiveTableScan(table=[[default, table17]], table:alias=[table17])
 
 PLAN VECTORIZATION:
@@ -9483,8 +9503,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table18 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table18 ADD CONSTRAINT uk18_1 UNIQUE (b) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table18` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table18` ADD CONSTRAINT `uk18_1` UNIQUE (`b`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table18;
@@ -9492,7 +9512,7 @@ EXPLAIN select * from table18;
 EXPLAIN CBO select * from table18;
 
 EXPLAIN VECTORIZED select * from table18;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table18.a=[$0], table18.b=[$1])
   HiveTableScan(table=[[default, table18]], table:alias=[table18])
 
 PLAN VECTORIZATION:
@@ -9537,9 +9557,9 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table19 ADD CONSTRAINT pk19_1 PRIMARY KEY (b) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table19 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table19 ADD CONSTRAINT fk19_2 FOREIGN KEY (a) REFERENCES default.table19(b) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table19` ADD CONSTRAINT `pk19_1` PRIMARY KEY (`b`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table19` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table19` ADD CONSTRAINT `fk19_2` FOREIGN KEY (`a`) REFERENCES `default`.`table19`(`b`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table19;
@@ -9547,7 +9567,7 @@ EXPLAIN select * from table19;
 EXPLAIN CBO select * from table19;
 
 EXPLAIN VECTORIZED select * from table19;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table19.a=[$0], table19.b=[$1])
   HiveTableScan(table=[[default, table19]], table:alias=[table19])
 
 PLAN VECTORIZATION:
@@ -9592,8 +9612,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table20 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table20 ADD CONSTRAINT uk20_1 UNIQUE (b) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table20` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table20` ADD CONSTRAINT `uk20_1` UNIQUE (`b`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table20;
@@ -9601,7 +9621,7 @@ EXPLAIN select * from table20;
 EXPLAIN CBO select * from table20;
 
 EXPLAIN VECTORIZED select * from table20;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table20.a=[$0], table20.b=[$1])
   HiveTableScan(table=[[default, table20]], table:alias=[table20])
 
 PLAN VECTORIZATION:
@@ -9647,7 +9667,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table21 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table21` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9656,7 +9676,7 @@ EXPLAIN select * from table21;
 EXPLAIN CBO select * from table21;
 
 EXPLAIN VECTORIZED select * from table21;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table21.a=[$0], table21.b=[$1])
   HiveTableScan(table=[[default, table21]], table:alias=[table21])
 
 PLAN VECTORIZATION:
@@ -9701,7 +9721,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table22 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table22` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9710,7 +9730,7 @@ EXPLAIN select * from table22;
 EXPLAIN CBO select * from table22;
 
 EXPLAIN VECTORIZED select * from table22;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table22.a=[$0], table22.b=[$1])
   HiveTableScan(table=[[default, table22]], table:alias=[table22])
 
 PLAN VECTORIZATION:
@@ -9811,7 +9831,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table2_n8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table2_n8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9823,7 +9843,7 @@ EXPLAIN CBO select * from table2_n8;
 
 
 EXPLAIN VECTORIZED select * from table2_n8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2_n8.a=[$0], table2_n8.b=[$1])
   HiveTableScan(table=[[default, table2_n8]], table:alias=[table2_n8])
 
 PLAN VECTORIZATION:
@@ -9867,7 +9887,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table3_n1 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table3_n1` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9876,7 +9896,7 @@ EXPLAIN select * from table3_n1;
 EXPLAIN CBO select * from table3_n1;
 
 EXPLAIN VECTORIZED select * from table3_n1;
-CBO PLAN:HiveProject(x=[$0])
+CBO PLAN:HiveProject(table3_n1.x=[$0])
   HiveTableScan(table=[[default, table3_n1]], table:alias=[table3_n1])
 
 PLAN VECTORIZATION:
@@ -9921,7 +9941,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table4_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table4_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9930,7 +9950,7 @@ EXPLAIN select * from table4_n0;
 EXPLAIN CBO select * from table4_n0;
 
 EXPLAIN VECTORIZED select * from table4_n0;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table4_n0.x=[$0], table4_n0.y=[$1])
   HiveTableScan(table=[[default, table4_n0]], table:alias=[table4_n0])
 
 PLAN VECTORIZATION:
@@ -9975,7 +9995,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table6_n3 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table6_n3` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -9984,7 +10004,7 @@ EXPLAIN select * from table6_n3;
 EXPLAIN CBO select * from table6_n3;
 
 EXPLAIN VECTORIZED select * from table6_n3;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table6_n3.x=[$0], table6_n3.y=[$1])
   HiveTableScan(table=[[default, table6_n3]], table:alias=[table6_n3])
 
 PLAN VECTORIZATION:
@@ -10029,7 +10049,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10038,7 +10058,7 @@ EXPLAIN select * from table8;
 EXPLAIN CBO select * from table8;
 
 EXPLAIN VECTORIZED select * from table8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table8.a=[$0], table8.b=[$1])
   HiveTableScan(table=[[default, table8]], table:alias=[table8])
 
 PLAN VECTORIZATION:
@@ -10083,7 +10103,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table16 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table16` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10092,7 +10112,7 @@ EXPLAIN select * from table16;
 EXPLAIN CBO select * from table16;
 
 EXPLAIN VECTORIZED select * from table16;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table16.a=[$0], table16.b=[$1])
   HiveTableScan(table=[[default, table16]], table:alias=[table16])
 
 PLAN VECTORIZATION:
@@ -10138,7 +10158,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table18 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table18` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10147,7 +10167,7 @@ EXPLAIN select * from table18;
 EXPLAIN CBO select * from table18;
 
 EXPLAIN VECTORIZED select * from table18;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table18.a=[$0], table18.b=[$1])
   HiveTableScan(table=[[default, table18]], table:alias=[table18])
 
 PLAN VECTORIZATION:
@@ -10192,7 +10212,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table2_n8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table2_n8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10204,7 +10224,7 @@ EXPLAIN CBO select * from table2_n8;
 
 
 EXPLAIN VECTORIZED select * from table2_n8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2_n8.a=[$0], table2_n8.b=[$1])
   HiveTableScan(table=[[default, table2_n8]], table:alias=[table2_n8])
 
 PLAN VECTORIZATION:
@@ -10248,7 +10268,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table3_n1 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table3_n1` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10257,7 +10277,7 @@ EXPLAIN select * from table3_n1;
 EXPLAIN CBO select * from table3_n1;
 
 EXPLAIN VECTORIZED select * from table3_n1;
-CBO PLAN:HiveProject(x=[$0])
+CBO PLAN:HiveProject(table3_n1.x=[$0])
   HiveTableScan(table=[[default, table3_n1]], table:alias=[table3_n1])
 
 PLAN VECTORIZATION:
@@ -10302,7 +10322,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table4_n0 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table4_n0` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10311,7 +10331,7 @@ EXPLAIN select * from table4_n0;
 EXPLAIN CBO select * from table4_n0;
 
 EXPLAIN VECTORIZED select * from table4_n0;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table4_n0.x=[$0], table4_n0.y=[$1])
   HiveTableScan(table=[[default, table4_n0]], table:alias=[table4_n0])
 
 PLAN VECTORIZATION:
@@ -10356,7 +10376,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table6_n3 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table6_n3` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10365,7 +10385,7 @@ EXPLAIN select * from table6_n3;
 EXPLAIN CBO select * from table6_n3;
 
 EXPLAIN VECTORIZED select * from table6_n3;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table6_n3.x=[$0], table6_n3.y=[$1])
   HiveTableScan(table=[[default, table6_n3]], table:alias=[table6_n3])
 
 PLAN VECTORIZATION:
@@ -10410,7 +10430,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10419,7 +10439,7 @@ EXPLAIN select * from table8;
 EXPLAIN CBO select * from table8;
 
 EXPLAIN VECTORIZED select * from table8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table8.a=[$0], table8.b=[$1])
   HiveTableScan(table=[[default, table8]], table:alias=[table8])
 
 PLAN VECTORIZATION:
@@ -10464,7 +10484,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table16 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table16` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10473,7 +10493,7 @@ EXPLAIN select * from table16;
 EXPLAIN CBO select * from table16;
 
 EXPLAIN VECTORIZED select * from table16;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table16.a=[$0], table16.b=[$1])
   HiveTableScan(table=[[default, table16]], table:alias=[table16])
 
 PLAN VECTORIZATION:
@@ -10519,7 +10539,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table18 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table18` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10528,7 +10548,7 @@ EXPLAIN select * from table18;
 EXPLAIN CBO select * from table18;
 
 EXPLAIN VECTORIZED select * from table18;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table18.a=[$0], table18.b=[$1])
   HiveTableScan(table=[[default, table18]], table:alias=[table18])
 
 PLAN VECTORIZATION:
@@ -10621,7 +10641,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table2_n8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table2_n8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10633,7 +10653,7 @@ EXPLAIN CBO select * from table2_n8;
 
 
 EXPLAIN VECTORIZED select * from table2_n8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2_n8.a=[$0], table2_n8.b=[$1])
   HiveTableScan(table=[[default, table2_n8]], table:alias=[table2_n8])
 
 PLAN VECTORIZATION:
@@ -10677,8 +10697,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table3_n1 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table3_n1 ADD CONSTRAINT fk1 FOREIGN KEY (x) REFERENCES default.table2_n8(a) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table3_n1` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table3_n1` ADD CONSTRAINT `fk1` FOREIGN KEY (`x`) REFERENCES `default`.`table2_n8`(`a`) DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table3_n1;
@@ -10686,7 +10706,7 @@ EXPLAIN select * from table3_n1;
 EXPLAIN CBO select * from table3_n1;
 
 EXPLAIN VECTORIZED select * from table3_n1;
-CBO PLAN:HiveProject(x=[$0])
+CBO PLAN:HiveProject(table3_n1.x=[$0])
   HiveTableScan(table=[[default, table3_n1]], table:alias=[table3_n1])
 
 PLAN VECTORIZATION:
@@ -10731,7 +10751,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table6_n3 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table6_n3` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10740,7 +10760,7 @@ EXPLAIN select * from table6_n3;
 EXPLAIN CBO select * from table6_n3;
 
 EXPLAIN VECTORIZED select * from table6_n3;
-CBO PLAN:HiveProject(x=[$0], y=[$1])
+CBO PLAN:HiveProject(table6_n3.x=[$0], table6_n3.y=[$1])
   HiveTableScan(table=[[default, table6_n3]], table:alias=[table6_n3])
 
 PLAN VECTORIZATION:
@@ -10785,8 +10805,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table8 ADD CONSTRAINT pk8_2 PRIMARY KEY (a,b) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table8 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table8` ADD CONSTRAINT `pk8_2` PRIMARY KEY (`a`,`b`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table8` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10795,7 +10815,7 @@ EXPLAIN select * from table8;
 EXPLAIN CBO select * from table8;
 
 EXPLAIN VECTORIZED select * from table8;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table8.a=[$0], table8.b=[$1])
   HiveTableScan(table=[[default, table8]], table:alias=[table8])
 
 PLAN VECTORIZATION:
@@ -10840,7 +10860,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table16 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table16` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10849,7 +10869,7 @@ EXPLAIN select * from table16;
 EXPLAIN CBO select * from table16;
 
 EXPLAIN VECTORIZED select * from table16;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table16.a=[$0], table16.b=[$1])
   HiveTableScan(table=[[default, table16]], table:alias=[table16])
 
 PLAN VECTORIZATION:
@@ -10895,7 +10915,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table18 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table18` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10904,7 +10924,7 @@ EXPLAIN select * from table18;
 EXPLAIN CBO select * from table18;
 
 EXPLAIN VECTORIZED select * from table18;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table18.a=[$0], table18.b=[$1])
   HiveTableScan(table=[[default, table18]], table:alias=[table18])
 
 PLAN VECTORIZATION:
@@ -10965,7 +10985,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table12 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table12` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -10977,7 +10997,7 @@ EXPLAIN CBO select * from table12;
 
 
 EXPLAIN VECTORIZED select * from table12;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table12.a=[$0], table12.b=[$1])
   HiveTableScan(table=[[default, table12]], table:alias=[table12])
 
 PLAN VECTORIZATION:
@@ -11023,8 +11043,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table13 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
-ALTER TABLE default.table13 CHANGE COLUMN a a string CONSTRAINT #### A masked pattern was here #### NOT NULL DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table13` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table13` CHANGE COLUMN `a` `a` string CONSTRAINT `#### A masked pattern was here ####` NOT NULL DISABLE NOVALIDATE RELY;
 
 
 EXPLAIN select * from table13;
@@ -11032,7 +11052,7 @@ EXPLAIN select * from table13;
 EXPLAIN CBO select * from table13;
 
 EXPLAIN VECTORIZED select * from table13;
-CBO PLAN:HiveProject(b=[$0], a=[$1])
+CBO PLAN:HiveProject(table13.b=[$0], table13.a=[$1])
   HiveTableScan(table=[[default, table13]], table:alias=[table13])
 
 PLAN VECTORIZATION:
@@ -11085,7 +11105,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table12 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table12` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11097,7 +11117,7 @@ EXPLAIN CBO select * from table12;
 
 
 EXPLAIN VECTORIZED select * from table12;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table12.a=[$0], table12.b=[$1])
   HiveTableScan(table=[[default, table12]], table:alias=[table12])
 
 PLAN VECTORIZATION:
@@ -11153,7 +11173,7 @@ POSTHOOK: query: explain ddl select * from DbConstraint.Table2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: dbconstraint@table2
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS dbconstraint;
+CREATE DATABASE IF NOT EXISTS `dbconstraint`;
 CREATE TABLE `dbconstraint`.`table2`(
   `a` string, 
   `b` string)
@@ -11168,7 +11188,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE dbconstraint.table2 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `dbconstraint`.`table2` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11180,7 +11200,7 @@ EXPLAIN CBO select * from DbConstraint.Table2;
 
 
 EXPLAIN VECTORIZED select * from DbConstraint.Table2;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2.a=[$0], table2.b=[$1])
   HiveTableScan(table=[[dbconstraint, table2]], table:alias=[table2])
 
 PLAN VECTORIZATION:
@@ -11210,7 +11230,7 @@ POSTHOOK: query: explain ddl select * from DbConstraint.Table2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: dbconstraint@table2
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS dbconstraint;
+CREATE DATABASE IF NOT EXISTS `dbconstraint`;
 CREATE TABLE `dbconstraint`.`table2`(
   `a` string, 
   `b` string)
@@ -11225,7 +11245,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE dbconstraint.table2 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `dbconstraint`.`table2` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11234,7 +11254,7 @@ EXPLAIN select * from DbConstraint.Table2;
 EXPLAIN CBO select * from DbConstraint.Table2;
 
 EXPLAIN VECTORIZED select * from DbConstraint.Table2;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2.a=[$0], table2.b=[$1])
   HiveTableScan(table=[[dbconstraint, table2]], table:alias=[table2])
 
 PLAN VECTORIZATION:
@@ -11272,7 +11292,7 @@ POSTHOOK: query: explain ddl select * from DbConstraint.Table2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: dbconstraint@table2
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS dbconstraint;
+CREATE DATABASE IF NOT EXISTS `dbconstraint`;
 CREATE TABLE `dbconstraint`.`table2`(
   `a` string, 
   `b` string)
@@ -11287,7 +11307,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE dbconstraint.table2 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `dbconstraint`.`table2` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11299,7 +11319,7 @@ EXPLAIN CBO select * from DbConstraint.Table2;
 
 
 EXPLAIN VECTORIZED select * from DbConstraint.Table2;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2.a=[$0], table2.b=[$1])
   HiveTableScan(table=[[dbconstraint, table2]], table:alias=[table2])
 
 PLAN VECTORIZATION:
@@ -11329,7 +11349,7 @@ POSTHOOK: query: explain ddl select * from DbConstraint.Table2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: dbconstraint@table2
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS dbconstraint;
+CREATE DATABASE IF NOT EXISTS `dbconstraint`;
 CREATE TABLE `dbconstraint`.`table2`(
   `a` string, 
   `b` string)
@@ -11344,7 +11364,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE dbconstraint.table2 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `dbconstraint`.`table2` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11353,7 +11373,7 @@ EXPLAIN select * from DbConstraint.Table2;
 EXPLAIN CBO select * from DbConstraint.Table2;
 
 EXPLAIN VECTORIZED select * from DbConstraint.Table2;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2.a=[$0], table2.b=[$1])
   HiveTableScan(table=[[dbconstraint, table2]], table:alias=[table2])
 
 PLAN VECTORIZATION:
@@ -11391,7 +11411,7 @@ POSTHOOK: query: explain ddl select * from DbConstraint.Table2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: dbconstraint@table2
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS dbconstraint;
+CREATE DATABASE IF NOT EXISTS `dbconstraint`;
 CREATE TABLE `dbconstraint`.`table2`(
   `a` string, 
   `b` string)
@@ -11406,7 +11426,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE dbconstraint.table2 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `dbconstraint`.`table2` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11415,7 +11435,7 @@ EXPLAIN select * from DbConstraint.Table2;
 EXPLAIN CBO select * from DbConstraint.Table2;
 
 EXPLAIN VECTORIZED select * from DbConstraint.Table2;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2.a=[$0], table2.b=[$1])
   HiveTableScan(table=[[dbconstraint, table2]], table:alias=[table2])
 
 PLAN VECTORIZATION:
@@ -11453,7 +11473,7 @@ POSTHOOK: query: explain ddl select * from DbConstraint.Table2
 POSTHOOK: type: QUERY
 POSTHOOK: Input: dbconstraint@table2
 #### A masked pattern was here ####
-CREATE DATABASE IF NOT EXISTS dbconstraint;
+CREATE DATABASE IF NOT EXISTS `dbconstraint`;
 CREATE TABLE `dbconstraint`.`table2`(
   `a` string, 
   `b` string)
@@ -11468,7 +11488,7 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE dbconstraint.table2 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `dbconstraint`.`table2` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11477,7 +11497,7 @@ EXPLAIN select * from DbConstraint.Table2;
 EXPLAIN CBO select * from DbConstraint.Table2;
 
 EXPLAIN VECTORIZED select * from DbConstraint.Table2;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table2.a=[$0], table2.b=[$1])
   HiveTableScan(table=[[dbconstraint, table2]], table:alias=[table2])
 
 PLAN VECTORIZATION:
@@ -11547,8 +11567,8 @@ LOCATION
 TBLPROPERTIES (
   'bucketing_version'='2', 
 #### A masked pattern was here ####
-ALTER TABLE default.table23 ADD CONSTRAINT pk23_1 PRIMARY KEY (b) DISABLE NOVALIDATE RELY;
-ALTER TABLE default.table23 UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
+ALTER TABLE `default`.`table23` ADD CONSTRAINT `pk23_1` PRIMARY KEY (`b`) DISABLE NOVALIDATE RELY;
+ALTER TABLE `default`.`table23` UPDATE STATISTICS SET('numRows'='0','rawDataSize'='0' );
 
 
 
@@ -11560,7 +11580,7 @@ EXPLAIN CBO select * from table23;
 
 
 EXPLAIN VECTORIZED select * from table23;
-CBO PLAN:HiveProject(a=[$0], b=[$1])
+CBO PLAN:HiveProject(table23.a=[$0], table23.b=[$1])
   HiveTableScan(table=[[default, table23]], table:alias=[table23])
 
 PLAN VECTORIZATION:

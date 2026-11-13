@@ -9,13 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec;
+
+import java.util.stream.LongStream;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.exec.mr.ExecMapperContext;
@@ -38,4 +41,13 @@ public interface HashTableLoader {
 
   void load(MapJoinTableContainer[] mapJoinTables, MapJoinTableContainerSerDe[] mapJoinTableSerdes)
       throws HiveException;
+
+  /**
+   * Returns the key count to size a map join hash table for: the smaller positive of the
+   * optimizer's estimate and the APPROXIMATE_INPUT_RECORDS counter, or -1 when neither is positive.
+   * An overestimate is allocated before the first row is read; an underestimate only costs a rehash.
+   */
+  static long keyCountForSizing(long estKeyCount, long inputRecords) {
+    return LongStream.of(estKeyCount, inputRecords).filter(count -> count > 0).min().orElse(-1);
+  }
 }

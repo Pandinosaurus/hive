@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.mr;
 
@@ -99,7 +100,7 @@ public class MapredLocalTask extends Task<MapredLocalWork> implements Serializab
   private final Map<String, FetchOperator> fetchOperators = new HashMap<String, FetchOperator>();
   protected HadoopJobExecHelper jobExecHelper;
   private JobConf job;
-  public static transient final Logger l4j = LoggerFactory.getLogger(MapredLocalTask.class);
+  public static final Logger l4j = LoggerFactory.getLogger(MapredLocalTask.class);
   static final String HIVE_LOCAL_TASK_CHILD_OPTS_KEY = "HIVE_LOCAL_TASK_CHILD_OPTS";
   public static MemoryMXBean memoryMXBean;
   private static final Logger LOG = LoggerFactory.getLogger(MapredLocalTask.class);
@@ -152,7 +153,7 @@ public class MapredLocalTask extends Task<MapredLocalWork> implements Serializab
 
   @Override
   public int execute() {
-    if (conf.getBoolVar(HiveConf.ConfVars.SUBMITLOCALTASKVIACHILD)) {
+    if (conf.getBoolVar(HiveConf.ConfVars.SUBMIT_LOCAL_TASK_VIA_CHILD)) {
       // send task off to another jvm
       return executeInChildVM();
     } else {
@@ -167,8 +168,8 @@ public class MapredLocalTask extends Task<MapredLocalWork> implements Serializab
       // generate the cmd line to run in the child jvm
       String hiveJar = conf.getJar();
 
-      String hadoopExec = conf.getVar(HiveConf.ConfVars.HADOOPBIN);
-      conf.setVar(ConfVars.HIVEADDEDJARS, Utilities.getResourceFiles(conf, SessionState.ResourceType.JAR));
+      String hadoopExec = conf.getVar(HiveConf.ConfVars.HADOOP_BIN);
+      conf.setVar(ConfVars.HIVE_ADDED_JARS, Utilities.getResourceFiles(conf, SessionState.ResourceType.JAR));
       // write out the plan to a local file
       Path planPath = new Path(context.getLocalTmpPath(), "plan.xml");
       MapredLocalWork plan = getWork();
@@ -235,8 +236,8 @@ public class MapredLocalTask extends Task<MapredLocalWork> implements Serializab
       // if we are running in local mode - then the amount of memory used
       // by the child jvm can no longer default to the memory used by the
       // parent jvm
-      // int hadoopMem = conf.getIntVar(HiveConf.ConfVars.HIVEHADOOPMAXMEM);
-      int hadoopMem = conf.getIntVar(HiveConf.ConfVars.HIVEHADOOPMAXMEM);
+      // int hadoopMem = conf.getIntVar(HiveConf.ConfVars.HIVE_HADOOP_MAX_MEM);
+      int hadoopMem = conf.getIntVar(HiveConf.ConfVars.HIVE_HADOOP_MAX_MEM);
       if (hadoopMem == 0) {
         // remove env var that would default child jvm to use parent's memory
         // as default. child jvm would use default memory for a hadoop client

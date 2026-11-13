@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.tools.metatool;
 
@@ -341,7 +342,7 @@ public class MetaToolTaskListExtTblLocs extends MetaToolTask {
    * Table-name followed by "*" indicates that all partitions are inside table location.
    * Otherwise, we record the number of partitions covered by table location.
    */
-  private JSONArray listOutputEntities(HashSet<String> locations) {
+  private JSONArray listOutputEntities(HashSet<String> locations) throws JSONException {
     List<String> listEntities = new ArrayList<>();
     for(String loc : locations) {
       DataLocation data = inputLocations.get(loc);

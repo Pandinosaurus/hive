@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -77,7 +78,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.kryo5.KryoException;
 import com.google.common.base.Preconditions;
 
 /**
@@ -177,7 +178,7 @@ public class MapJoinOperator extends AbstractMapJoinOperator<MapJoinDesc> implem
 
     // On Tez only: The hash map might already be cached in the container we run
     // the task in. On MR: The cache is a no-op.
-    String queryId = HiveConf.getVar(hconf, HiveConf.ConfVars.HIVEQUERYID);
+    String queryId = HiveConf.getVar(hconf, HiveConf.ConfVars.HIVE_QUERY_ID);
     // The cacheKey may have already been defined in the MapJoin conf spec
     // as part of the Shared Work Optimization if it can be reused among
     // multiple mapjoin operators. In that case, we take that key from conf
@@ -556,6 +557,10 @@ public class MapJoinOperator extends AbstractMapJoinOperator<MapJoinDesc> implem
               }
             } else {
               storage[pos] = emptyList;
+              if (pos != 0 && condn[pos - 1].getType() == JoinDesc.ANTI_JOIN) {
+                // For AntiJoin, we should call checkAndGenObject() when right side is empty.
+                joinNeeded = true;
+              }
             }
           } else {
             joinNeeded = true;

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore.ldap;
 
@@ -123,6 +124,21 @@ public final class LdapAuthenticationTestCase {
     public Builder userMembershipKey(String userMembershipKey) {
       return setVarOnce(MetastoreConf.ConfVars.METASTORE_PLAIN_LDAP_USERMEMBERSHIP_KEY,
           userMembershipKey);
+    }
+
+    public Builder userSearchFilter(String userSearchFilter) {
+      return setVarOnce(MetastoreConf.ConfVars.METASTORE_PLAIN_LDAP_USERSEARCHFILTER,
+          userSearchFilter);
+    }
+
+    public Builder groupSearchFilter(String groupSearchFilter) {
+      return setVarOnce(MetastoreConf.ConfVars.METASTORE_PLAIN_LDAP_GROUPSEARCHFILTER,
+          groupSearchFilter);
+    }
+
+    public Builder groupBaseDN(String groupBaseDN) {
+      return setVarOnce(MetastoreConf.ConfVars.METASTORE_PLAIN_LDAP_GROUPBASEDN,
+          groupBaseDN);
     }
 
     private Builder setVarOnce(MetastoreConf.ConfVars confVar, String value) {

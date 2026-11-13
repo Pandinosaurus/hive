@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.parquet.convert;
@@ -30,6 +31,8 @@ import org.apache.hadoop.io.Writable;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.Type;
+
+import static org.apache.hadoop.hive.serde.serdeConstants.LIST_TYPE_NAME;
 
 public class HiveCollectionConverter extends HiveGroupConverter {
   private final GroupType collectionType;
@@ -184,7 +187,7 @@ public class HiveCollectionConverter extends HiveGroupConverter {
     if (repeatedType.isPrimitive() ||
         (repeatedType.asGroupType().getFieldCount() != 1)) {
       return true;
-    } else if (repeatedType.getName().equals("array")) {
+    } else if (repeatedType.getName().equals(LIST_TYPE_NAME)) {
       return true; // existing avro data
     } else if (repeatedType.getName().equals(parentName + "_tuple")) {
       return true; // existing thrift data

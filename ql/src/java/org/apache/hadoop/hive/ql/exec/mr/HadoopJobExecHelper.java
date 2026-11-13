@@ -9,17 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.mr;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -143,7 +143,7 @@ public class HadoopJobExecHelper {
 
   public HadoopJobExecHelper(JobConf job, LogHelper console,
       Task<?> task, HadoopJobExecHook hookCallBack) {
-    this.queryId = HiveConf.getVar(job, HiveConf.ConfVars.HIVEQUERYID, "unknown-" + System.currentTimeMillis());
+    this.queryId = HiveConf.getVar(job, HiveConf.ConfVars.HIVE_QUERY_ID, "unknown-" + System.currentTimeMillis());
     this.job = job;
     this.console = console;
     this.task = task;
@@ -205,10 +205,10 @@ public class HadoopJobExecHelper {
       return false;
     }
     // check for number of created files
-    Counters.Counter cntr = ctrs.findCounter(HiveConf.getVar(job, ConfVars.HIVECOUNTERGROUP),
+    Counters.Counter cntr = ctrs.findCounter(HiveConf.getVar(job, ConfVars.HIVE_COUNTER_GROUP),
         Operator.HIVE_COUNTER_CREATED_FILES);
     long numFiles = cntr != null ? cntr.getValue() : 0;
-    long upperLimit = HiveConf.getLongVar(job, HiveConf.ConfVars.MAXCREATEDFILES);
+    long upperLimit = HiveConf.getLongVar(job, HiveConf.ConfVars.MAX_CREATED_FILES);
     if (numFiles > upperLimit) {
       errMsg.append("total number of created files now is " + numFiles + ", which exceeds ").append(upperLimit);
       return true;
@@ -226,7 +226,7 @@ public class HadoopJobExecHelper {
         job, HiveConf.ConfVars.HIVE_LOG_INCREMENTAL_PLAN_PROGRESS_INTERVAL, TimeUnit.MILLISECONDS);
     boolean fatal = false;
     StringBuilder errMsg = new StringBuilder();
-    long pullInterval = HiveConf.getLongVar(job, HiveConf.ConfVars.HIVECOUNTERSPULLINTERVAL);
+    long pullInterval = HiveConf.getLongVar(job, HiveConf.ConfVars.HIVE_COUNTERS_PULL_INTERVAL);
     boolean initializing = true;
     boolean initOutputPrinted = false;
     long cpuMsec = -1;
@@ -437,7 +437,7 @@ public class HadoopJobExecHelper {
       //Set the number of table rows affected in mapRedStats to display number of rows inserted.
       if (ctrs != null) {
         Counter counter = ctrs.findCounter(
-            ss.getConf().getVar(HiveConf.ConfVars.HIVECOUNTERGROUP),
+            ss.getConf().getVar(HiveConf.ConfVars.HIVE_COUNTER_GROUP),
             FileSinkOperator.TOTAL_TABLE_ROWS_WRITTEN);
         if (counter != null) {
           mapRedStats.setNumModifiedRows(counter.getValue());
@@ -474,7 +474,7 @@ public class HadoopJobExecHelper {
       }
       console.printInfo(getJobStartMsg(rj.getID()) + ", Tracking URL = "
           + rj.getTrackingURL());
-      console.printInfo("Kill Command = " + HiveConf.getVar(job, ConfVars.MAPREDBIN)
+      console.printInfo("Kill Command = " + HiveConf.getVar(job, ConfVars.MAPRED_BIN)
           + " job  -kill " + rj.getID());
     }
   }
@@ -557,14 +557,14 @@ public class HadoopJobExecHelper {
 
     // remove the pwd from conf file so that job tracker doesn't show this
     // logs
-    String pwd = HiveConf.getVar(job, HiveConf.ConfVars.METASTOREPWD);
+    String pwd = HiveConf.getVar(job, HiveConf.ConfVars.METASTORE_PWD);
     if (pwd != null) {
-      HiveConf.setVar(job, HiveConf.ConfVars.METASTOREPWD, "HIVE");
+      HiveConf.setVar(job, HiveConf.ConfVars.METASTORE_PWD, "HIVE");
     }
 
     // replace it back
     if (pwd != null) {
-      HiveConf.setVar(job, HiveConf.ConfVars.METASTOREPWD, pwd);
+      HiveConf.setVar(job, HiveConf.ConfVars.METASTORE_PWD, pwd);
     }
 
     // add to list of running jobs to kill in case of abnormal shutdown
@@ -654,7 +654,7 @@ public class HadoopJobExecHelper {
 
   private List<ClientStatsPublisher> getClientStatPublishers() {
     List<ClientStatsPublisher> clientStatsPublishers = new ArrayList<ClientStatsPublisher>();
-    String confString = HiveConf.getVar(job, HiveConf.ConfVars.CLIENTSTATSPUBLISHERS);
+    String confString = HiveConf.getVar(job, HiveConf.ConfVars.CLIENT_STATS_PUBLISHERS);
     confString = confString.trim();
     if (confString.equals("")) {
       return clientStatsPublishers;

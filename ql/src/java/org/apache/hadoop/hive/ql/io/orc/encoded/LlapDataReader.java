@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.orc.encoded;
@@ -26,11 +27,12 @@ import org.apache.orc.StripeInformation;
 import org.apache.orc.TypeDescription;
 import org.apache.orc.impl.OrcIndex;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /** An abstract data reader that IO formats can use to read bytes from underlying storage. */
-public interface LlapDataReader extends AutoCloseable, Cloneable {
+public interface LlapDataReader extends Closeable, Cloneable {
 
   /** Opens the DataReader, making it ready to use. */
   void open() throws IOException;
@@ -81,8 +83,10 @@ public interface LlapDataReader extends AutoCloseable, Cloneable {
    */
   LlapDataReader clone();
 
-  @Override
-  void close() throws IOException;
+  /**
+   * @return true if the reader was opened.
+   */
+  boolean isOpen();
 
   /**
    * Returns the compression codec used by this datareader.

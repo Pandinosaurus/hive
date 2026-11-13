@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.storage.concatenate;
@@ -23,6 +24,9 @@ import java.util.Map;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.TableName;
 import org.apache.hadoop.hive.ql.ddl.DDLDesc;
+import org.apache.hadoop.hive.ql.ddl.table.AbstractAlterTableDesc;
+import org.apache.hadoop.hive.ql.ddl.table.AlterTableType;
+import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.plan.Explain;
 import org.apache.hadoop.hive.ql.plan.ListBucketingCtx;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
@@ -34,7 +38,7 @@ import org.apache.hadoop.hive.ql.plan.Explain.Level;
  */
 @Explain(displayName = "Concatenate", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
 @SuppressWarnings("rawtypes")
-public class AlterTableConcatenateDesc implements DDLDesc {
+public class AlterTableConcatenateDesc extends AbstractAlterTableDesc implements DDLDesc {
   private final String tableName;
   private final Map<String, String> partitionSpec;
   private final ListBucketingCtx lbCtx;
@@ -44,7 +48,8 @@ public class AlterTableConcatenateDesc implements DDLDesc {
   private final TableDesc tableDesc;
 
   public AlterTableConcatenateDesc(TableName tableName, Map<String, String> partitionSpec, ListBucketingCtx lbCtx,
-      Path inputDir, Path outputDir, Class<? extends InputFormat> inputFormatClass, TableDesc tableDesc) {
+      Path inputDir, Path outputDir, Class<? extends InputFormat> inputFormatClass, TableDesc tableDesc) throws SemanticException {
+    super(AlterTableType.MERGEFILES, tableName, partitionSpec, null, false, false, null);
     this.tableName = tableName.getNotEmptyDbTable();
     this.partitionSpec = partitionSpec;
     this.lbCtx = lbCtx;
@@ -52,11 +57,6 @@ public class AlterTableConcatenateDesc implements DDLDesc {
     this.outputDir = outputDir;
     this.inputFormatClass = inputFormatClass;
     this.tableDesc = tableDesc;
-  }
-
-  @Explain(displayName = "table name")
-  public String getTableName() {
-    return tableName;
   }
 
   /** For Explain only. */

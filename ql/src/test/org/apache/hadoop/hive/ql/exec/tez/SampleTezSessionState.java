@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.tez;
@@ -24,14 +25,13 @@ import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.common.util.concurrent.SettableFuture;
+
 import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
-import javax.security.auth.login.LoginException;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.tez.dag.api.TezException;
-
 
 /**
  * This class is needed for writing junit tests. For testing the multi-session
@@ -49,8 +49,9 @@ public class SampleTezSessionState extends WmTezSession {
 
   public SampleTezSessionState(
       String sessionId, TezSessionPoolSession.Manager parent, HiveConf conf) {
-    super(sessionId, parent, (parent instanceof TezSessionPoolManager)
-        ? ((TezSessionPoolManager)parent).getExpirationTracker() : null, conf);
+    super(parent, (parent instanceof TezSessionPoolManager)
+        ? ((TezSessionPoolManager)parent).getExpirationTracker() : null,
+            new TezSessionState(sessionId, conf));
     this.sessionId = sessionId;
     this.hiveConf = conf;
     waitForAmRegFuture = createDefaultWaitForAmRegistryFuture();
@@ -72,7 +73,7 @@ public class SampleTezSessionState extends WmTezSession {
   }
 
   @Override
-  public void open() throws LoginException, IOException {
+  public void open() throws IOException {
     UserGroupInformation ugi = Utils.getUGI();
     user = ugi.getShortUserName();
     this.doAsEnabled = hiveConf.getBoolVar(HiveConf.ConfVars.HIVE_SERVER2_ENABLE_DOAS);
@@ -80,17 +81,17 @@ public class SampleTezSessionState extends WmTezSession {
   }
 
   @Override
-  public void open(HiveResources resources) throws LoginException, IOException {
+  public void open(HiveResources resources) throws IOException {
     open();
   }
 
   @Override
-  public void open(String[] additionalFiles) throws IOException, LoginException {
+  public void open(String[] additionalFiles) throws IOException {
     open();
   }
 
   @Override
-  void close(boolean keepTmpDir) throws TezException, IOException {
+  public void close(boolean keepTmpDir) throws TezException, IOException {
     open = keepTmpDir;
   }
 

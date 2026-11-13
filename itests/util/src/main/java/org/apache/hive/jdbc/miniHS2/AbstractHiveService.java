@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.jdbc.miniHS2;
@@ -36,15 +37,17 @@ public abstract class AbstractHiveService {
   private int binaryPort;
   private int httpPort;
   private int webPort;
+  private int healthCheckHAPort;
   private boolean startedHiveService = false;
   private List<String> addedProperties = new ArrayList<String>();
 
-  public AbstractHiveService(HiveConf hiveConf, String hostname, int binaryPort, int httpPort, int webPort) {
+  AbstractHiveService(HiveConf hiveConf, String hostname, int binaryPort, int httpPort, int webPort, int healthCheckHAPort) {
     this.hiveConf = hiveConf;
     this.hostname = hostname;
     this.binaryPort = binaryPort;
     this.httpPort = httpPort;
     this.webPort = webPort;
+    this.healthCheckHAPort = healthCheckHAPort;
   }
 
   /**
@@ -90,13 +93,13 @@ public abstract class AbstractHiveService {
    * @return
    */
   public Path getWareHouseDir() {
-    return new Path(hiveConf.getVar(ConfVars.METASTOREWAREHOUSE));
+    return new Path(hiveConf.getVar(ConfVars.METASTORE_WAREHOUSE));
   }
 
   public void setWareHouseDir(String wareHouseURI) {
     verifyNotStarted();
-    System.setProperty(ConfVars.METASTOREWAREHOUSE.varname, wareHouseURI);
-    hiveConf.setVar(ConfVars.METASTOREWAREHOUSE, wareHouseURI);
+    System.setProperty(ConfVars.METASTORE_WAREHOUSE.varname, wareHouseURI);
+    hiveConf.setVar(ConfVars.METASTORE_WAREHOUSE, wareHouseURI);
   }
 
   /**
@@ -140,6 +143,10 @@ public abstract class AbstractHiveService {
 
   public int getWebPort() {
     return webPort;
+  }
+
+  public int getHealthCheckHAPort() {
+    return healthCheckHAPort;
   }
 
   public boolean isStarted() {

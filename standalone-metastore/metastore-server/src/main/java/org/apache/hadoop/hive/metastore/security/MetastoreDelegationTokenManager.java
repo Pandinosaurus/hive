@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 
@@ -52,10 +53,14 @@ public class MetastoreDelegationTokenManager {
       "hive.cluster.delegation.token.store.zookeeper.keystore.location";
   public static final String DELEGATION_TOKEN_STORE_ZK_KEYSTORE_PASSWORD =
       "hive.cluster.delegation.token.store.zookeeper.keystore.password";
+  public static final String DELEGATION_TOKEN_STORE_ZK_KEYSTORE_TYPE =
+      "hive.cluster.delegation.token.store.zookeeper.keystore.type";
   public static final String DELEGATION_TOKEN_STORE_ZK_TRUSTSTORE_LOCATION =
       "hive.cluster.delegation.token.store.zookeeper.truststore.location";
   public static final String DELEGATION_TOKEN_STORE_ZK_TRUSTSTORE_PASSWORD =
       "hive.cluster.delegation.token.store.zookeeper.truststore.password";
+  public static final String DELEGATION_TOKEN_STORE_ZK_TRUSTSTORE_TYPE =
+      "hive.cluster.delegation.token.store.zookeeper.truststore.type";
 
   public MetastoreDelegationTokenManager() {
   }

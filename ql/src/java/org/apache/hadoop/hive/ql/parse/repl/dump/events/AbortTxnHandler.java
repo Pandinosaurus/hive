@@ -9,19 +9,23 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse.repl.dump.events;
 
 import org.apache.hadoop.hive.metastore.api.NotificationEvent;
 import org.apache.hadoop.hive.metastore.messaging.AbortTxnMessage;
+import org.apache.hadoop.hive.metastore.utils.StringUtils;
 import org.apache.hadoop.hive.ql.exec.repl.util.ReplUtils;
 import org.apache.hadoop.hive.ql.parse.repl.DumpType;
 import org.apache.hadoop.hive.ql.parse.repl.load.DumpMetaData;
+
+import java.util.List;
 
 class AbortTxnHandler extends AbstractEventHandler<AbortTxnMessage> {
 
@@ -39,6 +43,20 @@ class AbortTxnHandler extends AbstractEventHandler<AbortTxnMessage> {
     if (!ReplUtils.includeAcidTableInDump(withinContext.hiveConf)) {
       return;
     }
+
+    if (ReplUtils.filterTransactionOperations(withinContext.hiveConf)) {
+      String contextDbName = StringUtils.normalizeIdentifier(withinContext.replScope.getDbName());
+      List<Long> writeIds = eventMessage.getWriteIds();
+      List<String> dbsUpdated = eventMessage.getDbsUpdated()
+                                              .stream()
+                                              .map(StringUtils::normalizeIdentifier)
+                                              .toList();
+      if ((writeIds == null || writeIds.isEmpty() || !dbsUpdated.contains(contextDbName))) {
+        LOG.info("Filter out #{} ABORT_TXN message : {}", fromEventId(), eventMessageAsJSON);
+        return;
+      }
+    }
+
     LOG.info("Processing#{} ABORT_TXN message : {}", fromEventId(), eventMessageAsJSON);
     DumpMetaData dmd = withinContext.createDmd(this);
     dmd.setPayload(eventMessageAsJSON);

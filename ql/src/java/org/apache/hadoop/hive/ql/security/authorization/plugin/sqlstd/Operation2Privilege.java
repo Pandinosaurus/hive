@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd;
 
@@ -166,6 +167,8 @@ public class Operation2Privilege {
     // to output instead of input, adding owner requirement on output will catch that as well
     op2Priv.put(HiveOperationType.ALTERTABLE_ADDCOLS,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType. ALTERTABLE_DROPCOL,
+            PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERTABLE_REPLACECOLS,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERTABLE_RENAMECOL,
@@ -177,6 +180,8 @@ public class Operation2Privilege {
     op2Priv.put(HiveOperationType.ALTERTABLE_UPDATETABLESTATS,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERTABLE_UPDATEPARTSTATS,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_DROP_COL_STATS,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERTABLE_TOUCH,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
@@ -191,6 +196,8 @@ public class Operation2Privilege {
     op2Priv.put(HiveOperationType.ALTERTABLE_SETPARTSPEC,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERTABLE_EXECUTE,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_CONVERT,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERTABLE_SERIALIZER,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
@@ -237,6 +244,20 @@ public class Operation2Privilege {
     op2Priv.put(HiveOperationType.ALTERTABLE_DROPCONSTRAINT,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERTABLE_ADDCONSTRAINT,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_CREATEBRANCH,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_CREATETAG,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_DROPBRANCH,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_RENAMEBRANCH,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_REPLACESNAPSHOTREF,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_DROPTAG,
+        PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERTABLE_SET_WRITE_ORDER,
         PrivRequirement.newIOPrivRequirement(OWNER_PRIV_AR, OWNER_PRIV_AR));
 
     // require view ownership for alter/drop view
@@ -427,6 +448,7 @@ public class Operation2Privilege {
             arr(SQLPrivTypeGrant.SELECT_NOGRANT, SQLPrivTypeGrant.DELETE_NOGRANT), INS_NOGRANT_AR));
     op2Priv.put(HiveOperationType.ABORT_TRANSACTIONS, PrivRequirement.newIOPrivRequirement(null, null));
 
+    op2Priv.put(HiveOperationType.ABORT_COMPACTION, PrivRequirement.newIOPrivRequirement(null, null));
     // Handled via adminPrivOps (see above).
     op2Priv.put(HiveOperationType.KILL_QUERY, PrivRequirement.newIOPrivRequirement(null, null));
     // llap cluster info does not need admin privilege, since it is read only assigning privilege same as
@@ -453,8 +475,23 @@ public class Operation2Privilege {
     op2Priv.put(HiveOperationType.ALTERDATACONNECTOR, PrivRequirement.newIOPrivRequirement(null, ADMIN_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERDATACONNECTOR_OWNER, PrivRequirement.newIOPrivRequirement(null, ADMIN_PRIV_AR));
     op2Priv.put(HiveOperationType.ALTERDATACONNECTOR_URL, PrivRequirement.newIOPrivRequirement(null, ADMIN_PRIV_AR));
-    op2Priv.put(HiveOperationType.DESCDATACONNECTOR, PrivRequirement.newIOPrivRequirement(null, null));
+    // A connector definition carries the DBCP credentials for the remote source, so rendering one
+    // requires the same privilege as creating, altering or dropping it. SHOW CONNECTORS registers
+    // no entity of its own, so it is gated as a whole rather than per object.
+    op2Priv.put(HiveOperationType.DESCDATACONNECTOR, PrivRequirement.newIOPrivRequirement(ADMIN_PRIV_AR, null));
     op2Priv.put(HiveOperationType.SHOWDATACONNECTORS, PrivRequirement.newIOPrivRequirement(null, null));
+    adminPrivOps.add(HiveOperationType.SHOWDATACONNECTORS);
+
+    op2Priv.put(HiveOperationType.CREATECATALOG, PrivRequirement.newPrivRequirementList(
+        new PrivRequirement(INS_SEL_DEL_NOGRANT_AR, HivePrivilegeObjectType.DFS_URI),
+        new PrivRequirement(INS_SEL_DEL_NOGRANT_AR, HivePrivilegeObjectType.LOCAL_URI),
+        new PrivRequirement(ADMIN_PRIV_AR, IOType.OUTPUT)));
+    op2Priv.put(HiveOperationType.DROPCATALOG, PrivRequirement.newIOPrivRequirement(null, ADMIN_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERCATALOG_LOCATION, PrivRequirement.newIOPrivRequirement(null, ADMIN_PRIV_AR));
+    op2Priv.put(HiveOperationType.ALTERCATALOG_PROPERTIES, PrivRequirement.newIOPrivRequirement(null, ADMIN_PRIV_AR));
+    op2Priv.put(HiveOperationType.DESCCATALOG, PrivRequirement.newIOPrivRequirement(null, null));
+    op2Priv.put(HiveOperationType.SHOWCATALOGS, PrivRequirement.newIOPrivRequirement(null, null));
+    op2Priv.put(HiveOperationType.SWITCHCATALOG, PrivRequirement.newIOPrivRequirement(null, null));
   }
 
   /**

@@ -9,18 +9,22 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.lockmgr;
 
+import org.apache.hadoop.hive.TxnCoordinator;
 import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.common.ValidTxnWriteIdList;
+import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.CommitTxnRequest;
 import org.apache.hadoop.hive.metastore.api.GetOpenTxnsResponse;
+import org.apache.hadoop.hive.metastore.api.LockMaterializationRebuildRequest;
 import org.apache.hadoop.hive.metastore.api.LockResponse;
 import org.apache.hadoop.hive.metastore.api.TxnToWriteId;
 import org.apache.hadoop.hive.metastore.api.TxnType;
@@ -35,6 +39,8 @@ import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * An interface that allows Hive to manage transactions.  All classes
@@ -88,6 +94,8 @@ public interface HiveTxnManager {
    */
   void replRollbackTxn(String replPolicy, long srcTxnId) throws LockException;
 
+ Map<String, String> getReplayedTxnsForPolicy(String replPolicy) throws LockException;
+
  /**
   * Replicate Table Write Ids state to mark aborted write ids and writeid high water mark.
   * @param validWriteIdList Snapshot of writeid list when the table/partition is dumped.
@@ -98,6 +106,21 @@ public interface HiveTxnManager {
   */
   void replTableWriteIdState(String validWriteIdList, String dbName, String tableName, List<String> partNames)
           throws LockException;
+
+  /**
+   * Returns the transaction coordinator managed by this transaction manager.
+   * <p>
+   * This method must be used instead of directly instantiating a transaction
+   * coordinator, as the transaction manager is responsible for selecting and
+   * managing the coordinator’s lifecycle.
+   * @param clazz the transaction coordinator class to get or set
+   * @param creator a function that creates a new coordinator instance if one is not already set
+   * @return the instance of the transaction coordinator
+   */
+  default <T extends TxnCoordinator> T getOrSetTxnCoordinator(
+      Class<T> clazz, Function<IMetaStoreClient, T> creator) {
+    return null;
+  }
 
   /**
    * Get the lock manager.  This must be used rather than instantiating an
@@ -348,15 +371,39 @@ public interface HiveTxnManager {
   int getCurrentStmtId();
 
   /**
+   * Reset locally cached information.
+   * This is called before re-compilation after aquiring lock if the transaction is not
+   * outdated. The intent is to clear any cached information such as WriteIds (but not
+   * reseting/rolling back the overall transaction).
+   */
+   void clearCaches();
+
+  /**
    * Acquire the materialization rebuild lock for a given view. We need to specify the fully
    * qualified name of the materialized view and the open transaction ID so we can identify
    * uniquely the lock.
+   * @deprecated use acquireMaterializationRebuildLock(LockMaterializationRebuildRequest rqst)
    * @return the response from the metastore, where the lock id is equal to the txn id and
    * the status can be either ACQUIRED or NOT ACQUIRED
    */
+  @Deprecated
   LockResponse acquireMaterializationRebuildLock(String dbName, String tableName, long txnId)
       throws LockException;
 
+ /**
+  * Acquire the materialization rebuild lock for a given view. We need to specify the fully
+  * qualified name of the materialized view and the open transaction ID so we can identify
+  * uniquely the lock.
+  * @return the response from the metastore, where the lock id is equal to the txn id and
+  * the status can be either ACQUIRED or NOT ACQUIRED
+  */
+  LockResponse acquireMaterializationRebuildLock(LockMaterializationRebuildRequest rqst)
+      throws LockException;
+
+ /**
+  * Checks if there is a conflicting transaction
+  * @return latest txnId in conflict
+  */ 
  long getLatestTxnIdInConflict() throws LockException;
 
  /**
@@ -364,4 +411,9 @@ public interface HiveTxnManager {
   * @return
   */
  String getQueryid();
+
+ /**
+  * Persists txnWriteId hwm list into a backend DB to identify obsolete directories eligible for cleanup
+  */
+ void addWriteIdsToMinHistory(QueryPlan plan, ValidTxnWriteIdList txnWriteIds);
 }

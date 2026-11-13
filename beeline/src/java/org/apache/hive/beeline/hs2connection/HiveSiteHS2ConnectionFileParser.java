@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.beeline.hs2connection;
 
@@ -26,6 +27,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.ServerUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
+import org.apache.hadoop.hive.common.IPStackUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,8 +121,7 @@ public class HiveSiteHS2ConnectionFileParser implements HS2ConnectionFileParser 
     }
   }
 
-  private void addZKServiceDiscoveryHosts(Properties props)
-      throws BeelineHS2ConnectionFileParseException {
+  private void addZKServiceDiscoveryHosts(Properties props) {
     props.setProperty("serviceDiscoveryMode", "zooKeeper");
     props.setProperty("zooKeeperNamespace",
         HiveConf.getVar(conf, ConfVars.HIVE_SERVER2_ZOOKEEPER_NAMESPACE));
@@ -141,7 +142,9 @@ public class HiveSiteHS2ConnectionFileParser implements HS2ConnectionFileParser 
     }
     int portNum = getPortNum(
         "http".equalsIgnoreCase(HiveConf.getVar(conf, ConfVars.HIVE_SERVER2_TRANSPORT_MODE)));
-    props.setProperty("hosts", serverIPAddress.getHostName() + ":" + portNum);
+    // The hosts property is used in the constructing connection URL, serverIPAddress.getHostName() might return an 
+    // IP address depending on the configuration, hence need to properly escape a possible IPv6 literal
+    props.setProperty("hosts", IPStackUtils.concatHostPort(serverIPAddress.getHostName(), portNum));
   }
 
   private int getPortNum(boolean isHttp) {

@@ -6,14 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.metastore;
 
@@ -26,36 +27,47 @@ import java.text.MessageFormat;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
+import com.google.common.collect.Lists;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hive.common.StatsSetupConst;
+import org.apache.hadoop.hive.metastore.api.AbortTxnRequest;
 import org.apache.hadoop.hive.metastore.api.DataOperationType;
+import org.apache.hadoop.hive.metastore.api.GetPartitionsByNamesRequest;
+import org.apache.hadoop.hive.metastore.api.GetPartitionsByNamesResult;
 import org.apache.hadoop.hive.metastore.api.LockRequest;
 import org.apache.hadoop.hive.metastore.api.LockResponse;
 import org.apache.hadoop.hive.metastore.api.LockState;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.MetastoreException;
+import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.hive.metastore.txn.TxnErrorMsg;
 import org.apache.hadoop.hive.metastore.txn.TxnUtils;
 import org.apache.hadoop.hive.metastore.utils.FileUtils;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreServerUtils;
 import org.apache.hadoop.hive.metastore.utils.RetryUtilities;
+import org.apache.hadoop.hive.metastore.utils.SmallFilesWarningUtil;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 
 /**
  * Msck repairs table metadata specifically related to partition information to be in-sync with directories in table
@@ -123,15 +135,16 @@ public class Msck {
    * @param msckInfo Information about the tables and partitions we want to check for.
    * @return Returns 0 when execution succeeds and above 0 if it fails.
    */
-  public int repair(MsckInfo msckInfo) {
+  public int repair(MsckInfo msckInfo) throws TException, MetastoreException, IOException {
     CheckResult result = null;
     List<String> repairOutput = new ArrayList<>();
     String qualifiedTableName = null;
     boolean success = false;
     long txnId = -1;
-    long partitionExpirySeconds = msckInfo.getPartitionExpirySeconds();
+    long partitionExpirySeconds = -1;
     try {
       Table table = getMsc().getTable(msckInfo.getCatalogName(), msckInfo.getDbName(), msckInfo.getTableName());
+      partitionExpirySeconds = PartitionManagementTask.getRetentionPeriodInSeconds(table);
       qualifiedTableName = Warehouse.getCatalogQualifiedTableName(table);
       HiveMetaStoreChecker checker = new HiveMetaStoreChecker(getMsc(), getConf(), partitionExpirySeconds);
       // checkMetastore call will fill in result with partitions that are present in filesystem
@@ -159,7 +172,8 @@ public class Msck {
         if (acquireLock && lockRequired && table.getParameters() != null && transactionalTable) {
           // Running MSCK from beeline/cli will make DDL task acquire X lock when repair is enabled, since we are directly
           // invoking msck.repair() without SQL statement, we need to do the same and acquire X lock (repair is default)
-          LockRequest lockRequest = createLockRequest(msckInfo.getDbName(), msckInfo.getTableName());
+          LockRequest lockRequest = createLockRequest(msckInfo.getCatalogName(), msckInfo.getDbName(),
+              msckInfo.getTableName());
           txnId = lockRequest.getTxnid();
           try {
             LockResponse res = getMsc().lock(lockRequest);
@@ -237,6 +251,67 @@ public class Msck {
           }
         }
 
+        // Generate small files warnings only for partsNotInMs
+        try {
+          // Collect partition names
+          final List<String> names = partsNotInMs.stream()
+                  .map(CheckResult.PartitionResult::getPartitionName)
+                  .filter(Objects::nonNull)
+                  .filter(s -> !s.isEmpty())
+                  .collect(Collectors.toList());
+
+          int partFetchBatch = MetastoreConf.getIntVar(getConf(), MetastoreConf.ConfVars.BATCH_RETRIEVE_MAX);
+          if (partFetchBatch <= 0) {
+            partFetchBatch = Batchable.NO_BATCHING;
+          }
+          final Map<String, Partition> byName = new HashMap<>(names.size() * 2);
+          List<Partition> allParts = Batchable.runBatched(
+            partFetchBatch,
+            names,
+            new Batchable<String, Partition>() {
+              @Override
+              public List<Partition> run(List<String> batch) throws Exception {
+                final GetPartitionsByNamesRequest req =
+                    new GetPartitionsByNamesRequest(table.getDbName(), table.getTableName());
+                req.setNames(batch);
+                try {
+                  GetPartitionsByNamesResult res = getMsc().getPartitionsByNames(req);
+                  List<Partition> plist = (res != null && res.getPartitions() != null) ? res.getPartitions() : Collections.emptyList();
+                  return plist;
+                } catch (NoSuchObjectException e) {
+                  return Collections.emptyList();
+                }
+              }
+            });
+
+          for (Partition p : allParts) {
+            final String pName = Warehouse.makePartName(table.getPartitionKeys(), p.getValues());
+            byName.put(pName, p);
+          }
+
+          // Build small-files stats for partitions that have quick HMS stats.
+          final Map<String, String> smallFilesStats = new TreeMap<>();
+
+          for (String pName : names) {
+            final Partition p = byName.get(pName);
+            final Map<String, String> params = p.getParameters();
+            // Use util to decide if this partition should trigger the warning
+            if (SmallFilesWarningUtil.smallAverageFilesDetected(conf, params)) {
+              // We know stats exist and are well-formed; compute numbers for the value string
+              final long totalSize = Long.parseLong(params.get(StatsSetupConst.TOTAL_SIZE));
+              final long numFiles  = Long.parseLong(params.get(StatsSetupConst.NUM_FILES));
+              final long avg       = Math.floorDiv(totalSize, numFiles);
+              smallFilesStats.put(pName, "avgBytes=" + avg + ", partition total files=" + numFiles + ", totalBytes=" + totalSize);
+            }
+          }
+          msckInfo.setSmallFilesStats(smallFilesStats);
+        } catch (Exception e) {
+          // MSCK repair should continue regardless of small-files warnings outcome
+          LOG.warn("MSCK small-files post-add check failed: {}", e.toString());
+          msckInfo.setSmallFilesStats(Collections.emptyMap());
+        }
+
+
         if (msckInfo.isDropPartitions() && (!partsNotInFs.isEmpty() || !expiredPartitions.isEmpty())) {
           // MSCK called to drop stale paritions from metastore and there are
           // stale partitions.
@@ -268,6 +343,7 @@ public class Msck {
     } catch (Exception e) {
       LOG.warn("Failed to run metacheck: ", e);
       success = false;
+      throw e;
     } finally {
       if (result != null) {
         logResult(result);
@@ -300,9 +376,11 @@ public class Msck {
         ret = false;
       }
     } else {
+      LOG.info("txnId: {} failed. Aborting..", txnId);
+      AbortTxnRequest abortTxnRequest = new AbortTxnRequest(txnId);
+      abortTxnRequest.setErrorCode(TxnErrorMsg.ABORT_MSCK_TXN.getErrorCode());
       try {
-        LOG.info("txnId: {} failed. Aborting..", txnId);
-        getMsc().abortTxns(Lists.newArrayList(txnId));
+        getMsc().rollbackTxn(abortTxnRequest);
       } catch (Exception e) {
         LOG.error("Error while aborting txnId: {} for table: {}", txnId, qualifiedTableName, e);
         ret = false;
@@ -393,7 +471,7 @@ public class Msck {
     long maxAllocatedWriteId = getMsc().getMaxAllocatedWriteId(dbName, tableName);
     if (maxAllocatedWriteId > 0 && maxWriteIdOnFilesystem > maxAllocatedWriteId) {
       throw new MetaException(MessageFormat
-          .format("The maximum writeId {} in table {} is greater than the maximum allocated in the metastore {}",
+          .format("The highest writeId [{0}] in the table ''{1}'' is greater than the maximum writeId allocated in the metastore [{2}]",
               maxWriteIdOnFilesystem, tableName, maxAllocatedWriteId));
     }
     if (maxAllocatedWriteId == 0 && maxWriteIdOnFilesystem > 0) {
@@ -406,7 +484,8 @@ public class Msck {
     }
   }
 
-  private LockRequest createLockRequest(final String dbName, final String tableName) throws TException {
+  private LockRequest createLockRequest(final String catalogName, final String dbName,
+                                        final String tableName) throws TException {
     String username = getUserName();
     long txnId = getMsc().openTxn(username);
     String agentInfo = Thread.currentThread().getName();
@@ -415,6 +494,7 @@ public class Msck {
     requestBuilder.setTransactionId(txnId);
 
     LockComponentBuilder lockCompBuilder = new LockComponentBuilder()
+        .setCatName(catalogName)
       .setDbName(dbName)
       .setTableName(tableName)
       .setIsTransactional(true)
@@ -499,9 +579,9 @@ public class Msck {
     }.run();
   }
 
-  public static String makePartExpr(Map<String, String> spec)
+  private static String makePartExpr(Map<String, String> spec)
     throws MetaException {
-    StringBuilder suffixBuf = new StringBuilder();
+    StringBuilder suffixBuf = new StringBuilder("(");
     int i = 0;
     for (Map.Entry<String, String> e : spec.entrySet()) {
       if (e.getValue() == null || e.getValue().length() == 0) {
@@ -515,6 +595,7 @@ public class Msck {
       suffixBuf.append("'").append(Warehouse.escapePathName(e.getValue())).append("'");
       i++;
     }
+    suffixBuf.append(")");
     return suffixBuf.toString();
   }
 
@@ -533,7 +614,8 @@ public class Msck {
     if (expiredPartitions != null && !expiredPartitions.isEmpty()) {
       batchWork.addAll(expiredPartitions);
     }
-    PartitionDropOptions dropOptions = new PartitionDropOptions().deleteData(deleteData).ifExists(true);
+    PartitionDropOptions dropOptions = new PartitionDropOptions().deleteData(deleteData)
+        .ifExists(true).returnResults(false);
     new RetryUtilities.ExponentiallyDecayingBatchWork<Void>(batchSize, decayingFactor, maxRetries) {
       @Override
       public Void execute(int size) throws MetastoreException {
@@ -586,7 +668,7 @@ public class Msck {
       }
 
       private List<Pair<Integer, byte[]>> getPartitionExpr(final List<String> parts) throws MetaException {
-        List<Pair<Integer, byte[]>> expr = new ArrayList<>(parts.size());
+        StringBuilder exprBuilder = new StringBuilder();
         for (int i = 0; i < parts.size(); i++) {
           String partName = parts.get(i);
           Map<String, String> partSpec = Warehouse.makeSpecFromName(partName);
@@ -594,9 +676,13 @@ public class Msck {
           if (LOG.isDebugEnabled()) {
             LOG.debug("Generated partExpr: {} for partName: {}", partExpr, partName);
           }
-          expr.add(Pair.of(i, partExpr.getBytes(StandardCharsets.UTF_8)));
+          if (i > 0) {
+            exprBuilder.append(" OR ");
+          }
+          exprBuilder.append(partExpr);
         }
-        return expr;
+        return Lists.newArrayList(Pair.of(parts.size(),
+            exprBuilder.toString().getBytes(StandardCharsets.UTF_8)));
       }
     }.run();
   }

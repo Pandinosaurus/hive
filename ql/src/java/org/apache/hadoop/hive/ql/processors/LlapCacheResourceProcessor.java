@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.processors;
@@ -51,6 +52,7 @@ import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.Schema;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveOperationType;
 import org.apache.hadoop.hive.ql.session.SessionState;
+import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.io.retry.RetryPolicies;
 import org.apache.hadoop.io.retry.RetryPolicy;
 import org.apache.hadoop.net.NetUtils;
@@ -122,8 +124,8 @@ public class LlapCacheResourceProcessor implements CommandProcessor {
 
   private Schema getSchema() {
     Schema sch = new Schema();
-    sch.addToFieldSchemas(new FieldSchema("hostName", "string", ""));
-    sch.addToFieldSchemas(new FieldSchema("purgedMemoryBytes", "string", ""));
+    sch.addToFieldSchemas(new FieldSchema("hostName", serdeConstants.STRING_TYPE_NAME, ""));
+    sch.addToFieldSchemas(new FieldSchema("purgedMemoryBytes", serdeConstants.STRING_TYPE_NAME, ""));
     sch.putToProperties(SERIALIZATION_NULL_FORMAT, defaultNullString);
     return sch;
   }

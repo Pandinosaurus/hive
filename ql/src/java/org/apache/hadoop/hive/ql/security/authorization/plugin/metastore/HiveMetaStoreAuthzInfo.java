@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -49,6 +49,15 @@ public class HiveMetaStoreAuthzInfo {
     this.outputHObjs      = outputHObjs;
     this.commandString    = commandString;
     this.hiveAuthzContext = createHiveAuthzContext();
+  }
+
+  public HiveMetaStoreAuthzInfo(PreEventContext preEventContext, HiveOperationType operationType, List<HivePrivilegeObject> inputHObjs, List<HivePrivilegeObject> outputHObjs, String commandString, HiveAuthzContext hiveAuthzContext) {
+    this.preEventContext = preEventContext;
+    this.operationType = operationType;
+    this.inputHObjs = inputHObjs;
+    this.outputHObjs = outputHObjs;
+    this.commandString = commandString;
+    this.hiveAuthzContext = hiveAuthzContext;
   }
 
   public HiveOperationType getOperationType() {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.common.util;
@@ -38,27 +39,27 @@ public class TestBloomFilter {
 
   @Test(expected = IllegalArgumentException.class)
   public void testBloomIllegalArg1() {
-    BloomFilter bf = new BloomFilter(0, 0);
+    BloomFilter bf = BloomFilter.build(0, 0);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testBloomIllegalArg2() {
-    BloomFilter bf = new BloomFilter(0, 0.1);
+    BloomFilter bf = BloomFilter.build(0, 0.1);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testBloomIllegalArg3() {
-    BloomFilter bf = new BloomFilter(1, 0.0);
+    BloomFilter bf = BloomFilter.build(1, 0.0);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testBloomIllegalArg4() {
-    BloomFilter bf = new BloomFilter(1, 1.0);
+    BloomFilter bf = BloomFilter.build(1, 1.0);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testBloomIllegalArg5() {
-    BloomFilter bf = new BloomFilter(-1, -1);
+    BloomFilter bf = BloomFilter.build(-1, -1);
   }
 
 
@@ -99,7 +100,7 @@ public class TestBloomFilter {
 
   @Test
   public void testBloomFilterBytes() {
-    BloomFilter bf = new BloomFilter(10000);
+    BloomFilter bf = BloomFilter.build(10000);
     byte[] val = new byte[]{1, 2, 3};
     byte[] val1 = new byte[]{1, 2, 3, 4};
     byte[] val2 = new byte[]{1, 2, 3, 4, 5};
@@ -150,7 +151,7 @@ public class TestBloomFilter {
 
   @Test
   public void testBloomFilterByte() {
-    BloomFilter bf = new BloomFilter(10000);
+    BloomFilter bf = BloomFilter.build(10000);
     byte val = Byte.MIN_VALUE;
     byte val1 = 1;
     byte val2 = 2;
@@ -196,7 +197,7 @@ public class TestBloomFilter {
 
   @Test
   public void testBloomFilterInt() {
-    BloomFilter bf = new BloomFilter(10000);
+    BloomFilter bf = BloomFilter.build(10000);
     int val = Integer.MIN_VALUE;
     int val1 = 1;
     int val2 = 2;
@@ -242,7 +243,7 @@ public class TestBloomFilter {
 
   @Test
   public void testBloomFilterLong() {
-    BloomFilter bf = new BloomFilter(10000);
+    BloomFilter bf = BloomFilter.build(10000);
     long val = Long.MIN_VALUE;
     long val1 = 1;
     long val2 = 2;
@@ -288,7 +289,7 @@ public class TestBloomFilter {
 
   @Test
   public void testBloomFilterFloat() {
-    BloomFilter bf = new BloomFilter(10000);
+    BloomFilter bf = BloomFilter.build(10000);
     float val = Float.MIN_VALUE;
     float val1 = 1.1f;
     float val2 = 2.2f;
@@ -334,7 +335,7 @@ public class TestBloomFilter {
 
   @Test
   public void testBloomFilterDouble() {
-    BloomFilter bf = new BloomFilter(10000);
+    BloomFilter bf = BloomFilter.build(10000);
     double val = Double.MIN_VALUE;
     double val1 = 1.1d;
     double val2 = 2.2d;
@@ -380,7 +381,7 @@ public class TestBloomFilter {
 
   @Test
   public void testBloomFilterString() {
-    BloomFilter bf = new BloomFilter(100000);
+    BloomFilter bf = BloomFilter.build(100000);
     String val = "bloo";
     String val1 = "bloom fil";
     String val2 = "bloom filter";
@@ -426,7 +427,7 @@ public class TestBloomFilter {
 
   @Test
   public void testMerge() {
-    BloomFilter bf = new BloomFilter(10000);
+    BloomFilter bf = BloomFilter.build(10000);
     String val = "bloo";
     String val1 = "bloom fil";
     String val2 = "bloom filter";
@@ -436,7 +437,7 @@ public class TestBloomFilter {
     bf.addString(val2);
     bf.addString(val3);
 
-    BloomFilter bf2 = new BloomFilter(10000);
+    BloomFilter bf2 = BloomFilter.build(10000);
     String v = "2_bloo";
     String v1 = "2_bloom fil";
     String v2 = "2_bloom filter";
@@ -469,7 +470,7 @@ public class TestBloomFilter {
 
   @Test
   public void testSerialize() throws Exception {
-    BloomFilter bf1 = new BloomFilter(10000);
+    BloomFilter bf1 = BloomFilter.build(10000);
     String[] inputs = {
       "bloo",
       "bloom fil",
@@ -495,8 +496,8 @@ public class TestBloomFilter {
 
   @Test
   public void testMergeBloomFilterBytes() throws Exception {
-    BloomFilter bf1 = new BloomFilter(10000);
-    BloomFilter bf2 = new BloomFilter(10000);
+    BloomFilter bf1 = BloomFilter.build(10000);
+    BloomFilter bf2 = BloomFilter.build(10000);
 
     String[] inputs1 = {
       "bloo",
@@ -545,8 +546,8 @@ public class TestBloomFilter {
 
   @Test
   public void testMergeBloomFilterBytesFailureCases() throws Exception {
-    BloomFilter bf1 = new BloomFilter(1000);
-    BloomFilter bf2 = new BloomFilter(200);
+    BloomFilter bf1 = BloomFilter.build(1000);
+    BloomFilter bf2 = BloomFilter.build(200);
     // Create bloom filter with same number of bits, but different # hash functions
     long[] bits = new long[bf1.getBitSet().length];
     BloomFilter bf3 = new BloomFilter(bits, bf1.getNumHashFunctions() + 1);
@@ -588,7 +589,7 @@ public class TestBloomFilter {
   @Test
   public void testFpp1K() {
     int size = 1000;
-    BloomFilter bf = new BloomFilter(size);
+    BloomFilter bf = BloomFilter.build(size);
     int fp;
     for (int i = 0; i < size; i++) {
       bf.addLong(i);
@@ -612,7 +613,7 @@ public class TestBloomFilter {
   @Test
   public void testFpp10K() {
     int size = 10_000;
-    BloomFilter bf = new BloomFilter(size);
+    BloomFilter bf = BloomFilter.build(size);
     int fp;
     for (int i = 0; i < size; i++) {
       bf.addLong(i);
@@ -636,7 +637,7 @@ public class TestBloomFilter {
   @Test
   public void testFpp1M() {
     int size = 1_000_000;
-    BloomFilter bf = new BloomFilter(size);
+    BloomFilter bf = BloomFilter.build(size);
     int fp;
     for (int i = 0; i < size; i++) {
       bf.addLong(i);
@@ -660,7 +661,7 @@ public class TestBloomFilter {
   @Test
   public void testFpp10M() {
     int size = 10_000_000;
-    BloomFilter bf = new BloomFilter(size);
+    BloomFilter bf = BloomFilter.build(size);
     int fp;
     for (int i = 0; i < size; i++) {
       bf.addLong(i);

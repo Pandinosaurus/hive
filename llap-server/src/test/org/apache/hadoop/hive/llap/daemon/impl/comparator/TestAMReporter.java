@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.llap.daemon.impl.comparator;
 
@@ -71,9 +72,9 @@ public class TestAMReporter {
     String am2Location = "am2";
     String umbilicalUser = "user";
     QueryIdentifier queryId = new QueryIdentifier("app", 0);
-    amReporter.registerTask(false,am1Location, am1Port, umbilicalUser, null, queryId,
+    amReporter.registerTask(am1Location, am1Port, umbilicalUser, null, queryId,
       mock(TezTaskAttemptID.class), false);
-    amReporter.registerTask(false,am2Location, am2Port, umbilicalUser, null, queryId,
+    amReporter.registerTask(am2Location, am2Port, umbilicalUser, null, queryId,
       mock(TezTaskAttemptID.class), false);
 
     Thread.currentThread().sleep(2000);

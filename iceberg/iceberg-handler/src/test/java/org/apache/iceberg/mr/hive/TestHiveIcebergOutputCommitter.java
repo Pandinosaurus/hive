@@ -43,6 +43,7 @@ import org.apache.iceberg.hadoop.HadoopTables;
 import org.apache.iceberg.mr.Catalogs;
 import org.apache.iceberg.mr.InputFormatConfig;
 import org.apache.iceberg.mr.TestHelper;
+import org.apache.iceberg.mr.hive.test.utils.HiveIcebergTestUtils;
 import org.apache.iceberg.mr.hive.writer.HiveIcebergWriter;
 import org.apache.iceberg.mr.hive.writer.WriterBuilder;
 import org.apache.iceberg.mr.hive.writer.WriterRegistry;
@@ -224,7 +225,7 @@ public class TestHiveIcebergOutputCommitter {
     JobConf conf = new JobConf();
     conf.setNumMapTasks(taskNum);
     conf.setNumReduceTasks(0);
-    conf.set(HiveConf.ConfVars.HIVEQUERYID.varname, QUERY_ID);
+    conf.set(HiveConf.ConfVars.HIVE_QUERY_ID.varname, QUERY_ID);
     conf.set(InputFormatConfig.OUTPUT_TABLES, table.name());
     conf.set(InputFormatConfig.OPERATION_TYPE_PREFIX + table.name(), Context.Operation.OTHER.name());
     conf.set(InputFormatConfig.TABLE_CATALOG_PREFIX + table.name(),
@@ -239,7 +240,7 @@ public class TestHiveIcebergOutputCommitter {
     tableDesc.getProperties().setProperty(InputFormatConfig.CATALOG_NAME, table.properties()
             .get(InputFormatConfig.CATALOG_NAME));
     HiveIcebergStorageHandler.overlayTableProperties(conf, tableDesc, propMap);
-    propMap.forEach((key, value) -> conf.set(key, value));
+    propMap.forEach(conf::set);
     return conf;
   }
 
@@ -261,7 +262,7 @@ public class TestHiveIcebergOutputCommitter {
                                     JobConf conf, OutputCommitter committer) throws IOException {
     List<Record> expected = Lists.newArrayListWithExpectedSize(RECORD_NUM * taskNum);
 
-    Table table = HiveIcebergStorageHandler.table(conf, name);
+    Table table = HiveTableUtil.deserializeTable(conf, name);
     Schema schema = HiveIcebergStorageHandler.schema(conf);
 
     for (int i = 0; i < taskNum; ++i) {
@@ -272,10 +273,9 @@ public class TestHiveIcebergOutputCommitter {
       }
 
       TaskAttemptID taskId = new TaskAttemptID(JOB_ID.getJtIdentifier(), JOB_ID.getId(), TaskType.MAP, i, attemptNum);
-      HiveIcebergWriter testWriter = WriterBuilder.builderFor(table)
+      HiveIcebergWriter testWriter = WriterBuilder.builderFor(table, conf::get)
           .attemptID(TezUtil.taskAttemptWrapper(taskId))
           .queryId("Q_ID")
-          .tableName(conf.get(Catalogs.NAME))
           .operation(Context.Operation.OTHER)
           .build();
 
@@ -298,8 +298,10 @@ public class TestHiveIcebergOutputCommitter {
     return expected;
   }
 
-  private List<Record> writeRecords(String name, int taskNum, int attemptNum, boolean commitTasks, boolean abortTasks,
-                                    JobConf conf) throws IOException {
-    return writeRecords(name, taskNum, attemptNum, commitTasks, abortTasks, conf, new HiveIcebergOutputCommitter());
+  private List<Record> writeRecords(
+      String name, int taskNum, int attemptNum, boolean commitTasks, boolean abortTasks, JobConf conf)
+      throws IOException {
+    return writeRecords(name, taskNum, attemptNum, commitTasks, abortTasks, conf,
+        new HiveIcebergOutputCommitter());
   }
 }

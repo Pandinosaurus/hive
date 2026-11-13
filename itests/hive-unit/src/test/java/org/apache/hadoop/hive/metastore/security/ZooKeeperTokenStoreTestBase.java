@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.security;
@@ -54,6 +55,7 @@ public abstract class ZooKeeperTokenStoreTestBase {
   private static final String LOCALHOST_KEY_STORE_NAME = "keystore.jks";
   private static final String TRUST_STORE_NAME = "truststore.jks";
   private static final String KEY_STORE_TRUST_STORE_PASSWORD = "HiveJdbc";
+  private static final String KEY_STORE_TRUST_STORE_TYPE = "JKS";
 
   private static MiniZooKeeperCluster zkCluster = null;
   private static int zkPort = -1;
@@ -96,10 +98,14 @@ public abstract class ZooKeeperTokenStoreTestBase {
           dataFileDir + File.separator + LOCALHOST_KEY_STORE_NAME);
       conf.set(MetastoreDelegationTokenManager.DELEGATION_TOKEN_STORE_ZK_KEYSTORE_PASSWORD,
           KEY_STORE_TRUST_STORE_PASSWORD);
+      conf.set(MetastoreDelegationTokenManager.DELEGATION_TOKEN_STORE_ZK_KEYSTORE_TYPE,
+          KEY_STORE_TRUST_STORE_TYPE);
       conf.set(MetastoreDelegationTokenManager.DELEGATION_TOKEN_STORE_ZK_TRUSTSTORE_LOCATION,
           dataFileDir + File.separator + TRUST_STORE_NAME);
       conf.set(MetastoreDelegationTokenManager.DELEGATION_TOKEN_STORE_ZK_TRUSTSTORE_PASSWORD,
           KEY_STORE_TRUST_STORE_PASSWORD);
+      conf.set(MetastoreDelegationTokenManager.DELEGATION_TOKEN_STORE_ZK_TRUSTSTORE_TYPE,
+          KEY_STORE_TRUST_STORE_TYPE);
       conf.set(MetastoreDelegationTokenManager.DELEGATION_TOKEN_STORE_ZK_SSL_ENABLE, "true");
 
     }

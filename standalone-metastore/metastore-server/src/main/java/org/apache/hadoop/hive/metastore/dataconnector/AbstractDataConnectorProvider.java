@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.dataconnector;
@@ -36,7 +37,6 @@ import java.util.Map;
 public abstract class AbstractDataConnectorProvider implements IDataConnectorProvider {
   protected String scoped_db = null;
   protected Object  handle = null;
-  protected boolean isOpen = false;
   protected DataConnector connector = null;
   protected String driverClassName = null;
 
@@ -149,4 +149,7 @@ public abstract class AbstractDataConnectorProvider implements IDataConnectorPro
   abstract protected String getOutputClass();
 
   abstract protected String getTableLocation(String tblName);
+
+  abstract protected String getDatasourceType();
+
 }

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql;
@@ -23,11 +24,11 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
@@ -36,9 +37,7 @@ import org.apache.hadoop.hive.ql.lockmgr.DbTxnManager;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,17 +88,18 @@ public class TestDatabaseTableDefault {
 
     @Before
     public void setUp() throws Exception {
-        hiveConf = new HiveConf(this.getClass());
+        hiveConf = new HiveConfForTest(getClass());
         HiveConf.setBoolVar(hiveConf, HiveConf.ConfVars.CREATE_TABLES_AS_ACID, true);
         HiveConf.setBoolVar(hiveConf, HiveConf.ConfVars.HIVE_CREATE_TABLES_AS_INSERT_ONLY, true);
         HiveConf.setBoolVar(hiveConf, HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY, true);
-        hiveConf.set(HiveConf.ConfVars.HIVEDEFAULTMANAGEDFILEFORMAT.varname, "ORC");
+        hiveConf.set(HiveConf.ConfVars.HIVE_DEFAULT_MANAGED_FILEFORMAT.varname, "ORC");
         hiveConf.setVar(HiveConf.ConfVars.HIVE_TXN_MANAGER, DbTxnManager.class.getName());
         hiveConf.set(HiveConf.ConfVars.METASTORE_CLIENT_CAPABILITIES.varname, "HIVEFULLACIDREAD,HIVEFULLACIDWRITE,HIVECACHEINVALIDATE,HIVEMANAGESTATS,HIVEMANAGEDINSERTWRITE,HIVEMANAGEDINSERTREAD");
         TestTxnDbUtil.setConfValues(hiveConf);
         TestTxnDbUtil.prepDb(hiveConf);
 
         SessionState.start(new SessionState(hiveConf));
+        MetastoreConf.setBoolVar(hiveConf, ConfVars.HIVE_IN_TEST, false);
         d = DriverFactory.newDriver(hiveConf);
 
         wh = new File(System.getProperty("java.io.tmpdir") + File.separator +
@@ -112,7 +112,6 @@ public class TestDatabaseTableDefault {
 
         MetastoreConf.setVar(hiveConf, ConfVars.METASTORE_METADATA_TRANSFORMER_CLASS,
                 "org.apache.hadoop.hive.metastore.MetastoreDefaultTransformer");
-        MetastoreConf.setBoolVar(hiveConf, ConfVars.HIVE_IN_TEST, false);
         MetastoreConf.setVar(hiveConf, ConfVars.WAREHOUSE, wh.getCanonicalPath());
         MetastoreConf.setVar(hiveConf, ConfVars.WAREHOUSE_EXTERNAL, ext_wh.getCanonicalPath());
         MetastoreConf.setBoolVar(hiveConf, MetastoreConf.ConfVars.CREATE_TABLES_AS_ACID, true);

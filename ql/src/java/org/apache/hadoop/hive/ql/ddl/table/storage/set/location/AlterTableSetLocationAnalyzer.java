@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.table.storage.set.location;
@@ -56,8 +57,7 @@ public class AlterTableSetLocationAnalyzer extends AbstractAlterTableAnalyzer {
     } catch (FileNotFoundException e) {
       // Only check host/port pair is valid, whether the file exist or not does not matter
     } catch (Exception e) {
-      throw new SemanticException("Cannot connect to namenode, please check if host/port pair for " + newLocation +
-          " is valid", e);
+      throw new SemanticException("Can not establish connection to server for " + newLocation , e);
     }
 
     outputs.add(toWriteEntity(newLocation));

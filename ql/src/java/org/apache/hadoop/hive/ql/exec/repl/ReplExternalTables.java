@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.repl;
 
@@ -23,7 +24,10 @@ import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.TableType;
+import org.apache.hadoop.hive.metastore.api.GetPartitionsRequest;
+import org.apache.hadoop.hive.metastore.api.GetProjectionsSpec;
 import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
+import org.apache.hadoop.hive.metastore.client.builder.GetPartitionProjectionsSpecBuilder;
 import org.apache.hadoop.hive.metastore.utils.StringUtils;
 import org.apache.hadoop.hive.ql.ErrorMsg;
 import org.apache.hadoop.hive.ql.exec.repl.util.FileList;
@@ -36,6 +40,7 @@ import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.parse.repl.PathBuilder;
 import org.apache.hadoop.hive.ql.parse.repl.dump.Utils;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +48,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,7 +90,7 @@ public class ReplExternalTables {
     }
     if (!TableType.EXTERNAL_TABLE.equals(table.getTableType())) {
       throw new IllegalArgumentException(
-              "only External tables can be writen via this writer, provided table is " + table
+              "only External tables can be written via this writer, provided table is " + table
                       .getTableType());
     }
     Path fullyQualifiedDataLocation = PathBuilder.fullyQualifiedHDFSUri(table.getDataLocation(), FileSystem.get(hiveConf));
@@ -97,15 +103,20 @@ public class ReplExternalTables {
     }
     if (table.isPartitioned()) {
       List<Partition> partitions;
+      GetProjectionsSpec projectionSpec = new GetPartitionProjectionsSpecBuilder()
+              .addProjectFieldList(Arrays.asList("sd.location")).build();
+      GetPartitionsRequest request = new GetPartitionsRequest(table.getDbName(), table.getTableName(),
+              projectionSpec, null);
+      request.setCatName(table.getCatName());
       try {
-        partitions = Hive.get(hiveConf).getPartitions(table);
-      } catch (HiveException e) {
+        partitions = Hive.get(hiveConf).getPartitionsWithSpecs(table, request);
+      } catch (HiveException | TException e) {
         if (e.getCause() instanceof NoSuchObjectException) {
           // If table is dropped when dump in progress, just skip partitions data location dump
           LOG.debug(e.getMessage());
           return;
         }
-        throw e;
+        throw new HiveException(e);
       }
 
       for (Partition partition : partitions) {

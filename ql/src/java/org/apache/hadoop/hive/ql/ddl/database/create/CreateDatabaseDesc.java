@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.database.create;
@@ -35,6 +36,7 @@ import javax.xml.crypto.Data;
 public class CreateDatabaseDesc implements DDLDesc, Serializable {
   private static final long serialVersionUID = 1L;
 
+  private final String catalogName;
   private final String databaseName;
   private final String comment;
   private final String locationUri;
@@ -45,13 +47,14 @@ public class CreateDatabaseDesc implements DDLDesc, Serializable {
   private final String remoteDbName;
   private final Map<String, String> dbProperties;
 
-  public CreateDatabaseDesc(String databaseName, String comment, String locationUri, String managedLocationUri,
+  public CreateDatabaseDesc(String catalogName, String databaseName, String comment, String locationUri, String managedLocationUri,
       boolean ifNotExists, Map<String, String> dbProperties) {
-    this(databaseName, comment, locationUri, managedLocationUri, ifNotExists, dbProperties, "NATIVE", null, null);
+    this(catalogName, databaseName, comment, locationUri, managedLocationUri, ifNotExists, dbProperties, "NATIVE", null, null);
   }
 
-  public CreateDatabaseDesc(String databaseName, String comment, String locationUri, String managedLocationUri,
+  public CreateDatabaseDesc(String catalogName, String databaseName, String comment, String locationUri, String managedLocationUri,
       boolean ifNotExists, Map<String, String> dbProperties, String dbtype, String connectorName, String remoteDbName) {
+    this.catalogName = catalogName;
     this.databaseName = databaseName;
     this.comment = comment;
     if (dbtype != null && dbtype.equalsIgnoreCase("REMOTE")) {
@@ -78,6 +81,11 @@ public class CreateDatabaseDesc implements DDLDesc, Serializable {
 
   public Map<String, String> getDatabaseProperties() {
     return dbProperties;
+  }
+
+  @Explain(displayName="catalogName", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
+  public String getCatalogName() {
+    return catalogName;
   }
 
   @Explain(displayName="name", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })

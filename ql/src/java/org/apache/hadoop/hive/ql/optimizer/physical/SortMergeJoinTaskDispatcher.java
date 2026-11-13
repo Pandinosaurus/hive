@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.physical;
 
@@ -73,13 +74,12 @@ public class SortMergeJoinTaskDispatcher extends AbstractJoinTaskDispatcher impl
   // plan are fixed. The operator tree will still contain the SMBJoinOperator
   private void genSMBJoinWork(MapWork currWork, SMBMapJoinOperator smbJoinOp) {
     // Remove the paths which are not part of aliasToPartitionInfo
-    Map<String, PartitionDesc> aliasToPartitionInfo = currWork.getAliasToPartnInfo();
     List<Path> removePaths = new ArrayList<>();
 
     for (Map.Entry<Path, List<String>> entry : currWork.getPathToAliases().entrySet()) {
       boolean keepPath = false;
       for (String alias : entry.getValue()) {
-        if (aliasToPartitionInfo.containsKey(alias)) {
+        if (currWork.hasPartitionDesc(alias)) {
           keepPath = true;
           break;
         }
@@ -99,7 +99,7 @@ public class SortMergeJoinTaskDispatcher extends AbstractJoinTaskDispatcher impl
     }
 
     for (String alias : removeAliases) {
-      currWork.getAliasToPartnInfo().remove(alias);
+      currWork.removeAlias(alias);
       currWork.getAliasToWork().remove(alias);
     }
 
@@ -115,7 +115,7 @@ public class SortMergeJoinTaskDispatcher extends AbstractJoinTaskDispatcher impl
       // Add the entry in mapredwork
       currWork.getAliasToWork().put(alias, op);
 
-      PartitionDesc partitionInfo = currWork.getAliasToPartnInfo().get(alias);
+      PartitionDesc partitionInfo = currWork.getPartitionDesc(alias);
       if (fetchWork.getTblDir() != null) {
         currWork.mergeAliasedInput(alias, fetchWork.getTblDir(), partitionInfo);
       } else {
@@ -274,7 +274,7 @@ public class SortMergeJoinTaskDispatcher extends AbstractJoinTaskDispatcher impl
           pathToAliases, aliasToSize);
 
       long ThresholdOfSmallTblSizeSum = HiveConf.getLongVar(conf,
-          HiveConf.ConfVars.HIVESMALLTABLESFILESIZE);
+          HiveConf.ConfVars.HIVE_SMALL_TABLES_FILESIZE);
 
       for (int bigTablePosition = 0; bigTablePosition < numAliases; bigTablePosition++) {
         // this table cannot be big table

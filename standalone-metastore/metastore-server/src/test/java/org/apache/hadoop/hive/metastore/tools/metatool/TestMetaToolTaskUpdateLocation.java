@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.tools.metatool;
@@ -27,8 +28,8 @@ import java.io.PrintStream;
 import java.net.URI;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.metastore.ObjectStore;
 import org.apache.hadoop.hive.metastore.annotation.MetastoreUnitTest;
+import org.apache.hadoop.hive.metastore.tools.MetaToolObjectStore;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -82,7 +83,7 @@ public class TestMetaToolTaskUpdateLocation {
     URI oldUri = new Path(oldUriString).toUri();
     URI newUri = new Path(newUriString).toUri();
 
-    ObjectStore mockObjectStore = Mockito.mock(ObjectStore.class);
+    MetaToolObjectStore mockObjectStore = Mockito.mock(MetaToolObjectStore.class);
     when(mockObjectStore.updateMDatabaseURI(eq(oldUri), eq(newUri), eq(true))).thenReturn(null);
     when(mockObjectStore.updateMStorageDescriptorTblURI(eq(oldUri), eq(newUri), eq(true))).thenReturn(null);
     when(mockObjectStore.updateTblPropURI(eq(oldUri), eq(newUri), eq(tablePropKey), eq(true))).thenReturn(null);

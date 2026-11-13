@@ -1,0 +1,502 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.hadoop.hive.metastore;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.TableName;
+import org.apache.hadoop.hive.metastore.annotation.MetastoreUnitTest;
+import org.apache.hadoop.hive.metastore.api.Database;
+import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.metastore.api.GetPartitionsByNamesRequest;
+import org.apache.hadoop.hive.metastore.api.InvalidObjectException;
+import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.Partition;
+import org.apache.hadoop.hive.metastore.api.SerDeInfo;
+import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
+import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.client.builder.DatabaseBuilder;
+import org.apache.hadoop.hive.metastore.client.builder.GetPartitionsArgs;
+import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
+import org.apache.hadoop.hive.metastore.dbinstall.rules.DatabaseRule;
+import org.apache.hadoop.hive.metastore.dbinstall.rules.Derby;
+import org.apache.hadoop.hive.metastore.tools.ColumnDeduplicator;
+import org.apache.hadoop.hive.metastore.tools.MetaToolObjectStore;
+import org.apache.hadoop.hive.metastore.utils.TestTxnDbUtil;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.hadoop.hive.metastore.Warehouse.DEFAULT_CATALOG_NAME;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
+@Category(MetastoreUnitTest.class)
+public class TestHMSColumnDescriptorReuse {
+
+  private ObjectStore objectStore = null;
+  private Configuration conf;
+
+  // Modify to try out with different databases.
+  // Keep it on Derby once you commit your change. It makes the test execution faster.
+  private final DatabaseRule db = new Derby(true);
+
+  @Before
+  public void setUp() throws Exception {
+    db.before();
+    db.install();
+
+    conf = MetastoreConf.newMetastoreConf();
+    MetastoreConf.setVar(conf, MetastoreConf.ConfVars.CONNECT_URL_KEY, db.getJdbcUrl());
+    MetastoreConf.setVar(conf, MetastoreConf.ConfVars.CONNECTION_DRIVER, db.getJdbcDriver());
+    MetastoreConf.setVar(conf, MetastoreConf.ConfVars.CONNECTION_USER_NAME, db.getHiveUser());
+    MetastoreConf.setVar(conf, MetastoreConf.ConfVars.PWD, db.getHivePassword());
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.AUTO_CREATE_ALL, false);
+
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.HIVE_IN_TEST, true);
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.PARTITION_REUSE_COLUMN_DESCRIPTORS, true);
+
+    MetaStoreTestUtils.setConfForStandloneMode(conf);
+
+    objectStore = new ObjectStore();
+    objectStore.setConf(conf);
+    HMSHandler.createDefaultCatalog(objectStore, new Warehouse(conf));
+    Database db = new DatabaseBuilder()
+            .setName("default")
+            .setDescription("description")
+            .setLocation("locationurl")
+            .build(conf);
+    objectStore.createDatabase(db);
+  }
+
+  @After
+  public void tearDown() {
+    if (objectStore != null) {
+      objectStore.shutdown();
+    }
+    // The PersistenceManagerFactory and its connection pools are static and survive across tests,
+    // as the JDBC url is the same. Close them before dropping the in-memory Derby database, otherwise
+    // the pool silently re-creates an empty database (create=true) that races with the next schema init.
+    PersistenceManagerProvider.closePmfIfNeeded(false, true);
+    PersistenceManagerProvider.closePmfIfNeeded(true, true);
+    db.after();
+  }
+
+  @Test
+  public void testReuseAfterSimpleSchemaEvolution() throws Exception {
+    FieldSchema id = new FieldSchema("id", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema fname = new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema country = new FieldSchema("country", ColumnType.STRING_TYPE_NAME, "");
+
+    Table tbl1 = newTable(Arrays.asList(id, fname), Collections.singletonList(country));
+    objectStore.createTable(tbl1);
+    objectStore.addPartition(newPart(tbl1, "US"));
+
+    FieldSchema lname = new FieldSchema("lname", ColumnType.STRING_TYPE_NAME, "");
+    Table tbl2 = newTable(Arrays.asList(id, fname, lname), Collections.singletonList(country));
+
+    objectStore.alterTable(DEFAULT_CATALOG_NAME, tbl1.getDbName(), tbl1.getTableName(), tbl2, null);
+    objectStore.addPartition(newPart(tbl2, "Italy"));
+
+    objectStore.addPartition(newPart(tbl2, "Hungary"));
+    objectStore.addPartition(newPart(tbl1, "Ukraine"));
+
+    assertEquals(2, countColumnDescriptors());
+  }
+
+  @Test
+  public void testAddPartitionAlterAddPartition() throws MetaException, InvalidObjectException {
+    FieldSchema id = new FieldSchema("id", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema fname = new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema country = new FieldSchema("country", ColumnType.STRING_TYPE_NAME, "");
+
+    Table tbl1 = newTable(Arrays.asList(id, fname), Collections.singletonList(country));
+    objectStore.createTable(tbl1);
+    objectStore.addPartition(newPart(tbl1, "US"));
+    objectStore.addPartition(newPart(tbl1, "Greece"));
+    FieldSchema lname = new FieldSchema("lname", ColumnType.STRING_TYPE_NAME, "");
+
+    Table tbl2 = newTable(Arrays.asList(id, fname, lname), Collections.singletonList(country));
+    objectStore.alterTable(DEFAULT_CATALOG_NAME, tbl1.getDbName(), tbl1.getTableName(), tbl2, null);
+    objectStore.addPartition(newPart(tbl2, "Italy"));
+
+    // Mimics replication scenario where we are adding partitions to the "same" table but with a different schema.
+    // The tbl1 is using the old storage descriptor so "Germany" and "Belgium" partitions will have the old schema
+    // And will lead to "duplicate" entries in "CDS" and "COLUMNS_V2" tables.
+    objectStore.addPartition(newPart(tbl1, "Germany"));
+    objectStore.addPartition(newPart(tbl1, "Belgium"));
+
+    // On the other hand the addition of a partition to the table with the new schema is successfully using the
+    // existing storage/column descriptors
+    objectStore.addPartition(newPart(tbl2, "England"));
+
+    assertEquals(2, countColumnDescriptors());
+  }
+
+  @Test
+  public void testNoReusableColumnDescriptors() throws MetaException, InvalidObjectException {
+    FieldSchema id = new FieldSchema("id", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema fname = new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema country = new FieldSchema("country", ColumnType.STRING_TYPE_NAME, "");
+
+    Table tbl1 = newTable(Arrays.asList(id, fname), Collections.singletonList(country));
+    objectStore.createTable(tbl1);
+    objectStore.addPartition(newPart(tbl1, "US"));
+
+    FieldSchema lname = new FieldSchema("lname", ColumnType.STRING_TYPE_NAME, "");
+    Table tbl2 = newTable(Arrays.asList(id, fname, lname), Collections.singletonList(country));
+
+    objectStore.alterTable(DEFAULT_CATALOG_NAME, tbl1.getDbName(), tbl1.getTableName(), tbl2, null);
+    objectStore.addPartition(newPart(tbl2, "Italy"));
+
+    FieldSchema address = new FieldSchema("address", ColumnType.STRING_TYPE_NAME, "");
+    Table tbl3 = newTable(Arrays.asList(id, fname, lname, address), Collections.singletonList(country));
+    objectStore.alterTable(DEFAULT_CATALOG_NAME, tbl1.getDbName(), tbl1.getTableName(), tbl3, null);
+    objectStore.addPartition(newPart(tbl3, "Hungary"));
+
+    assertEquals(3, countColumnDescriptors());
+  }
+
+  @Test
+  public void testDeduplicateColumnDescriptorsTool() throws Exception {
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.PARTITION_REUSE_COLUMN_DESCRIPTORS, false);
+
+    FieldSchema id = new FieldSchema("id", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema fname = new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema country = new FieldSchema("country", ColumnType.STRING_TYPE_NAME, "");
+
+    Table tbl1 = newTable(Arrays.asList(id, fname), Collections.singletonList(country));
+    objectStore.createTable(tbl1);
+    objectStore.addPartition(newPart(tbl1, "US"));
+    objectStore.addPartition(newPart(tbl1, "Greece"));
+    int cdsBeforeDedup = countColumnDescriptors();
+    assertTrue(cdsBeforeDedup == 1);
+
+    AtomicReference<String> progress = new AtomicReference<>();
+    MetaToolObjectStore metaToolStore = new MetaToolObjectStore();
+    metaToolStore.setConf(conf);
+    Deadline.registerIfNot(30 * 1000);
+    Deadline.startTimer("testDeduplicateColumnDescriptorsTool");
+    try {
+      MetaToolObjectStore.DedupColumnsResult result = metaToolStore.dedupColumns(null, "default", "person", progress,
+          false, false, false);
+      assertEquals(0, result.getTablesWithDuplicates());
+      assertEquals(0, result.getTablesValidated());
+
+      FieldSchema lname = new FieldSchema("lname", ColumnType.STRING_TYPE_NAME, "");
+      Table tbl2 = newTable(Arrays.asList(id, fname, lname), Collections.singletonList(country));
+      objectStore.alterTable(DEFAULT_CATALOG_NAME, tbl1.getDbName(), tbl1.getTableName(), tbl2, null);
+      objectStore.addPartition(newPart(tbl2, "Italy"));
+      objectStore.addPartition(newPart(tbl1, "Germany"));
+      objectStore.addPartition(newPart(tbl1, "Belgium"));
+      objectStore.addPartition(newPart(tbl2, "England"));
+      cdsBeforeDedup = countColumnDescriptors();
+      assertTrue(cdsBeforeDedup > 2);
+      Table table = objectStore.getTable("hive", "default", "person");
+      assertFalse(table.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+
+      result = metaToolStore.dedupColumns(null, "default", "person", progress, false, false, false);
+      assertTrue(result.getStorageDescriptorsUpdated() > 0);
+      assertEquals(1, result.getTablesValidated());
+      assertEquals(2, countColumnDescriptors());
+      assertNotNull(progress.get());
+      table = objectStore.getTable("hive", "default", "person");
+      assertTrue(table.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+
+      result = metaToolStore.dedupColumns(null, "default", "person", progress, false, false, false);
+      assertEquals(0, result.getStorageDescriptorsUpdated());
+      assertEquals(0, result.getTablesValidated());
+
+      result = metaToolStore.dedupColumns(null, "default", "person", progress, false, false, true);
+      assertEquals(0, result.getStorageDescriptorsUpdated());
+      table = objectStore.getTable("hive", "default", "person");
+      // the marker has been cleaned
+      assertFalse(table.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+
+      result = metaToolStore.dedupColumns(null, "default", "person", progress, false, false, true);
+      assertEquals(0, result.getStorageDescriptorsUpdated());
+      table = objectStore.getTable("hive", "default", "person");
+      assertFalse(table.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+
+      Deadline.registerIfNot(30 * 1000);
+      Deadline.startTimer("testDeduplicateColumnDescriptorsTool");
+      GetPartitionsByNamesRequest request = new GetPartitionsByNamesRequest("default", "person");
+      request.setNames(List.of("country=Germany", "country=Belgium", "country=Greece", "country=US"));
+      List<Partition> partitions = objectStore.getPartitionsByNames("hive", "default", "person",
+          GetPartitionsArgs.from(request));
+      assertEquals(4, partitions.size());
+      assertTrue(partitions.stream().allMatch(p -> tbl1.getSd().getCols().equals(p.getSd().getCols())));
+
+      request.setNames(List.of("country=Italy", "country=England"));
+      partitions = objectStore.getPartitionsByNames("hive", "default", "person", GetPartitionsArgs.from(request));
+      assertEquals(2, partitions.size());
+      assertTrue(partitions.stream().allMatch(p -> tbl2.getSd().getCols().equals(p.getSd().getCols())));
+    } finally {
+      Deadline.stopTimer();
+    }
+  }
+
+  @Test
+  public void testColDupGetTable() throws Exception {
+    FieldSchema id = new FieldSchema("id", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema fname = new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema country = new FieldSchema("country", ColumnType.STRING_TYPE_NAME, "");
+    Table tbl = newTable(Arrays.asList(id, fname), Collections.singletonList(country));
+    objectStore.createTable(tbl);
+    long tableId = objectStore.getTable("hive", "default", "person").getId();
+
+    MetaToolObjectStore metaToolStore = new MetaToolObjectStore();
+    metaToolStore.setConf(conf);
+    ColumnDeduplicator deduplicator =
+        new ColumnDeduplicator(metaToolStore.createRawStoreBundle(), null, false, false, false);
+    assertNull(getTableInTrx(metaToolStore, deduplicator, 9_999_999_999L));
+    ColumnDeduplicator.TableInfo tableInfo = getTableInTrx(metaToolStore, deduplicator, tableId);
+    assertNotNull(tableInfo);
+    assertEquals("person", tableInfo.tableName().getTable());
+    // Looking up the table doesn't mark it, the marker is only added once the table has been processed
+    tbl = objectStore.getTable("hive", "default", "person");
+    assertFalse(tbl.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+
+    Table newTable = newTable(Arrays.asList(id, fname), Collections.singletonList(country));
+    newTable.setTableName("person1");
+    objectStore.createTable(newTable);
+    long person1TableId = objectStore.getTable("hive", "default", "person1").getId();
+
+    // Process the table "person", it has no duplicates but should be marked, and be skipped afterwards
+    objectStore.addPartition(newPart(tbl, "US"));
+    Deadline.registerIfNot(30 * 1000);
+    Deadline.startTimer("testColDupGetTable");
+    try {
+      MetaToolObjectStore.DedupColumnsResult result =
+          metaToolStore.dedupColumns(null, "default", "person", new AtomicReference<>(), false, false, false);
+      assertNull(result.getException());
+      assertEquals(1, result.getTablesScanned());
+    } finally {
+      Deadline.stopTimer();
+    }
+    tbl = objectStore.getTable("hive", "default", "person");
+    assertTrue(tbl.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+    assertNull(getTableInTrx(metaToolStore, deduplicator, tableId));
+
+    // A dry run of the clean-up shouldn't remove the marker
+    ColumnDeduplicator dryRunCleaner =
+        new ColumnDeduplicator(metaToolStore.createRawStoreBundle(), null, true, false, true);
+    assertNull(getTableInTrx(metaToolStore, dryRunCleaner, tableId));
+    tbl = objectStore.getTable("hive", "default", "person");
+    assertTrue(tbl.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+
+    // Marker should be cleared
+    deduplicator =
+        new ColumnDeduplicator(metaToolStore.createRawStoreBundle(), null, false, false, true);
+    assertNull(getTableInTrx(metaToolStore, deduplicator, tableId));
+    tbl = objectStore.getTable("hive", "default", "person");
+    assertFalse(tbl.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+
+    // A table without the deduplication marker shouldn't be affected
+    newTable = objectStore.getTable("hive", "default", "person1");
+    assertFalse(newTable.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+    assertNull(getTableInTrx(metaToolStore, deduplicator, person1TableId));
+    newTable = objectStore.getTable("hive", "default", "person1");
+    assertFalse(newTable.getParameters().containsKey(ColumnDeduplicator.COLUMN_DEDUPLICATOR_MARKER));
+  }
+
+  private static ColumnDeduplicator.TableInfo getTableInTrx(MetaToolObjectStore store,
+      ColumnDeduplicator deduplicator, long tableId) {
+    boolean committed = false;
+    store.openTransaction();
+    try {
+      ColumnDeduplicator.TableInfo tableInfo = deduplicator.getTable(tableId);
+      committed = store.commitTransaction();
+      return tableInfo;
+    } finally {
+      if (!committed) {
+        store.rollbackTransaction();
+      }
+    }
+  }
+
+  @Test
+  public void testValidateTableAfterDedupReloadsPartitionById() throws Exception {
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.PARTITION_REUSE_COLUMN_DESCRIPTORS, false);
+    createTableWithDuplicateColumnDescriptors();
+    long partId = lookupPartitionId("country=Germany");
+    List<FieldSchema> cols = Arrays.asList(
+        new FieldSchema("id", ColumnType.STRING_TYPE_NAME, ""),
+        new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, ""));
+
+    validate(Collections.singletonList(new ColumnDeduplicator.PartitionSchemaSnapshot(
+        partId, lookupPartitionCdId(partId), cols)));
+  }
+
+  @Test
+  public void testValidateTableAfterDedupDetectsCdRemapFailure() throws Exception {
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.PARTITION_REUSE_COLUMN_DESCRIPTORS, false);
+    createTableWithDuplicateColumnDescriptors();
+    long partId = lookupPartitionId("country=Germany");
+    List<FieldSchema> cols = Arrays.asList(
+        new FieldSchema("id", ColumnType.STRING_TYPE_NAME, ""),
+        new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, ""));
+
+    List<ColumnDeduplicator.PartitionSchemaSnapshot> snapshots = Collections.singletonList(
+        new ColumnDeduplicator.PartitionSchemaSnapshot(partId, -1L, cols));
+
+    MetaException ex = assertThrows(MetaException.class, () -> validate(snapshots));
+    assertTrue(ex.getMessage().contains("expected canonical CD"));
+  }
+
+  @Test
+  public void testValidateTableAfterDedupDetectsSchemaChange() throws Exception {
+    MetastoreConf.setBoolVar(conf, MetastoreConf.ConfVars.PARTITION_REUSE_COLUMN_DESCRIPTORS, false);
+    createTableWithDuplicateColumnDescriptors();
+    long partId = lookupPartitionId("country=Germany");
+
+    List<ColumnDeduplicator.PartitionSchemaSnapshot> snapshots = Collections.singletonList(
+        new ColumnDeduplicator.PartitionSchemaSnapshot(partId, lookupPartitionCdId(partId),
+            Collections.singletonList(new FieldSchema("unexpected", ColumnType.STRING_TYPE_NAME, ""))));
+
+    MetaException ex = assertThrows(MetaException.class, () -> validate(snapshots));
+    assertTrue(ex.getMessage().contains("column schema changed for partition " + partId));
+  }
+
+  private int createTableWithDuplicateColumnDescriptors() throws Exception {
+    FieldSchema id = new FieldSchema("id", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema fname = new FieldSchema("fname", ColumnType.STRING_TYPE_NAME, "");
+    FieldSchema country = new FieldSchema("country", ColumnType.STRING_TYPE_NAME, "");
+
+    Table tbl1 = newTable(Arrays.asList(id, fname), Collections.singletonList(country));
+    objectStore.createTable(tbl1);
+    objectStore.addPartition(newPart(tbl1, "US"));
+    objectStore.addPartition(newPart(tbl1, "Greece"));
+
+    FieldSchema lname = new FieldSchema("lname", ColumnType.STRING_TYPE_NAME, "");
+    Table tbl2 = newTable(Arrays.asList(id, fname, lname), Collections.singletonList(country));
+    objectStore.alterTable(DEFAULT_CATALOG_NAME, tbl1.getDbName(), tbl1.getTableName(), tbl2, null);
+    objectStore.addPartition(newPart(tbl2, "Italy"));
+    objectStore.addPartition(newPart(tbl1, "Germany"));
+    objectStore.addPartition(newPart(tbl1, "Belgium"));
+    objectStore.addPartition(newPart(tbl2, "England"));
+
+    return countColumnDescriptors();
+  }
+
+  private long lookupPartitionId(String partName) throws Exception {
+    try (Connection c = TestTxnDbUtil.getConnection(conf);
+        PreparedStatement ps = c.prepareStatement(
+            "SELECT \"PART_ID\" FROM \"PARTITIONS\" WHERE \"PART_NAME\" = ?")) {
+      ps.setString(1, partName);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) {
+          throw new IllegalStateException("Partition not found: " + partName);
+        }
+        return rs.getLong(1);
+      }
+    }
+  }
+
+  private long lookupPartitionCdId(long partId) throws Exception {
+    try (Connection c = TestTxnDbUtil.getConnection(conf);
+        PreparedStatement ps = c.prepareStatement(
+            "SELECT s.\"CD_ID\" FROM \"PARTITIONS\" p JOIN \"SDS\" s ON p.\"SD_ID\" = s.\"SD_ID\" "
+                + "WHERE p.\"PART_ID\" = ?")) {
+      ps.setLong(1, partId);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) {
+          throw new IllegalStateException("Partition CD not found: " + partId);
+        }
+        return rs.getLong(1);
+      }
+    }
+  }
+
+  private void validate(List<ColumnDeduplicator.PartitionSchemaSnapshot> snapshots)
+      throws Exception {
+    ColumnDeduplicator deduplicator =
+        new ColumnDeduplicator(objectStore.createRawStoreBundle(), null, false, false, false);
+    ColumnDeduplicator.TableInfo tableInfo = new ColumnDeduplicator.TableInfo(0L, 0L, new TableName("hive", "default", "person"));
+    deduplicator.validateTableAfterDedup(tableInfo, snapshots);
+  }
+
+  private int countColumnDescriptors() {
+    try(Connection c = TestTxnDbUtil.getConnection(conf)){
+      try(ResultSet rs = c.prepareStatement("SELECT COUNT(*) FROM \"CDS\"").executeQuery()) {
+        rs.next();
+        return rs.getInt(1);
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static Table newTable(List<FieldSchema> columns, List<FieldSchema> partCols) {
+    int timeSec = (int) (System.currentTimeMillis() / 1000);
+
+    StorageDescriptor sd = new StorageDescriptor(columns,
+            "/fake/location/person",
+            "org.apache.hadoop.mapred.TextInputFormat",
+            "org.apache.hadoop.mapred.MapFileOutputFormat",
+            false,
+            0,
+            new SerDeInfo("SerDeName", "serializationLib", null),
+            null,
+            null,
+            null);
+
+    Map<String, String> tableParams = new HashMap<>();
+    tableParams.put("EXTERNAL", "false");
+
+    return
+            new Table("person", "default", "owner", timeSec, timeSec, 3, sd, partCols,
+                    tableParams, null, null, "MANAGED_TABLE");
+  }
+
+  private static Partition newPart(Table tbl, String value) {
+    int timeSec = (int) (System.currentTimeMillis() / 1000);
+    Map<String, String> partitionParams = new HashMap<>();
+
+    partitionParams.put("PARTITION_LEVEL_PRIVILEGE", "true");
+    StorageDescriptor psd = tbl.getSd().deepCopy();
+    psd.setLocation(psd.getLocation() + "/" + value);
+    Partition p = new Partition(
+        Collections.singletonList(value),
+        tbl.getDbName(),
+        tbl.getTableName(),
+        timeSec,
+        timeSec,
+        psd,
+        partitionParams);
+    p.setCatName(DEFAULT_CATALOG_NAME);
+
+    return p;
+  }
+}

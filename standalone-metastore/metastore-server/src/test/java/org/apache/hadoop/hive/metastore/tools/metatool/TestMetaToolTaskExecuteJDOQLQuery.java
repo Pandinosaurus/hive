@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.tools.metatool;
@@ -28,8 +29,8 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
 
-import org.apache.hadoop.hive.metastore.ObjectStore;
 import org.apache.hadoop.hive.metastore.annotation.MetastoreUnitTest;
+import org.apache.hadoop.hive.metastore.tools.MetaToolObjectStore;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -58,7 +59,7 @@ public class TestMetaToolTaskExecuteJDOQLQuery {
     String entry1 = "abc";
     String entry2 = "def";
 
-    ObjectStore mockObjectStore = Mockito.mock(ObjectStore.class);
+    MetaToolObjectStore mockObjectStore = Mockito.mock(MetaToolObjectStore.class);
     doReturn(Arrays.asList(entry1, entry2))
       .when(mockObjectStore).executeJDOQLSelect(eq(selectQuery));
 
@@ -84,7 +85,7 @@ public class TestMetaToolTaskExecuteJDOQLQuery {
   private void testUpdateQuery(long ret, String expected) throws Exception {
     String updateQuery = "update a set b = 'c'";
 
-    ObjectStore mockObjectStore = Mockito.mock(ObjectStore.class);
+    MetaToolObjectStore mockObjectStore = Mockito.mock(MetaToolObjectStore.class);
     when(mockObjectStore.executeJDOQLUpdate(updateQuery)).thenReturn(ret);
 
     MetaToolTaskExecuteJDOQLQuery t = new MetaToolTaskExecuteJDOQLQuery();

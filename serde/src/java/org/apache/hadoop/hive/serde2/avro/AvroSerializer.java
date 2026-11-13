@@ -7,13 +7,14 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.serde2.avro;
 
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
+import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.Schema.Type;
@@ -231,17 +233,39 @@ class AvroSerializer {
     case TIMESTAMP:
       Timestamp timestamp =
         ((TimestampObjectInspector) fieldOI).getPrimitiveJavaObject(structFieldData);
-      long millis = defaultProleptic ? timestamp.toEpochMilli() :
-          CalendarUtils.convertTimeToHybrid(timestamp.toEpochMilli());
-      timestamp = TimestampTZUtil.convertTimestampToZone(
-          Timestamp.ofEpochMilli(millis), TimeZone.getDefault().toZoneId(), ZoneOffset.UTC, legacyConversion);
-      return timestamp.toEpochMilli();
+      LogicalType logicalType = schema.getLogicalType();
+      return getEpochTimestamp(timestamp, logicalType);
     case UNKNOWN:
       throw new AvroSerdeException("Received UNKNOWN primitive category.");
     case VOID:
       return null;
     default: // All other primitive types are simple
       return fieldOI.getPrimitiveJavaObject(structFieldData);
+    }
+  }
+
+  /**
+   * @param timestamp
+   * @param logicalType
+   * @return Object
+   * The following has TIMESTAMP MILLIS as a default in case there is no
+   * logicalType present. This is done to uphold backward compatibility.
+   */
+  private Object getEpochTimestamp(Timestamp timestamp, LogicalType logicalType) {
+    switch (logicalType.getName()) {
+      case AvroSerDe.TIMESTAMP_TYPE_NAME_MICROS:
+        long micros = defaultProleptic ? timestamp.toEpochMicro() :
+                CalendarUtils.convertTimeToHybridMicros(timestamp.toEpochMicro());
+        timestamp = TimestampTZUtil.convertTimestampToZone(
+                Timestamp.ofEpochMicro(micros), TimeZone.getDefault().toZoneId(), ZoneOffset.UTC, legacyConversion);
+        return timestamp.toEpochMicro();
+
+      default:
+        long millis = defaultProleptic ? timestamp.toEpochMilli() :
+                CalendarUtils.convertTimeToHybrid(timestamp.toEpochMilli());
+        timestamp = TimestampTZUtil.convertTimestampToZone(
+                Timestamp.ofEpochMilli(millis), TimeZone.getDefault().toZoneId(), ZoneOffset.UTC, legacyConversion);
+        return timestamp.toEpochMilli();
     }
   }
 

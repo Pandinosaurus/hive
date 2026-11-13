@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.optimizer.correlation;
@@ -178,7 +179,7 @@ public class CorrelationOptimizer extends Transform {
       }
 
       long ThresholdOfSmallTblSizeSum = HiveConf.getLongVar(pCtx.getConf(),
-          HiveConf.ConfVars.HIVESMALLTABLESFILESIZE);
+          HiveConf.ConfVars.HIVE_SMALL_TABLES_FILESIZE);
       for (int i = 0; i < numAliases; i++) {
         // this table cannot be big table
         if (!bigTableCandidates.contains(i)) {
@@ -212,7 +213,7 @@ public class CorrelationOptimizer extends Transform {
 
     pCtx = pctx;
 
-    if (HiveConf.getBoolVar(pCtx.getConf(),HiveConf.ConfVars.HIVECONVERTJOIN)) {
+    if (HiveConf.getBoolVar(pCtx.getConf(),HiveConf.ConfVars.HIVE_CONVERT_JOIN)) {
       findPossibleAutoConvertedJoinOperators();
     }
 
@@ -240,7 +241,7 @@ public class CorrelationOptimizer extends Transform {
       }
     } else {
       // transform the operator tree
-      LOG.info("Begain query plan transformation based on intra-query correlations. " +
+      LOG.info("Begin query plan transformation based on intra-query correlations. " +
           corrCtx.getCorrelations().size() + " correlation(s) to be applied");
       for (IntraQueryCorrelation correlation : corrCtx.getCorrelations()) {
         QueryPlanTreeTransformation.applyCorrelation(pCtx, corrCtx, correlation);
@@ -252,14 +253,14 @@ public class CorrelationOptimizer extends Transform {
   private class CorrelationNodeProc implements SemanticNodeProcessor {
 
     private void analyzeReduceSinkOperatorsOfJoinOperator(JoinCondDesc[] joinConds,
-        List<Operator<? extends OperatorDesc>> rsOps, Operator<? extends OperatorDesc> curentRsOp,
+        List<Operator<? extends OperatorDesc>> rsOps, Operator<? extends OperatorDesc> currentRsOp,
         Set<ReduceSinkOperator> correlatedRsOps) {
-      if (correlatedRsOps.contains(curentRsOp)) {
+      if (correlatedRsOps.contains(currentRsOp)) {
         return;
       }
-      correlatedRsOps.add((ReduceSinkOperator) curentRsOp);
+      correlatedRsOps.add((ReduceSinkOperator) currentRsOp);
 
-      int pos = rsOps.indexOf(curentRsOp);
+      int pos = rsOps.indexOf(currentRsOp);
       for (int i = 0; i < joinConds.length; i++) {
         JoinCondDesc joinCond = joinConds[i];
         int type = joinCond.getType();

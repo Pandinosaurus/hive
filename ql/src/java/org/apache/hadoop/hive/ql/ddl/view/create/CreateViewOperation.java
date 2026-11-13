@@ -9,16 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.view.create;
 
-import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.common.StatsSetupConst;
 import org.apache.hadoop.hive.common.TableName;
@@ -82,6 +83,10 @@ public class CreateViewOperation extends DDLOperation<CreateViewDesc> {
       if (desc.getProperties() != null) {
         oldview.getTTable().getParameters().putAll(desc.getProperties());
       }
+      if (!desc.usesStorageHandler()) {
+        // External view is replaced with a native Hive view
+        clearStorageHandlerProp(oldview);
+      }
       oldview.setPartCols(desc.getPartitionColumns());
 
       oldview.checkValidity(null);
@@ -103,6 +108,18 @@ public class CreateViewOperation extends DDLOperation<CreateViewDesc> {
       context.getQueryState().getLineageState().setLineage(new Path(desc.getViewName()), dc, view.getCols());
     }
     return 0;
+  }
+
+  private void clearStorageHandlerProp(Table oldview) {
+    Map<String, String> params = oldview.getParameters();
+    if (params == null) {
+      return;
+    }
+    String fqcn = params.get(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_STORAGE);
+    if (fqcn == null) {
+      return;
+    }
+    params.remove(org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_STORAGE);
   }
 
   private Table createViewObject() throws HiveException {
@@ -129,6 +146,13 @@ public class CreateViewOperation extends DDLOperation<CreateViewDesc> {
     StorageFormat storageFormat = new StorageFormat(context.getConf());
     storageFormat.fillDefaultStorageFormat(false, false);
 
+    if (desc.usesStorageHandler()) {
+      storageFormat.setStorageHandler(desc.getStorageHandlerClass());
+      view.setProperty(
+          org.apache.hadoop.hive.metastore.api.hive_metastoreConstants.META_TABLE_STORAGE,
+          desc.getStorageHandlerClass().trim());
+    }
+    
     view.setInputFormatClass(storageFormat.getInputFormat());
     view.setOutputFormatClass(storageFormat.getOutputFormat());
 

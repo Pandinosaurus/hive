@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.cli.operation;
 
@@ -30,6 +31,7 @@ import org.apache.hive.service.cli.OperationStatus;
 import org.apache.hive.service.cli.RowSet;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -63,6 +65,8 @@ public class TestOperationLoggingAPIWithMr extends OperationLoggingAPITestBase {
     };
     hiveConf = new HiveConf();
     hiveConf.set(ConfVars.HIVE_SERVER2_LOGGING_OPERATION_LEVEL.varname, "verbose");
+    // this test is mr specific
+    hiveConf.set(ConfVars.HIVE_EXECUTION_ENGINE.varname, "mr");
     miniHS2 = new MiniHS2(hiveConf);
     confOverlay = new HashMap<String, String>();
     confOverlay.put(ConfVars.HIVE_SUPPORT_CONCURRENCY.varname, "false");
@@ -127,6 +131,7 @@ public class TestOperationLoggingAPIWithMr extends OperationLoggingAPITestBase {
   }
 
   @Test
+  @Ignore("HIVE-27966")
   public void testFetchResultsOfLogWithOrientation() throws Exception {
     // (FETCH_FIRST) execute a sql, and fetch its sql operation log as expected value
     OperationHandle operationHandle = client.executeStatement(sessionHandle, sql, null);

@@ -9,25 +9,25 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.parse;
 
 import static org.apache.hadoop.hive.ql.metadata.HiveUtils.unparseIdentifier;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.QueryState;
@@ -47,6 +47,7 @@ import org.apache.hadoop.hive.ql.plan.ExprNodeConstantDesc;
 import org.apache.hadoop.hive.ql.plan.LoadFileDesc;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
 import org.apache.hadoop.hive.ql.plan.SelectDesc;
+import org.apache.hadoop.hive.ql.stats.StatsUtils;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
@@ -69,6 +70,8 @@ public class ColumnStatsAutoGatherContext {
   private Table tbl;
   private Map<String, String> partSpec;
   private Context origCtx;
+
+  private boolean isTableLevel = true;
   
   public ColumnStatsAutoGatherContext(SemanticAnalyzer sa, HiveConf conf,
       Operator<? extends OperatorDesc> op, Table tbl, Map<String, String> partSpec,
@@ -122,16 +125,22 @@ public class ColumnStatsAutoGatherContext {
    */
   public void insertTableValuesAnalyzePipeline() throws SemanticException {
     // Instead of starting from analyze statement, we just generate the Select plan
-    boolean isPartitionStats = conf.getBoolVar(ConfVars.HIVE_STATS_COLLECT_PART_LEVEL_STATS) && tbl.isPartitioned();
-    if (isPartitionStats) {
+    // the table is not created yet, so only the CREATE statement says how it partitions its rows
+    List<TransformSpec> partTransformSpec = tbl.hasNonNativePartitionSupport() ?
+        TransformSpec.fromQueryState(conf) : null;
+
+    boolean isPartitionStats = partTransformSpec != null ?
+        StatsUtils.isPartitionStatsEnabled(tbl, conf) : StatsUtils.isPartitionStats(tbl, conf);
+
+    if (isPartitionStats && partTransformSpec == null) {
       partSpec = new HashMap<>();
       List<String> partKeys = Utilities.getColumnNamesFromFieldSchema(tbl.getPartitionKeys());
-      for (String partKey : partKeys) {
-        partSpec.put(partKey, null);
-      }
+      partKeys.forEach(k -> partSpec.put(k, null));
     }
-    String command = ColumnStatsSemanticAnalyzer.genRewrittenQuery(
-        tbl, conf, partSpec, isPartitionStats, true);
+    isTableLevel = !isPartitionStats;
+
+    String command = ColumnStatsSemanticAnalyzer.genRewrittenQuery(tbl, conf,
+        partTransformSpec, partSpec, isPartitionStats);
     insertAnalyzePipeline(command, true);
   }
 
@@ -173,6 +182,9 @@ public class ColumnStatsAutoGatherContext {
     if (rewritten) {
       // Create the context object that is needed to store the column stats
       this.analyzeRewrite = ColumnStatsSemanticAnalyzer.genAnalyzeRewriteContext(conf, tbl);
+      // a table the CREATE has yet to make cannot be asked how it partitions its rows, so the
+      // scope the statement was written for is the one that holds
+      this.analyzeRewrite.setTblLvl(isTableLevel);
 
       // The analyze statement has already been rewritten, we just need to create the AST
       // and the corresponding semantic analyzer
@@ -253,59 +265,102 @@ public class ColumnStatsAutoGatherContext {
     //                                |
 
     // 1. deal with non-partition columns
-    for (int i = 0; i < this.columns.size(); i++) {
-      ColumnInfo col = columns.get(i);
+    Map<String, Integer> columnNameToIndex = new HashMap<>();
+    List<ColumnInfo> selRSSig = selRS.getSignature();
+    for (int i = 0; i < selRSSig.size(); i++) {
+      columnNameToIndex.putIfAbsent(selRSSig.get(i).getAlias(), i);
+    }
+    for (FieldSchema column : this.columns) {
+      int index = tbl.getColumnIndexByName(column.getName());
+      ColumnInfo col = columns.get(index);
+      Integer selRSIdx = getSelRSColumnIndex(column.getName(), col, columnNameToIndex);
+      if (selRSIdx == null) {
+        continue;
+      }
       ExprNodeDesc exprNodeDesc = new ExprNodeColumnDesc(col);
       colList.add(exprNodeDesc);
-      String internalName = selRS.getColumnNames().get(i);
+      String internalName = selRS.getColumnNames().get(selRSIdx);
       columnNames.add(internalName);
       columnExprMap.put(internalName, exprNodeDesc);
-      signature.add(selRS.getSignature().get(i));
+      signature.add(selRSSig.get(selRSIdx));
     }
-    // if there is any partition column (in static partition or dynamic
-    // partition or mixed case)
-    int dynamicPartBegin = -1;
-    for (int i = 0; i < partitionColumns.size(); i++) {
-      ExprNodeDesc exprNodeDesc = null;
-      String partColName = partitionColumns.get(i).getName();
-      // 2. deal with static partition columns
-      if (partSpec != null && partSpec.containsKey(partColName)
-          && partSpec.get(partColName) != null) {
-        if (dynamicPartBegin > 0) {
-          throw new SemanticException(
-              "Dynamic partition columns should not come before static partition columns.");
-        }
-        exprNodeDesc = new ExprNodeConstantDesc(partSpec.get(partColName));
-        TypeInfo srcType = exprNodeDesc.getTypeInfo();
-        TypeInfo destType = selRS.getSignature().get(this.columns.size() + i).getType();
-        if (!srcType.equals(destType)) {
-          // This may be possible when srcType is string but destType is integer
-          exprNodeDesc = ExprNodeTypeCheck.getExprNodeDefaultExprProcessor()
-              .createConversionCast(exprNodeDesc, (PrimitiveTypeInfo) destType);
+    int dynPartsCount = 0;
+    if (partSpec != null) {
+      for (Map.Entry<String, String> entry : partSpec.entrySet()) {
+        if (entry.getValue() == null) {
+          dynPartsCount++;
         }
       }
-      // 3. dynamic partition columns
-      else {
-        dynamicPartBegin++;
-        ColumnInfo col = columns.get(this.columns.size() + dynamicPartBegin);
-        TypeInfo srcType = col.getType();
-        TypeInfo destType = selRS.getSignature().get(this.columns.size() + i).getType();
-        exprNodeDesc = new ExprNodeColumnDesc(col);
-        if (!srcType.equals(destType)) {
-          exprNodeDesc = ExprNodeTypeCheck.getExprNodeDefaultExprProcessor()
-              .createConversionCast(exprNodeDesc, (PrimitiveTypeInfo) destType);
+    }
+    // True when the input row already carries the static partition columns as real columns (e.g. Iceberg),
+    // i.e. it has more columns than just the data columns plus the dynamic partition columns.
+    boolean inputRRHasStaticParts = (this.columns.size() + dynPartsCount < columns.size());
+    // Column layout produced for the stats-gathering select:
+    //   <-- non-partition cols -->|<-- static partition cols -->|<-- dynamic partition cols -->
+    // For non-native tables (e.g. Iceberg) partition columns are ordinary interleaved columns instead.
+    boolean dynamicPartSeen = false;
+    // Count of native static partition columns already emitted as constants. They are absent from the input
+    // row, so each one shifts the input position of the columns that follow it.
+    int staticPartShift = 0;
+    for (int i = 0; i < partitionColumns.size(); i++) {
+      String partColName = partitionColumns.get(i).getName();
+      int tableIndex = tbl.getColumnIndexByName(partColName);
+      boolean isStaticPartition = partSpec != null && partSpec.get(partColName) != null;
+
+      ExprNodeDesc exprNodeDesc;
+      // 2. deal with static partition columns
+      if (isStaticPartition) {
+        if (inputRRHasStaticParts) {
+          // non-native (e.g. Iceberg): the partition column is a real column in the input row
+          exprNodeDesc = new ExprNodeColumnDesc(columns.get(tableIndex - staticPartShift));
+        } else {
+          if (dynamicPartSeen) {
+            throw new SemanticException(
+                "Dynamic partition columns should not come before static partition columns.");
+          }
+          // native: the static partition value is a constant, not present in the input row
+          exprNodeDesc = new ExprNodeConstantDesc(partSpec.get(partColName));
+          staticPartShift++;
         }
+      }
+      // 3. dynamic partition columns: always read from the input row
+      else {
+        dynamicPartSeen = true;
+        exprNodeDesc = new ExprNodeColumnDesc(columns.get(tableIndex - staticPartShift));
+      }
+      TypeInfo srcType = exprNodeDesc.getTypeInfo();
+
+      // For non-native tables partition columns are interleaved, so find the select-RS position by name;
+      // for native tables it equals the table column index.
+      int selRSIndex = inputRRHasStaticParts ? columnNameToIndex.get(partColName) : tableIndex;
+      TypeInfo destType = selRSSig.get(selRSIndex).getType();
+      if (!srcType.equals(destType)) {
+        // This may be possible when srcType is string but destType is integer
+        exprNodeDesc = ExprNodeTypeCheck.getExprNodeDefaultExprProcessor()
+            .createConversionCast(exprNodeDesc, (PrimitiveTypeInfo) destType);
       }
       colList.add(exprNodeDesc);
-      String internalName = selRS.getColumnNames().get(this.columns.size() + i);
+      String internalName = selRS.getColumnNames().get(selRSIndex);
       columnNames.add(internalName);
       columnExprMap.put(internalName, exprNodeDesc);
-      signature.add(selRS.getSignature().get(this.columns.size() + i));
+      signature.add(selRSSig.get(selRSIndex));
     }
     operator.setConf(new SelectDesc(colList, columnNames));
     operator.setColumnExprMap(columnExprMap);
     selRS.setSignature(signature);
     operator.setSchema(selRS);
+  }
+
+  private Integer getSelRSColumnIndex(String columnName, ColumnInfo col, Map<String, Integer> columnNameToIndex) {
+    ObjectInspector objectInspector = col.getObjectInspector();
+    if (objectInspector == null) {
+      return null;
+    }
+    boolean columnSupported = isColumnSupported(objectInspector.getCategory(), col::getType);
+    if (!columnSupported) {
+      return null;
+    }
+    return columnNameToIndex.get(columnName);
   }
 
   public String getCompleteName() {
@@ -316,36 +371,61 @@ public class ColumnStatsAutoGatherContext {
     return isInsertInto;
   }
 
-  public static boolean canRunAutogatherStats(Operator curr) {
+  public static boolean isColumnSupported(ObjectInspector.Category category, Supplier<TypeInfo> typeInfoSupplier) {
+    if (category != ObjectInspector.Category.PRIMITIVE) {
+      return false;
+    }
+    TypeInfo t = typeInfoSupplier.get();
+    switch (((PrimitiveTypeInfo) t).getPrimitiveCategory()) {
+    case BOOLEAN:
+    case BYTE:
+    case SHORT:
+    case INT:
+    case LONG:
+    case TIMESTAMP:
+    case FLOAT:
+    case DOUBLE:
+    case STRING:
+    case CHAR:
+    case VARCHAR:
+    case BINARY:
+    case DECIMAL:
+    case DATE:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  public static boolean canRunAutogatherStats(Table destinationTable, Operator<? extends OperatorDesc> curr) {
+    if (destinationTable.isNonNative() && destinationTable.getStorageHandler().supportsPartitioning()) {
+      // On partitioned tables, the partition key is needed to store the stats.
+      // However, external tables (e.g. stored by iceberg) may not define partition keys,
+      // i.e., org.apache.hadoop.hive.ql.metadata.Table.getPartitionKeys() returns null.
+      // So keep the same behavior as before HIVE-29432, and only run stats autogather if all columns are supported.
+      return areAllColumnsSupported(curr);
+    }
+    return isAnyColumnSupported(curr);
+  }
+
+  private static boolean areAllColumnsSupported(Operator<? extends OperatorDesc> curr) {
     // check the ObjectInspector
     for (ColumnInfo cinfo : curr.getSchema().getSignature()) {
-      if (cinfo.getIsVirtualCol()) {
+      if (cinfo.getIsVirtualCol() || !isColumnSupported(cinfo.getObjectInspector().getCategory(), cinfo::getType)) {
         return false;
-      } else if (cinfo.getObjectInspector().getCategory() != ObjectInspector.Category.PRIMITIVE) {
-        return false;
-      } else {
-        switch (((PrimitiveTypeInfo) cinfo.getType()).getPrimitiveCategory()) {
-        case BOOLEAN:
-        case BYTE:
-        case SHORT:
-        case INT:
-        case LONG:
-        case TIMESTAMP:
-        case FLOAT:
-        case DOUBLE:
-        case STRING:
-        case CHAR:
-        case VARCHAR:
-        case BINARY:
-        case DECIMAL:
-        case DATE:
-          break;
-        default:
-          return false;
-        }
       }
     }
     return true;
+  }
+
+  private static boolean isAnyColumnSupported(Operator<? extends OperatorDesc> curr) {
+    // check the ObjectInspector
+    for (ColumnInfo cinfo : curr.getSchema().getSignature()) {
+      if (!cinfo.getIsVirtualCol() && isColumnSupported(cinfo.getObjectInspector().getCategory(), cinfo::getType)) {
+        return true;
+      }
+    }
+    return false;
   }
 
 }

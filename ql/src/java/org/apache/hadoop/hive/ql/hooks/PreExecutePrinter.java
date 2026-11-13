@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.hooks;
@@ -23,7 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import org.apache.hadoop.hive.common.io.FetchConverter;
+import org.apache.hadoop.hive.common.io.FetchCallback;
 import org.apache.hadoop.hive.ql.QueryState;
 import org.apache.hadoop.hive.ql.hooks.HookContext.HookType;
 import org.apache.hadoop.hive.ql.plan.HiveOperation;
@@ -42,10 +43,10 @@ public class PreExecutePrinter implements ExecuteWithHookContext {
     assert(hookContext.getHookType() == HookType.PRE_EXEC_HOOK);
     SessionState ss = SessionState.get();
     QueryState queryState = hookContext.getQueryState();
-    if (ss != null && ss.out instanceof FetchConverter) {
+    if (ss != null && ss.out instanceof FetchCallback callback) {
       boolean foundQuery = queryState.getHiveOperation() == HiveOperation.QUERY &&
               !hookContext.getQueryPlan().isForExplain();
-      ((FetchConverter)ss.out).foundQuery(foundQuery);
+      callback.foundQuery(foundQuery);
     }
 
     Set<ReadEntity> inputs = hookContext.getInputs();

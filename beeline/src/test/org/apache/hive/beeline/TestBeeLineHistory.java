@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hive.beeline;
@@ -56,13 +57,11 @@ public class TestBeeLineHistory {
   public void testNumHistories() throws Exception {
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     PrintStream ops = new PrintStream(os);
-    BeeLine beeline = new BeeLine();
+    BeeLine beeline = new BeeLineDummyTerminal();
     beeline.getOpts().setHistoryFile(fileName);
     beeline.setOutputStream(ops);
-    Method method = beeline.getClass().getDeclaredMethod("setupHistory");
-    method.setAccessible(true);
-    method.invoke(beeline);
-    beeline.initializeConsoleReader(null);
+    beeline.setupHistory();
+    beeline.initializeLineReader(null);
     beeline.dispatch("!history");
     String output = os.toString("UTF-8");
     int numHistories = output.split("\n").length;
@@ -74,13 +73,11 @@ public class TestBeeLineHistory {
   public void testHistory() throws Exception {
     ByteArrayOutputStream os = new ByteArrayOutputStream();
     PrintStream ops = new PrintStream(os);
-    BeeLine beeline = new BeeLine();
+    BeeLine beeline = new BeeLineDummyTerminal();
     beeline.getOpts().setHistoryFile(fileName);
     beeline.setOutputStream(ops);
-    Method method = beeline.getClass().getDeclaredMethod("setupHistory");
-    method.setAccessible(true);
-    method.invoke(beeline);
-    beeline.initializeConsoleReader(null);
+    beeline.setupHistory();
+    beeline.initializeLineReader(null);
     beeline.dispatch("!history");
     String output = os.toString("UTF-8");
     String[] tmp = output.split("\n");

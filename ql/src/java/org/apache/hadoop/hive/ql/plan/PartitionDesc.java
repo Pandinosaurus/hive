@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.plan;
@@ -57,7 +58,7 @@ public class PartitionDesc implements Serializable, Cloneable {
   private static final Interner<Class<?>> CLASS_INTERNER = Interners.newWeakInterner();
 
   private TableDesc tableDesc;
-  private LinkedHashMap<String, String> partSpec;
+  private Map<String, String> partSpec;
   private Class<? extends InputFormat> inputFileFormatClass;
   private Class<? extends OutputFormat> outputFileFormatClass;
   private Properties properties;
@@ -73,7 +74,7 @@ public class PartitionDesc implements Serializable, Cloneable {
   public PartitionDesc() {
   }
 
-  public PartitionDesc(final TableDesc table, final LinkedHashMap<String, String> partSpec) {
+  public PartitionDesc(final TableDesc table, final Map<String, String> partSpec) {
     this.tableDesc = table;
     setPartSpec(partSpec);
   }
@@ -138,11 +139,11 @@ public class PartitionDesc implements Serializable, Cloneable {
   }
 
   @Explain(displayName = "partition values", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })
-  public LinkedHashMap<String, String> getPartSpec() {
+  public Map<String, String> getPartSpec() {
     return partSpec;
   }
 
-  public void setPartSpec(final LinkedHashMap<String, String> partSpec) {
+  public void setPartSpec(final Map<String, String> partSpec) {
     StringInternUtils.internValuesInMap(partSpec);
     this.partSpec = partSpec;
   }
@@ -213,11 +214,11 @@ public class PartitionDesc implements Serializable, Cloneable {
 
   @Explain(displayName = "properties", explainLevels = { Level.EXTENDED })
   public Map getPropertiesExplain() {
-    return PlanUtils.getPropertiesExplain(getProperties());
+    return PlanUtils.getPropertiesForExplain(getProperties());
   }
 
   public void setProperties(final Properties properties) {
-    properties.remove("columns.comments");
+    properties.remove(serdeConstants.LIST_COLUMN_COMMENTS);
     if (properties instanceof CopyOnFirstWriteProperties) {
       this.properties = properties;
     } else {
@@ -256,6 +257,13 @@ public class PartitionDesc implements Serializable, Cloneable {
       return tableName + "." + metaTable;
     }
     return tableName;
+  }
+
+  /**
+   * Returns the catalog name for this partition's table.
+   */
+  public String getCatalogName() {
+    return tableDesc.getCatalogName();
   }
 
   @Explain(displayName = "input format", explainLevels = { Level.USER, Level.DEFAULT, Level.EXTENDED })

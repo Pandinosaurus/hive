@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.translator;
 
@@ -42,8 +43,6 @@ import org.apache.hadoop.hive.ql.exec.ColumnInfo;
 import org.apache.hadoop.hive.ql.exec.RowSchema;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
-import org.apache.hadoop.hive.ql.optimizer.calcite.CalciteSemanticException;
-import org.apache.hadoop.hive.ql.optimizer.calcite.CalciteSemanticException.UnsupportedFeature;
 import org.apache.hadoop.hive.ql.optimizer.calcite.translator.SqlFunctionConverter.HiveToken;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.parse.RowResolver;
@@ -66,6 +65,11 @@ import com.google.common.collect.Lists;
 public class TypeConverter {
 
   private static final Map<String, HiveToken> calciteToHiveTypeNameMap;
+  /**
+   * Prefix for disambiguation fields inside a union. Since we are mapping a union to struct the $ character is 
+   * used to avoid conflicts with user-defined structs.
+   */
+  private static final String UNION_FIELD_PREFIX = "$tag_";
 
   static {
     Builder<String, HiveToken> b = ImmutableMap.<String, HiveToken> builder();
@@ -109,8 +113,7 @@ public class TypeConverter {
   };
 
   /*********************** Convert Hive Types To Calcite Types ***********************/
-  public static RelDataType getType(RelOptCluster cluster,
-    List<ColumnInfo> cInfoLst) throws CalciteSemanticException {
+  public static RelDataType getType(RelOptCluster cluster, List<ColumnInfo> cInfoLst) {
     RexBuilder rexBuilder = cluster.getRexBuilder();
     RelDataTypeFactory dtFactory = rexBuilder.getTypeFactory();
     List<RelDataType> fieldTypes = new LinkedList<RelDataType>();
@@ -123,8 +126,7 @@ public class TypeConverter {
     return dtFactory.createStructType(fieldTypes, fieldNames);
   }
 
-  public static RelDataType getType(RelOptCluster cluster, RowResolver rr,
-    List<String> neededCols) throws CalciteSemanticException {
+  public static RelDataType getType(RelOptCluster cluster, RowResolver rr, List<String> neededCols) {
     RexBuilder rexBuilder = cluster.getRexBuilder();
     RelDataTypeFactory dtFactory = rexBuilder.getTypeFactory();
     RowSchema rs = rr.getRowSchema();
@@ -140,12 +142,11 @@ public class TypeConverter {
     return dtFactory.createStructType(fieldTypes, fieldNames);
   }
 
-  public static RelDataType convert(TypeInfo type, RelDataTypeFactory dtFactory) throws CalciteSemanticException {
+  public static RelDataType convert(TypeInfo type, RelDataTypeFactory dtFactory) {
     return convert(type, true, dtFactory);
   }
 
-  public static RelDataType convert(TypeInfo type, boolean nullable, RelDataTypeFactory dtFactory)
-      throws CalciteSemanticException {
+  public static RelDataType convert(TypeInfo type, boolean nullable, RelDataTypeFactory dtFactory) {
     RelDataType convertedType = null;
 
     switch (type.getCategory()) {
@@ -163,6 +164,12 @@ public class TypeConverter {
       break;
     case UNION:
       convertedType = convert((UnionTypeInfo) type, dtFactory);
+      break;
+    case VARIANT:
+      convertedType = dtFactory.createSqlType(SqlTypeName.OTHER);
+      break;
+    case UNKNOWN:
+      convertedType = dtFactory.createSqlType(SqlTypeName.NULL);
       break;
     }
     // hive does not have concept of not nullable types
@@ -253,21 +260,18 @@ public class TypeConverter {
     return dtFactory.createTypeWithNullability(convertedType, nullable);
   }
 
-  public static RelDataType convert(ListTypeInfo lstType,
-    RelDataTypeFactory dtFactory) throws CalciteSemanticException {
+  public static RelDataType convert(ListTypeInfo lstType, RelDataTypeFactory dtFactory) {
     RelDataType elemType = convert(lstType.getListElementTypeInfo(), dtFactory);
     return dtFactory.createArrayType(elemType, -1);
   }
 
-  public static RelDataType convert(MapTypeInfo mapType, RelDataTypeFactory dtFactory)
-    throws CalciteSemanticException {
+  public static RelDataType convert(MapTypeInfo mapType, RelDataTypeFactory dtFactory) {
     RelDataType keyType = convert(mapType.getMapKeyTypeInfo(), dtFactory);
     RelDataType valueType = convert(mapType.getMapValueTypeInfo(), dtFactory);
     return dtFactory.createMapType(keyType, valueType);
   }
 
-  public static RelDataType convert(StructTypeInfo structType,
-    final RelDataTypeFactory dtFactory) throws CalciteSemanticException {
+  public static RelDataType convert(StructTypeInfo structType, RelDataTypeFactory dtFactory) {
     List<RelDataType> fTypes = new ArrayList<RelDataType>(structType.getAllStructFieldTypeInfos().size());
     for (TypeInfo ti : structType.getAllStructFieldTypeInfos()) {
       fTypes.add(convert(ti,dtFactory));
@@ -275,10 +279,12 @@ public class TypeConverter {
     return dtFactory.createStructType(fTypes, structType.getAllStructFieldNames());
   }
 
-  public static RelDataType convert(UnionTypeInfo unionType, RelDataTypeFactory dtFactory)
-    throws CalciteSemanticException{
-    // Union type is not supported in Calcite.
-    throw new CalciteSemanticException("Union type is not supported", UnsupportedFeature.Union_type);
+  public static RelDataType convert(UnionTypeInfo unionType, RelDataTypeFactory dtFactory) {
+    RelDataTypeFactory.Builder b = dtFactory.builder();
+    for (TypeInfo ti : unionType.getAllUnionObjectTypeInfos()) {
+      b.add(UNION_FIELD_PREFIX + b.getFieldCount(), convert(ti, dtFactory));
+    }
+    return b.build();
   }
 
   public static TypeInfo convertLiteralType(RexLiteral literal) {
@@ -312,7 +318,12 @@ public class TypeConverter {
             return f.getName();
           }
         });
-    return TypeInfoFactory.getStructTypeInfo(fNames, fTypes);
+    boolean isUnionType = fNames.stream().allMatch(f -> f.startsWith(UNION_FIELD_PREFIX));
+    if (isUnionType) {
+      return TypeInfoFactory.getUnionTypeInfo(fTypes);
+    } else {
+      return TypeInfoFactory.getStructTypeInfo(fNames, fTypes);
+    }
   }
 
   public static TypeInfo convertMapType(RelDataType rType) {
@@ -351,7 +362,7 @@ public class TypeConverter {
       } catch (HiveException e) {
         throw new RuntimeException(e);
       }
-      return TypeInfoFactory.getTimestampTZTypeInfo(conf.getLocalTimeZone());
+      return TypeInfoFactory.getTimestampTZTypeInfo(conf.getLocalTimeZone(), 6);
     case INTERVAL_YEAR:
     case INTERVAL_MONTH:
     case INTERVAL_YEAR_MONTH:

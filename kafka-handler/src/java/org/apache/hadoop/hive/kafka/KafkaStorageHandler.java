@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -28,6 +29,7 @@ import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.DefaultHiveMetaHook;
 import org.apache.hadoop.hive.metastore.HiveMetaHook;
 import org.apache.hadoop.hive.metastore.TableType;
+import org.apache.hadoop.hive.metastore.api.EnvironmentContext;
 import org.apache.hadoop.hive.metastore.api.LockType;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.Table;
@@ -56,13 +58,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 /**
@@ -103,6 +105,7 @@ import java.util.function.Predicate;
   }
 
   private void configureCommonProperties(TableDesc tableDesc, Map<String, String> jobProperties) {
+    KafkaUtils.checkTableDescProperties(tableDesc.getProperties());
     String topic = tableDesc.getProperties().getProperty(KafkaTableProperties.HIVE_KAFKA_TOPIC.getName(), "");
     if (topic.isEmpty()) {
       throw new IllegalArgumentException("Kafka topic missing set table property->"
@@ -190,9 +193,7 @@ import java.util.function.Predicate;
             .startsWith(KafkaUtils.CONSUMER_CONFIGURATION_PREFIX))
         .forEach(entry -> {
           String key = entry.getKey().substring(KafkaUtils.CONSUMER_CONFIGURATION_PREFIX.length() + 1);
-          if (KafkaUtils.FORBIDDEN_PROPERTIES.contains(key)) {
-            throw new IllegalArgumentException("Not suppose to set Kafka Property " + key);
-          }
+          KafkaUtils.checkTableClientProperty(key, entry.getValue());
           properties.put(key, entry.getValue());
         });
     return new KafkaStorageHandlerInfo(topic, properties);
@@ -230,9 +231,7 @@ import java.util.function.Predicate;
             .startsWith(KafkaUtils.PRODUCER_CONFIGURATION_PREFIX))
         .forEach(entry -> {
           String key = entry.getKey().substring(KafkaUtils.PRODUCER_CONFIGURATION_PREFIX.length() + 1);
-          if (KafkaUtils.FORBIDDEN_PROPERTIES.contains(key)) {
-            throw new IllegalArgumentException("Not suppose to set Kafka Property " + key);
-          }
+          KafkaUtils.checkTableClientProperty(key, entry.getValue());
           properties.put(key, entry.getValue());
         });
     return properties;
@@ -246,7 +245,7 @@ import java.util.function.Predicate;
   }
 
   private String getQueryId() {
-    return HiveConf.getVar(getConf(), HiveConf.ConfVars.HIVEQUERYID);
+    return HiveConf.getVar(getConf(), HiveConf.ConfVars.HIVE_QUERY_ID);
   }
 
   @Override public void commitInsertTable(Table table, boolean overwrite) throws MetaException {
@@ -310,7 +309,7 @@ import java.util.function.Predicate;
 
     RetryUtils.CleanupAfterFailure cleanUpTheMap = new RetryUtils.CleanupAfterFailure() {
       @Override public void cleanup() {
-        producersMap.forEach((s, producer) -> producer.close(0, TimeUnit.MILLISECONDS));
+        producersMap.forEach((s, producer) -> producer.close(Duration.ofMillis(0)));
         producersMap.clear();
       }
     };
@@ -346,7 +345,7 @@ import java.util.function.Predicate;
       RetryUtils.retry(commitTask, isRetrayable, maxTries);
     } catch (Exception e) {
       // at this point we are in a funky state if one commit happend!! close and log it
-      producersMap.forEach((key, producer) -> producer.close(0, TimeUnit.MILLISECONDS));
+      producersMap.forEach((key, producer) -> producer.close(Duration.ofMillis(0)));
       LOG.error("Commit transaction failed", e);
       if (committedTx.size() > 0) {
         LOG.error("Partial Data Got Commited Some actions need to be Done");
@@ -384,6 +383,7 @@ import java.util.function.Predicate;
     if (!table.getTableType().equals(TableType.EXTERNAL_TABLE.toString())) {
       throw new MetaException(KAFKA_STORAGE_HANDLER + " supports only " + TableType.EXTERNAL_TABLE);
     }
+    KafkaUtils.checkTableProperties(table.getParameters());
     Arrays.stream(KafkaTableProperties.values())
         .filter(KafkaTableProperties::isMandatory)
         .forEach(key -> Preconditions.checkNotNull(table.getParameters().get(key.getName()),
@@ -398,6 +398,11 @@ import java.util.function.Predicate;
 
   @Override public void rollbackCreateTable(Table table) throws MetaException {
 
+  }
+
+  @Override public void preAlterTable(Table table, EnvironmentContext context) throws MetaException {
+    super.preAlterTable(table, context);
+    KafkaUtils.checkTableProperties(table.getParameters());
   }
 
   @Override public void commitCreateTable(Table table) throws MetaException {

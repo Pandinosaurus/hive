@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -54,7 +55,7 @@ public class DummyCustomRDBMS extends DatabaseProduct {
     return "DummyPostfix";
   }
   @Override
-  protected String toDate(String tableValue) {
+  public String toDate(String tableValue) {
     return "DummyDate";
   }
   @Override
@@ -74,7 +75,7 @@ public class DummyCustomRDBMS extends DatabaseProduct {
     return "DummyIsWithin";
   }
   @Override
-  public String addForUpdateClause(String selectStatement) {
+  public String addForUpdateClause(String selectStatement, boolean noWait) {
     return selectStatement + " for update";
   }
   @Override
@@ -98,7 +99,7 @@ public class DummyCustomRDBMS extends DatabaseProduct {
     return true;
   }
   @Override
-  public boolean isDuplicateKeyError(SQLException ex) {
+  public boolean isDuplicateKeyError(Throwable t) {
    return true;
   }
   @Override

@@ -46,9 +46,9 @@ POSTHOOK: Input: default@t1
 POSTHOOK: Output: database:default
 POSTHOOK: Output: default@v1
 CBO PLAN:
-HiveProject(col0=[CAST(10):INTEGER])
+HiveProject(col0=[$0])
   HiveAggregate(group=[{0}])
-    HiveProject($f0=[true])
+    HiveProject($f0=[CAST(10):INTEGER])
       HiveFilter(condition=[=($0, 10)])
         HiveTableScan(table=[[default, t1]], table:alias=[t1])
 
@@ -80,9 +80,9 @@ POSTHOOK: Input: default@t1
 POSTHOOK: Input: default@v1
 #### A masked pattern was here ####
 CBO PLAN:
-HiveProject(col0=[CAST(10):INTEGER])
+HiveProject(v1.col0=[$0])
   HiveAggregate(group=[{0}])
-    HiveProject($f0=[true])
+    HiveProject($f0=[CAST(10):INTEGER])
       HiveFilter(condition=[=($0, 10)])
         HiveTableScan(table=[[default, t1]], table:alias=[t1])
 

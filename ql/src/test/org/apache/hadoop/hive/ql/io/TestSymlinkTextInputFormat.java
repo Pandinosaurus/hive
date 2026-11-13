@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.io;
 
@@ -111,7 +112,6 @@ public class TestSymlinkTextInputFormat {
   @Test
   public void testCombine() throws Exception {
     JobConf newJob = new JobConf(job);
-    FileSystem fs = dataDir1.getFileSystem(newJob);
 
     Path dir1_file1 = new Path(dataDir1, "combinefile1_1");
     writeTextFile(dir1_file1,
@@ -132,6 +132,8 @@ public class TestSymlinkTextInputFormat {
 
 
     HiveConf hiveConf = new HiveConf(TestSymlinkTextInputFormat.class);
+    // TODO: HIVE-28032: TestSymlinkTextInputFormat.testCombine to run on Tez
+    hiveConf.setVar(HiveConf.ConfVars.HIVE_EXECUTION_ENGINE, "mr");
     hiveConf
     .setVar(HiveConf.ConfVars.HIVE_AUTHORIZATION_MANAGER,
         "org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd.SQLStdHiveAuthorizerFactory");
@@ -157,7 +159,7 @@ public class TestSymlinkTextInputFormat {
 
       drv.run(loadFileCommand);
 
-      String cmd = "select key*1 from " + tblName;
+      String cmd = "select key*2 from " + tblName;
       ecode = drv.compile(cmd, true);
       if (ecode != 0) {
         throw new Exception("Select compile: " + cmd

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.plan.mapping;
 
@@ -148,7 +149,7 @@ public class TestCounterMapping {
         "explain select sum(id_uv) from tu where u in (1,2) group by u";
 
     HiveConf conf = env_setup.getTestCtx().hiveConf;
-    conf.setIntVar(ConfVars.HIVEPOINTLOOKUPOPTIMIZERMIN, 10);
+    conf.setIntVar(ConfVars.HIVE_POINT_LOOKUP_OPTIMIZER_MIN, 10);
     IDriver driver = createDriver();
 
     PlanMapper pm = getMapperForQuery(driver, query);
@@ -156,7 +157,7 @@ public class TestCounterMapping {
     OpTreeSignature filterSig = pm.lookup(OpTreeSignature.class, fos.get(0));
     Object pred = filterSig.getSig().getSigMap().get("getPredicateString");
 
-    assertEquals("((u = 1) or (u = 2)) (type: boolean)", pred);
+    assertEquals("(u) IN (1, 2) (type: boolean)", pred);
 
   }
 
@@ -229,7 +230,7 @@ public class TestCounterMapping {
         "org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd.SQLStdHiveAuthorizerFactory");
     //    conf.setVar(HiveConf.ConfVars.SEMANTIC_ANALYZER_HOOK, CheckInputReadEntityDirect.class.getName());
     HiveConf.setBoolVar(conf, HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY, false);
-    HiveConf.setVar(conf, HiveConf.ConfVars.POSTEXECHOOKS, OperatorStatsReaderHook.class.getName());
+    HiveConf.setVar(conf, HiveConf.ConfVars.POST_EXEC_HOOKS, OperatorStatsReaderHook.class.getName());
     SessionState.start(conf);
 
     IDriver driver = DriverFactory.newDriver(conf);

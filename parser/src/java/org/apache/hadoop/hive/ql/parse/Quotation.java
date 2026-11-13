@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.parse;
 
@@ -29,26 +30,32 @@ public enum Quotation {
    * Quotation of identifiers and special characters in identifiers are not allowed.
    * But regular expressions in backticks are supported for column names.
    */
-  NONE("none"),
+  NONE("none", ""),
   /**
    * Use the backtick character to quote identifiers having special characters.
    * Use single quotes to quote string literals. Double quotes are also accepted but not recommended.
    */
-  BACKTICKS("column"),
+  BACKTICKS("column", "`"),
   /**
    * SQL standard way to quote identifiers.
    * Use double quotes to quote identifiers having special characters and single quotes for string literals.
    */
-  STANDARD("standard");
+  STANDARD("standard", "\"");
 
-  Quotation(String stringValue) {
+  Quotation(String stringValue, String quotationChar) {
     this.stringValue = stringValue;
+    this.quotationChar = quotationChar;
   }
 
   private final String stringValue;
+  private final String quotationChar;
 
   public String stringValue() {
     return stringValue;
+  }
+
+  public String getQuotationChar() {
+    return quotationChar;
   }
 
   public static Quotation from(Configuration configuration) {

@@ -20,19 +20,24 @@
 package org.apache.iceberg.mr.hive;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.mr.InputFormatConfig;
 import org.apache.iceberg.mr.TestHelper;
+import org.apache.iceberg.mr.hive.test.utils.HiveIcebergStorageHandlerTestUtils;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runners.Parameterized;
 
 import static org.apache.iceberg.types.Types.NestedField.optional;
 import static org.apache.iceberg.types.Types.NestedField.required;
@@ -44,6 +49,12 @@ import static org.junit.Assume.assumeTrue;
  * here.
  */
 public class TestHiveIcebergSelects extends HiveIcebergStorageHandlerWithEngineBase {
+
+  @Parameterized.Parameters(name = "fileFormat={0}, catalog={1}, isVectorized={2}, formatVersion={3}")
+  public static Collection<Object[]> parameters() {
+    return HiveIcebergStorageHandlerWithEngineBase.getParameters(p ->
+        p.formatVersion() == 2);
+  }
 
   @Test
   public void testScanTable() throws IOException {
@@ -117,7 +128,7 @@ public class TestHiveIcebergSelects extends HiveIcebergStorageHandlerWithEngineB
   public void testJoinTablesSupportedTypes() throws IOException {
     for (int i = 0; i < SUPPORTED_TYPES.size(); i++) {
       Type type = SUPPORTED_TYPES.get(i);
-      if ((type == Types.TimestampType.withZone()) && isVectorized && fileFormat == FileFormat.ORC) {
+      if (type == Types.TimestampType.withZone() && isVectorized && fileFormat == FileFormat.ORC) {
         // ORC/TIMESTAMP_INSTANT is not supported vectorized types for Hive
         continue;
       }
@@ -144,7 +155,7 @@ public class TestHiveIcebergSelects extends HiveIcebergStorageHandlerWithEngineB
   public void testSelectDistinctFromTable() throws IOException {
     for (int i = 0; i < SUPPORTED_TYPES.size(); i++) {
       Type type = SUPPORTED_TYPES.get(i);
-      if ((type == Types.TimestampType.withZone()) &&
+      if (type == Types.TimestampType.withZone() &&
           isVectorized && fileFormat == FileFormat.ORC) {
         // ORC/TIMESTAMP_INSTANT is not supported vectorized types for Hive
         continue;
@@ -188,7 +199,6 @@ public class TestHiveIcebergSelects extends HiveIcebergStorageHandlerWithEngineB
 
   @Test
   public void testScanTableCaseInsensitive() throws IOException {
-    shell.setHiveSessionValue(InputFormatConfig.CASE_SENSITIVE, false);
     testTables.createTable(shell, "customers",
         HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA_WITH_UPPERCASE, fileFormat,
         HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS);
@@ -242,7 +252,7 @@ public class TestHiveIcebergSelects extends HiveIcebergStorageHandlerWithEngineB
    */
   @Test
   public void testVectorizedOrcMultipleSplits() throws Exception {
-    assumeTrue(isVectorized && FileFormat.ORC.equals(fileFormat));
+    assumeTrue(isVectorized && FileFormat.ORC == fileFormat);
 
     // This data will be held by a ~870kB ORC file
     List<Record> records = TestHelper.generateRandomRecords(HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA,
@@ -262,5 +272,34 @@ public class TestHiveIcebergSelects extends HiveIcebergStorageHandlerWithEngineB
 
     Assert.assertEquals(20000, result.size());
 
+  }
+
+  @Test
+  public void testHistory() throws IOException, InterruptedException {
+    TableIdentifier identifier = TableIdentifier.of("default", "source");
+    Table table = testTables.createTableWithVersions(shell, identifier.name(),
+        HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA, fileFormat,
+        HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS, 1);
+    List<Object[]> history = shell.executeStatement("SELECT snapshot_id FROM default.source.history");
+    Assert.assertEquals(table.history().size(), history.size());
+    for (int i = 0; i < table.history().size(); ++i) {
+      Assert.assertEquals(table.history().get(i).snapshotId(), history.get(i)[0]);
+    }
+  }
+
+  @Test
+  public void testFilterOnPartitionName() {
+    // PARTITION__NAME is materialized by the reader and is not a field of the Iceberg schema, so a
+    // predicate on it must not be pushed down to Iceberg
+    TableIdentifier identifier = TableIdentifier.of("default", "part_name_filter");
+    testTables.createTable(shell, identifier.name(),
+        HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA,
+        PartitionSpec.builderFor(HiveIcebergStorageHandlerTestUtils.CUSTOMER_SCHEMA).identity("last_name").build(),
+        fileFormat, HiveIcebergStorageHandlerTestUtils.CUSTOMER_RECORDS);
+
+    List<Object[]> rows = shell.executeStatement(
+        "SELECT customer_id FROM " + identifier.name() +
+            " WHERE PARTITION__NAME = 'last_name=Brown' AND customer_id = 0");
+    Assert.assertEquals(1, rows.size());
   }
 }

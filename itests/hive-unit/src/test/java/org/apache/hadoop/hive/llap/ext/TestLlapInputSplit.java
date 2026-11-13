@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.ext;
@@ -57,7 +58,7 @@ public class TestLlapInputSplit {
 
     byte[] tokenBytes = new byte[] { 1 };
     LlapInputSplit split1 = new LlapInputSplit(splitNum, planBytes, fragmentBytes, null,
-        locations, llapDaemonInfos, schema, "hive", tokenBytes, "some-dummy-jwt");
+        locations, llapDaemonInfos, schema, "hive", tokenBytes);
     ByteArrayOutputStream byteOutStream = new ByteArrayOutputStream();
     DataOutputStream dataOut = new DataOutputStream(byteOutStream);
     split1.write(dataOut);
@@ -88,7 +89,6 @@ public class TestLlapInputSplit {
     assertArrayEquals(split1.getLocations(), split2.getLocations());
     assertEquals(split1.getSchema().toString(), split2.getSchema().toString());
     assertEquals(split1.getLlapUser(), split2.getLlapUser());
-    assertEquals(split1.getJwt(), split2.getJwt());
     assertArrayEquals(split1.getLlapDaemonInfos(), split2.getLlapDaemonInfos());
   }
 

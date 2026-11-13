@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.processors;
@@ -26,6 +27,7 @@ import java.util.Map;
 
 import org.apache.hadoop.hive.common.io.SessionStream;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.conf.SystemVariables;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.junit.Assert;
@@ -49,7 +51,7 @@ public class TestSetProcessor {
     env.put(TEST_ENV_VAR_PASSWORD, TEST_ENV_VAR_PASSWORD_VALUE);
     setEnv(env);
     System.setProperty(TEST_SYSTEM_PROPERTY, TEST_SYSTEM_PROPERTY_VALUE);
-    HiveConf conf = new HiveConf();
+    HiveConf conf = new HiveConfForTest(TestSetProcessor.class);
     SessionState.start(conf);
     state = SessionState.get();
   }
@@ -65,13 +67,13 @@ public class TestSetProcessor {
   public void testHiddenConfig() throws Exception {
     runSetProcessor("");
     String output = baos.toString();
-    Assert.assertFalse(output.contains(HiveConf.ConfVars.METASTOREPWD.varname + "="));
+    Assert.assertFalse(output.contains(HiveConf.ConfVars.METASTORE_PWD.varname + "="));
     Assert.assertFalse(output.contains(HiveConf.ConfVars.HIVE_SERVER2_SSL_KEYSTORE_PASSWORD.varname + "="));
   }
 
   @Test
   public void testHiddenConfigSetVarName() throws CommandProcessorException {
-    runSetProcessor(HiveConf.ConfVars.METASTOREPWD.varname);
+    runSetProcessor(HiveConf.ConfVars.METASTORE_PWD.varname);
     String output = baos.toString();
     Assert.assertTrue(output.contains("hidden"));
   }

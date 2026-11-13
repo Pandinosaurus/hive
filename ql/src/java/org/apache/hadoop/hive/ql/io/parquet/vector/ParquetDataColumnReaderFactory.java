@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.parquet.vector;
@@ -83,7 +84,7 @@ public final class ParquetDataColumnReaderFactory {
     protected Dictionary dict;
 
     // After the data is read in the parquet type, isValid will be set to true if the data can be
-    // returned in the type defined in HMS.  Otherwise isValid is set to false.
+    // returned in the type defined in HMS. Otherwise, isValid is set to false.
     boolean isValid = true;
 
     protected int hivePrecision = 0;
@@ -272,7 +273,7 @@ public final class ParquetDataColumnReaderFactory {
     }
 
     /**
-     * Enforce the max legnth of varchar or char.
+     * Enforce the max length of varchar or char.
      */
     protected String enforceMaxLength(String value) {
       return HiveBaseChar.enforceMaxLength(value, length);
@@ -380,6 +381,19 @@ public final class ParquetDataColumnReaderFactory {
         this.isValid = false;
         return null;
       }
+    }
+
+    // Validate a raw unscaled decimal64 long (already at the Hive scale) against the Hive precision.
+    // Sets isValid; returns the value unchanged when in range, else 0 (caller marks the entry NULL).
+    // Used by the Decimal64 identity fast path; bounds via HiveDecimalWritable to avoid hand-rolling.
+    long validatedDecimal64(long unscaledValue) {
+      long absMax = HiveDecimalWritable.getDecimal64AbsMax(hivePrecision);
+      if (unscaledValue >= -absMax && unscaledValue <= absMax) {
+        this.isValid = true;
+        return unscaledValue;
+      }
+      this.isValid = false;
+      return 0;
     }
 
     /**
@@ -1304,17 +1318,21 @@ public final class ParquetDataColumnReaderFactory {
    * and returned as per the type defined in HMS.
    */
   public static class TypesFromDecimalPageReader extends DefaultParquetDataColumnReader {
-    private short scale;
+    // Parquet file decimal precision and scale.
+    private final int precision;
+    private final short scale;
 
-    public TypesFromDecimalPageReader(ValuesReader realReader, int length, short scale,
+    public TypesFromDecimalPageReader(ValuesReader realReader, int length, int precision, short scale,
         int hivePrecision, int hiveScale) {
       super(realReader, length, hivePrecision, hiveScale);
+      this.precision = precision;
       this.scale = scale;
     }
 
-    public TypesFromDecimalPageReader(Dictionary dict, int length, short scale, int hivePrecision,
-        int hiveScale) {
+    public TypesFromDecimalPageReader(Dictionary dict, int length, int precision, short scale,
+        int hivePrecision, int hiveScale) {
       super(dict, length, hivePrecision, hiveScale);
+      this.precision = precision;
       this.scale = scale;
     }
 
@@ -1460,6 +1478,47 @@ public final class ParquetDataColumnReaderFactory {
       hiveDecimalWritable.set(dict.decodeToBinary(id).getBytesUnsafe(), scale);
       return super.validatedScaledDecimal(scale);
     }
+
+    /**
+     * Decimal64 identity fast path for FIXED_LEN_BYTE_ARRAY/BINARY decimals: the stored big-endian
+     * two's-complement unscaled value is read straight into a long with only a bounds check, instead
+     * of the per-row HiveDecimal materialization {@link #readDecimal()} performs via
+     * {@code fastSetFromBigIntegerBytesAndScale}. Rescaled or wider decimals fall back to
+     * {@link #readDecimal()}.
+     */
+    @Override
+    public boolean isFastDecimal64() {
+      // Valid only with no rescale (file scale == Hive scale) and precision <= 18, so the unscaled
+      // value fits a long.
+      return scale == hiveScale && HiveDecimalWritable.isPrecisionDecimal64(precision);
+    }
+
+    @Override
+    public long readDecimal64() {
+      return validatedDecimal64(binaryToUnscaledLong(valuesReader.readBytes()));
+    }
+
+    @Override
+    public long readDecimal64(int id) {
+      return validatedDecimal64(binaryToUnscaledLong(dict.decodeToBinary(id)));
+    }
+
+    /**
+     * Big-endian two's-complement bytes -> unscaled long (the low 64 bits). The fast path runs only
+     * for file precision <= 18 (see isFastDecimal64), so a value conforming to that precision fits a
+     * long; the leading bytes of a wider-than-8-byte array are sign extension and shift out losslessly.
+     */
+    private static long binaryToUnscaledLong(Binary value) {
+      ByteBuffer buf = value.toByteBuffer();
+      int pos = buf.position();
+      int len = buf.remaining();
+      // Sign-extend from the most significant byte so negative values are reconstructed correctly.
+      long v = (len > 0 && buf.get(pos) < 0) ? -1L : 0L;
+      for (int i = 0; i < len; i++) {
+        v = (v << 8) | (buf.get(pos + i) & 0xFF);
+      }
+      return v;
+    }
   }
 
   /**
@@ -1469,7 +1528,7 @@ public final class ParquetDataColumnReaderFactory {
    * and returned as per the type defined in HMS.
    */
   public static class TypesFromInt32DecimalPageReader extends DefaultParquetDataColumnReader {
-    private short scale;
+    private final short scale;
 
     public TypesFromInt32DecimalPageReader(ValuesReader realReader, int length, short scale, int hivePrecision,
         int hiveScale) {
@@ -1622,6 +1681,23 @@ public final class ParquetDataColumnReaderFactory {
       hiveDecimalWritable.set(hiveDecimal);
       return super.validatedScaledDecimal(scale);
     }
+
+    @Override
+    public boolean isFastDecimal64() {
+      // Identity fast path: the file scale equals the Hive scale, so the stored unscaled value IS the
+      // Decimal64 value -- no rescale/rounding, only a precision bounds check.
+      return scale == hiveScale;
+    }
+
+    @Override
+    public long readDecimal64() {
+      return validatedDecimal64(valuesReader.readInteger());
+    }
+
+    @Override
+    public long readDecimal64(int id) {
+      return validatedDecimal64(dict.decodeToInt(id));
+    }
   }
 
   /**
@@ -1631,7 +1707,7 @@ public final class ParquetDataColumnReaderFactory {
    * and returned as per the type defined in HMS.
    */
   public static class TypesFromInt64DecimalPageReader extends DefaultParquetDataColumnReader {
-    private short scale;
+    private final short scale;
 
     public TypesFromInt64DecimalPageReader(ValuesReader realReader, int length, short scale, int hivePrecision,
         int hiveScale) {
@@ -1784,6 +1860,23 @@ public final class ParquetDataColumnReaderFactory {
       hiveDecimalWritable.set(hiveDecimal);
       return super.validatedScaledDecimal(scale);
     }
+
+    @Override
+    public boolean isFastDecimal64() {
+      // Identity fast path: the file scale equals the Hive scale, so the stored unscaled long IS the
+      // Decimal64 value -- no rescale/rounding, only a precision bounds check.
+      return scale == hiveScale;
+    }
+
+    @Override
+    public long readDecimal64() {
+      return validatedDecimal64(valuesReader.readLong());
+    }
+
+    @Override
+    public long readDecimal64(int id) {
+      return validatedDecimal64(dict.decodeToLong(id));
+    }
   }
 
   /**
@@ -1909,8 +2002,8 @@ public final class ParquetDataColumnReaderFactory {
     case INT96:
       ZoneId targetZone =
           skipTimestampConversion ? ZoneOffset.UTC : firstNonNull(writerTimezone, TimeZone.getDefault().toZoneId());
-      return isDictionary ? 
-          new TypesFromInt96PageReader(dictionary, length, targetZone, legacyConversionEnabled) : 
+      return isDictionary ?
+          new TypesFromInt96PageReader(dictionary, length, targetZone, legacyConversionEnabled) :
           new TypesFromInt96PageReader(valuesReader, length, targetZone, legacyConversionEnabled);
     case BOOLEAN:
       return isDictionary ? new TypesFromBooleanPageReader(dictionary, length) : new
@@ -1956,15 +2049,16 @@ public final class ParquetDataColumnReaderFactory {
     }
 
     Optional<ParquetDataColumnReader> reader = parquetType.getLogicalTypeAnnotation()
-        .accept(new LogicalTypeAnnotationVisitor<ParquetDataColumnReader>() {
+        .accept(new LogicalTypeAnnotationVisitor<>() {
           @Override public Optional<ParquetDataColumnReader> visit(
               DecimalLogicalTypeAnnotation logicalTypeAnnotation) {
+            final int precision = logicalTypeAnnotation.getPrecision();
             final short scale = (short) logicalTypeAnnotation.getScale();
             return isDict ? Optional
-                .of(new TypesFromDecimalPageReader(dictionary, length, scale, hivePrecision,
-                    hiveScale)) : Optional
-                .of(new TypesFromDecimalPageReader(valuesReader, length, scale, hivePrecision,
-                    hiveScale));
+                .of(new TypesFromDecimalPageReader(dictionary, length, precision, scale,
+                    hivePrecision, hiveScale)) : Optional
+                .of(new TypesFromDecimalPageReader(valuesReader, length, precision, scale,
+                    hivePrecision, hiveScale));
           }
 
           @Override public Optional<ParquetDataColumnReader> visit(

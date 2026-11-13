@@ -9,15 +9,15 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.correlation;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
@@ -33,14 +33,12 @@ import org.apache.hadoop.hive.ql.exec.SelectOperator;
 import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.optimizer.correlation.ReduceSinkDeDuplication.ReduceSinkDeduplicateProcCtx;
 import org.apache.hadoop.hive.ql.parse.SemanticException;
-import org.apache.hadoop.hive.ql.plan.ColStatistics;
 import org.apache.hadoop.hive.ql.plan.ExprNodeConstantDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDescUtils;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
 import org.apache.hadoop.hive.ql.plan.PlanUtils;
 import org.apache.hadoop.hive.ql.plan.ReduceSinkDesc;
-import org.apache.hadoop.hive.ql.plan.Statistics;
 import org.apache.hadoop.hive.ql.plan.TableDesc;
 
 import com.google.common.collect.ImmutableList;
@@ -149,7 +147,7 @@ public class ReduceSinkDeDuplicationUtils {
         // child RS but Sorting order of the child RS is more specific than
         // that of the parent RS.
         throw new SemanticException("Sorting columns and order don't match. " +
-            "Try set " + HiveConf.ConfVars.HIVEOPTREDUCEDEDUPLICATION + "=false;");
+            "Try set " + HiveConf.ConfVars.HIVE_OPT_REDUCE_DEDUPLICATION + "=false;");
       }
       pRS.getConf().setOrder(cRS.getConf().getOrder());
       pRS.getConf().setNullOrder(cRS.getConf().getNullOrder());
@@ -210,7 +208,7 @@ public class ReduceSinkDeDuplicationUtils {
     if (rs.getConf().getNumReducers() > 0) {
       return rs.getConf().getNumReducers();
     }
-    int constantReducers = conf.getIntVar(HiveConf.ConfVars.HADOOPNUMREDUCERS);
+    int constantReducers = conf.getIntVar(HiveConf.ConfVars.HADOOP_NUM_REDUCERS);
     if (constantReducers > 0) {
       return constantReducers;
     }
@@ -221,8 +219,8 @@ public class ReduceSinkDeDuplicationUtils {
         inputTotalBytes = StatsUtils.safeAdd(inputTotalBytes, sibling.getStatistics().getDataSize());
       }
     }
-    int maxReducers = conf.getIntVar(HiveConf.ConfVars.MAXREDUCERS);
-    long bytesPerReducer = conf.getLongVar(HiveConf.ConfVars.BYTESPERREDUCER);
+    int maxReducers = conf.getIntVar(HiveConf.ConfVars.MAX_REDUCERS);
+    long bytesPerReducer = conf.getLongVar(HiveConf.ConfVars.BYTES_PER_REDUCER);
     return Utilities.estimateReducers(inputTotalBytes, bytesPerReducer, maxReducers, false);
   }
 

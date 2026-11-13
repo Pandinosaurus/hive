@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.exec.tez;
 
@@ -86,7 +87,7 @@ public class ReduceRecordProcessor extends RecordProcessor {
   public ReduceRecordProcessor(final JobConf jconf, final ProcessorContext context) throws Exception {
     super(jconf, context);
 
-    String queryId = HiveConf.getVar(jconf, HiveConf.ConfVars.HIVEQUERYID);
+    String queryId = HiveConf.getVar(jconf, HiveConf.ConfVars.HIVE_QUERY_ID);
     cache = ObjectCacheFactory.getCache(jconf, queryId, true);
     dynamicValueCache = ObjectCacheFactory.getCache(jconf, queryId, false, true);
 
@@ -305,6 +306,14 @@ public class ReduceRecordProcessor extends RecordProcessor {
     } else {
       LOG.info("reducer not setup yet. abort not being forwarded");
     }
+    if (mergeWorkList != null) {
+      for (BaseWork redWork : mergeWorkList) {
+        redWork.abort();
+      }
+    }
+    if (reduceWork != null) {
+      reduceWork.abort();
+    }
   }
 
   /**
@@ -343,16 +352,13 @@ public class ReduceRecordProcessor extends RecordProcessor {
     }
 
     try {
-      if (isAborted()) {
-        for (ReduceRecordSource rs : sources) {
-          if (!rs.close()) {
-            setAborted(false); // Preserving the old logic. Hmm...
-            break;
-          }
-        }
-      }
-
       boolean abort = isAborted();
+      for (ReduceRecordSource rs : sources) {
+        abort |= !rs.close();
+      }
+      if (abort) {
+        setAborted(true);
+      }
       reducer.close(abort);
       if (mergeWorkList != null) {
         for (BaseWork redWork : mergeWorkList) {

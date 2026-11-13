@@ -20,21 +20,9 @@
 <configuration>
 
   <property>
-    <name>hive.metastore.client.cache.maxSize</name>
-    <value>10Mb</value>
-    <description>Max size for hive metastore client local cache</description>
-  </property>
-
-  <property>
     <name>hive.metastore.client.cache.enabled</name>
     <value>true</value>
     <description>This property enables a Caffeiene Cache for Metastore client</description>
-  </property>
-
-  <property>
-    <name>hive.metastore.client.cache.recordStats</name>
-    <value>true</value>
-    <description>This property enables recording metastore client cache stats in DEBUG logs</description>
   </property>
 
 <property>
@@ -56,10 +44,12 @@
   <description>A base for other temporary directories.</description>
 </property>
 
+<!-- in LLAP mode hive.tez.container.size isn't used to actually determine container size, however while -->
+<!-- calculating available slots (in split generation) in it's used through -->
+<!-- the Vertex resource, so this has to be defined in order to get consistent test results -->
 <property>
   <name>hive.tez.container.size</name>
-  <value>128</value>
-  <description></description>
+  <value>256</value>
 </property>
 
 <property>
@@ -114,7 +104,7 @@
 
 <property>
   <name>javax.jdo.option.ConnectionDriverName</name>
-  <value>org.apache.derby.jdbc.EmbeddedDriver</value>
+  <value>org.apache.derby.iapi.jdbc.AutoloadedDriver</value>
 </property>
 
 <property>
@@ -132,14 +122,6 @@
   <name>hive.metastore.warehouse.dir</name>
   <value>${test.warehouse.dir}</value>
   <description></description>
-</property>
-
-<property>
-  <name>hive.metastore.metadb.dir</name>
-  <value>file://${test.tmp.dir}/metadb/</value>
-  <description>
-  Required by metastore server or if the uris argument below is not supplied
-  </description>
 </property>
 
 <property>
@@ -176,6 +158,12 @@
   <name>hive.querylog.location</name>
   <value>${test.tmp.dir}/tmp</value>
   <description>Location of the structured hive logs</description>
+</property>
+
+<property>
+  <name>hive.lineage.statement.filter</name>
+  <value>ALL</value>
+  <description>Specify the types of statements for which column lineage information is generated</description>
 </property>
 
 <property>
@@ -247,12 +235,6 @@
 </property>
 
 <property>
-  <name>hive.execution.engine</name>
-  <value>tez</value>
-  <description>Whether to use MR or Tez</description>
-</property>
-
-<property>
   <name>tez.am.node-blacklisting.enabled</name>
   <value>false</value>
 </property>
@@ -294,6 +276,11 @@
 </property>
 
 <property>
+  <name>hive.tez.exec.print.summary</name>
+  <value>true</value>
+</property>
+
+<property>
   <name>hive.llap.cache.allow.synthetic.fileid</name>
   <value>true</value>
 </property>
@@ -307,7 +294,10 @@
   <name>hive.explain.user</name>
   <value>false</value>
 </property>
-
+<property>
+  <name>hive.explain.formatted.indent</name>
+  <value>true</value>
+</property>
 <property>
   <name>hive.join.inner.residual</name>
   <value>true</value>
@@ -408,8 +398,12 @@
 </property>
 
 <property>
-  <name>hive.cbo.fallback.strategy</name>
-  <value>TEST</value>
+  <name>hive.txn.xlock.ctas</name>
+  <value>false</value>
 </property>
-  
+
+<property>
+  <name>hive.lock.sleep.between.retries</name>
+  <value>2</value>
+</property>
 </configuration>

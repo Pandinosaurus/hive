@@ -9,16 +9,17 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.dataconnector.desc;
 
-import org.apache.commons.collections.MapUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.api.PrincipalType;
 import org.apache.hadoop.hive.ql.ddl.ShowUtils;
@@ -45,6 +46,17 @@ abstract class DescDataConnectorFormatter {
     }
   }
 
+  /**
+   * The DBCP credentials in DCPROPERTIES are not part of the connector description. Explain output
+   * removes these keys outright (HIVE-28838); a description keeps them and replaces only the value,
+   * because its purpose is to report what the connector is configured with -- dropping the key here
+   * would make a configured credential read as though none were set. Every other connector
+   * parameter is left untouched.
+   */
+  private static Map<String, String> describableParams(Map<String, String> params) {
+    return MetaDataFormatUtils.withholdJdbcConnectionCredentialValues(params);
+  }
+
   abstract void showDataConnectorDescription(DataOutputStream out, String connector, String type, String url,
       String ownerName, PrincipalType ownerType, String comment, Map<String, String> params)
       throws HiveException;
@@ -69,8 +81,9 @@ abstract class DescDataConnectorFormatter {
       if (comment != null) {
         builder.put("comment", comment);
       }
-      if (MapUtils.isNotEmpty(params)) {
-        builder.put("params", params);
+      Map<String, String> describableParams = describableParams(params);
+      if (MapUtils.isNotEmpty(describableParams)) {
+        builder.put("params", describableParams);
       }
       ShowUtils.asJson(out, builder.build());
     }
@@ -104,8 +117,9 @@ abstract class DescDataConnectorFormatter {
           out.write(HiveStringUtils.escapeJava(comment).getBytes(StandardCharsets.UTF_8));
         }
         out.write(Utilities.tabCode);
-        if (MapUtils.isNotEmpty(params)) {
-          out.write(params.toString().getBytes(StandardCharsets.UTF_8));
+        Map<String, String> describableParams = describableParams(params);
+        if (MapUtils.isNotEmpty(describableParams)) {
+          out.write(describableParams.toString().getBytes(StandardCharsets.UTF_8));
         }
         out.write(Utilities.newLineCode);
       } catch (IOException e) {

@@ -9,14 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.optimizer.calcite.rules;
 
+import com.google.common.base.Preconditions;
 import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelOptRuleCall;
 import org.apache.calcite.plan.RelOptRuleOperand;
@@ -56,7 +58,7 @@ import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.optimizer.calcite.CalciteSubqueryRuntimeException;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelFactories;
 import org.apache.hadoop.hive.ql.optimizer.calcite.HiveRelShuttleImpl;
-import org.apache.hadoop.hive.ql.optimizer.calcite.SubqueryConf;
+import org.apache.hadoop.hive.ql.optimizer.calcite.correlation.HiveCorrelationInfo;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveAggregate;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveFilter;
 import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveProject;
@@ -78,6 +80,10 @@ import org.apache.hadoop.hive.ql.optimizer.calcite.reloperators.HiveSortLimit;
  */
 public class HiveSubQueryRemoveRule extends RelOptRule {
 
+  public static final SqlFunction SQ_COUNT_CHECK =
+      new SqlFunction("sq_count_check", SqlKind.OTHER_FUNCTION, ReturnTypes.BOOLEAN, InferTypes.RETURN_TYPE,
+          OperandTypes.NUMERIC, SqlFunctionCategory.USER_DEFINED_FUNCTION);
+
   public static RelOptRule forProject(HiveConf conf) {
     return new HiveSubQueryRemoveRule(
         RelOptRule.operandJ(HiveProject.class, null, RexUtil.SubQueryFinder::containsSubQuery, any()),
@@ -89,7 +95,7 @@ public class HiveSubQueryRemoveRule extends RelOptRule {
         RelOptRule.operandJ(HiveFilter.class, null, RexUtil.SubQueryFinder::containsSubQuery, any()),
         "SubQueryRemoveRule:Filter", conf);
   }
-  
+
   private final HiveConf conf;
 
   private HiveSubQueryRemoveRule(RelOptRuleOperand operand, String description, HiveConf conf) {
@@ -104,44 +110,43 @@ public class HiveSubQueryRemoveRule extends RelOptRule {
     // if subquery is in FILTER
     if (relNode instanceof HiveFilter) {
       final HiveFilter filter = call.rel(0);
-      final RexSubQuery e = RexUtil.SubQueryFinder.find(filter.getCondition());
-      assert e != null;
-
-      final RelOptUtil.Logic logic =
-          LogicVisitor.find(RelOptUtil.Logic.TRUE, ImmutableList.of(filter.getCondition()), e);
+      // Since there is a RexSubQuery, there should be a HiveCorrelationInfo
+      // in the RelNode
+      Preconditions.checkState(!filter.getCorrelationInfos().isEmpty());
+      HiveCorrelationInfo correlationInfo = filter.getCorrelationInfos().get(0);
+      final RelOptUtil.Logic logic = LogicVisitor.find(RelOptUtil.Logic.TRUE,
+          ImmutableList.of(filter.getCondition()), correlationInfo.rexSubQuery);
       builder.push(filter.getInput());
       final int fieldCount = builder.peek().getRowType().getFieldCount();
 
-      SubqueryConf subqueryConfig = filter.getCluster().getPlanner().getContext().unwrap(SubqueryConf.class);
-      boolean isCorrScalarQuery = subqueryConfig.getCorrScalarRexSQWithAgg().contains(e.rel);
+      boolean isCorrScalarQuery = correlationInfo.isCorrScalarQuery();
 
       final RexNode target =
-          apply(call.getMetadataQuery(), e, HiveFilter.getVariablesSet(e), logic, builder, 1,
-              fieldCount, isCorrScalarQuery);
-      final RexShuttle shuttle = new ReplaceSubQueryShuttle(e, target);
+          apply(call.getMetadataQuery(), correlationInfo.rexSubQuery,
+              correlationInfo.correlationIds, logic, builder, 1, fieldCount, isCorrScalarQuery);
+      final RexShuttle shuttle = new ReplaceSubQueryShuttle(correlationInfo.rexSubQuery, target);
       builder.filter(shuttle.apply(filter.getCondition()));
       builder.project(fields(builder, filter.getRowType().getFieldCount()));
       RelNode newRel = builder.build();
       call.transformTo(newRel);
     } else if (relNode instanceof HiveProject) {
-      // if subquery is in PROJECT
       final HiveProject project = call.rel(0);
-      final RexSubQuery e = RexUtil.SubQueryFinder.find(project.getProjects());
-      assert e != null;
+      // Since there is a RexSubQuery, there should be a HiveCorrelationInfo
+      // in the RelNode
+      Preconditions.checkState(!project.getCorrelationInfos().isEmpty());
+      HiveCorrelationInfo correlationInfo = project.getCorrelationInfos().get(0);
 
-      final RelOptUtil.Logic logic =
-          LogicVisitor.find(RelOptUtil.Logic.TRUE_FALSE_UNKNOWN, project.getProjects(), e);
+      final RelOptUtil.Logic logic = LogicVisitor.find(RelOptUtil.Logic.TRUE_FALSE_UNKNOWN,
+          project.getProjects(), correlationInfo.rexSubQuery);
       builder.push(project.getInput());
       final int fieldCount = builder.peek().getRowType().getFieldCount();
 
-      SubqueryConf subqueryConfig =
-          project.getCluster().getPlanner().getContext().unwrap(SubqueryConf.class);
-      boolean isCorrScalarQuery = subqueryConfig.getCorrScalarRexSQWithAgg().contains(e.rel);
+      boolean isCorrScalarQuery = correlationInfo.isCorrScalarQuery();
 
       final RexNode target =
-          apply(call.getMetadataQuery(), e, HiveFilter.getVariablesSet(e), logic, builder, 1,
-              fieldCount, isCorrScalarQuery);
-      final RexShuttle shuttle = new ReplaceSubQueryShuttle(e, target);
+          apply(call.getMetadataQuery(), correlationInfo.rexSubQuery,
+              correlationInfo.correlationIds, logic, builder, 1, fieldCount, isCorrScalarQuery);
+      final RexShuttle shuttle = new ReplaceSubQueryShuttle(correlationInfo.rexSubQuery, target);
       builder.project(shuttle.apply(project.getProjects()), project.getRowType().getFieldNames());
       call.transformTo(builder.build());
     }
@@ -180,15 +185,10 @@ public class HiveSubQueryRemoveRule extends RelOptRule {
       // returns single row/column
       builder.aggregate(builder.groupKey(), builder.count(false, "cnt"));
 
-      SqlFunction countCheck =
-          new SqlFunction("sq_count_check", SqlKind.OTHER_FUNCTION, ReturnTypes.BOOLEAN,
-              InferTypes.RETURN_TYPE, OperandTypes.NUMERIC,
-              SqlFunctionCategory.USER_DEFINED_FUNCTION);
-
       //we create FILTER (sq_count_check(count())) instead of PROJECT because RelFieldTrimmer
       // ends up getting rid of Project since it is not used further up the tree
       //sq_count_check returns true when subquery returns single row, else it fails
-      builder.filter(builder.call(countCheck, builder.field("cnt")));
+      builder.filter(builder.call(SQ_COUNT_CHECK, builder.field("cnt")));
       if (!variablesSet.isEmpty()) {
         builder.join(JoinRelType.LEFT, builder.literal(true), variablesSet);
       } else {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec.vector;
@@ -25,7 +26,6 @@ import org.apache.hadoop.hive.ql.exec.FilterOperator;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.ConstantVectorExpression;
 import org.apache.hadoop.hive.ql.exec.vector.expressions.VectorExpression;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
-import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.FilterDesc;
 import org.apache.hadoop.hive.ql.plan.OperatorDesc;
 import org.apache.hadoop.hive.ql.plan.VectorDesc;
@@ -84,7 +84,7 @@ public class VectorFilterOperator extends FilterOperator
     VectorExpression.doTransientInit(predicateExpression, hconf);
     try {
       heartbeatInterval = HiveConf.getIntVar(hconf,
-          HiveConf.ConfVars.HIVESENDHEARTBEAT);
+          HiveConf.ConfVars.HIVE_SEND_HEARTBEAT);
 
       predicateExpression.init(hconf);
     } catch (Throwable e) {
@@ -113,7 +113,7 @@ public class VectorFilterOperator extends FilterOperator
 
     //The selected vector represents selected rows.
     //Clone the selected vector
-    System.arraycopy(vrg.selected, 0, temporarySelected, 0, vrg.size);
+    System.arraycopy(vrg.selected, 0, temporarySelected, 0, vrg.selected.length);
     int [] selectedBackup = vrg.selected;
     vrg.selected = temporarySelected;
     int sizeBackup = vrg.size;

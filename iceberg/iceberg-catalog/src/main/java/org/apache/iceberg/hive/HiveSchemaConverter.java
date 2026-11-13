@@ -21,13 +21,17 @@ package org.apache.iceberg.hive;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.ListTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.MapTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.TimestampLocalTZTypeInfo;
+import org.apache.hadoop.hive.serde2.typeinfo.TimestampTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.types.Type;
@@ -43,7 +47,7 @@ class HiveSchemaConverter {
   private static final Logger LOG = LoggerFactory.getLogger(HiveSchemaConverter.class);
 
   private int id;
-  private boolean autoConvert;
+  private final boolean autoConvert;
 
   private HiveSchemaConverter(boolean autoConvert) {
     this.autoConvert = autoConvert;
@@ -51,27 +55,55 @@ class HiveSchemaConverter {
     this.id = 1;
   }
 
-  static Schema convert(List<String> names, List<TypeInfo> typeInfos, List<String> comments, boolean autoConvert) {
+  static Schema convert(List<String> names, List<TypeInfo> typeInfos, List<String> comments, boolean autoConvert,
+      Map<String, String> defaultValues) {
     HiveSchemaConverter converter = new HiveSchemaConverter(autoConvert);
-    return new Schema(converter.convertInternal(names, typeInfos, comments));
+    return new Schema(converter.convertInternal(names, typeInfos, defaultValues, comments, false));
   }
 
-  static Type convert(TypeInfo typeInfo, boolean autoConvert) {
+  public static Type convert(TypeInfo typeInfo, boolean autoConvert, String defaultValue,
+      boolean shouldAddInitialDefault) {
     HiveSchemaConverter converter = new HiveSchemaConverter(autoConvert);
-    return converter.convertType(typeInfo);
+    return converter.convertType(typeInfo, defaultValue, shouldAddInitialDefault);
   }
 
-  List<Types.NestedField> convertInternal(List<String> names, List<TypeInfo> typeInfos, List<String> comments) {
+  List<Types.NestedField> convertInternal(List<String> names, List<TypeInfo> typeInfos,
+      Map<String, String> defaultValues, List<String> comments, boolean shouldAddInitialDefault) {
     List<Types.NestedField> result = Lists.newArrayListWithExpectedSize(names.size());
+    int outerId = id + names.size();
+    id = outerId;
     for (int i = 0; i < names.size(); ++i) {
-      result.add(Types.NestedField.optional(id++, names.get(i), convertType(typeInfos.get(i)),
-          comments.isEmpty() || i >= comments.size() ? null : comments.get(i)));
-    }
+      Type type = convertType(typeInfos.get(i), defaultValues.get(names.get(i)), shouldAddInitialDefault);
+      String columnName = names.get(i);
+      Types.NestedField.Builder fieldBuilder =
+          Types.NestedField.builder()
+              .asOptional()
+              .withId(outerId - names.size() + i)
+              .withName(columnName)
+              .ofType(type)
+              .withDoc(comments.isEmpty() || i >= comments.size() ? null : comments.get(i));
 
+      if (defaultValues.containsKey(columnName)) {
+        if (type.isPrimitiveType()) {
+          Object icebergDefaultValue = HiveSchemaUtil.getDefaultValue(defaultValues.get(columnName), type);
+          if (icebergDefaultValue != null) {
+            fieldBuilder.withWriteDefault(Expressions.lit(icebergDefaultValue));
+            if (shouldAddInitialDefault) {
+              fieldBuilder.withInitialDefault(Expressions.lit(icebergDefaultValue));
+            }
+          }
+        } else if (!type.isStructType()) {
+          throw new UnsupportedOperationException(
+              "Default values for " + columnName + " of type " + type + " are not supported");
+        }
+      }
+
+      result.add(fieldBuilder.build());
+    }
     return result;
   }
 
-  Type convertType(TypeInfo typeInfo) {
+  Type convertType(TypeInfo typeInfo, String defaultValue, boolean shouldAddInitialDefault) {
     switch (typeInfo.getCategory()) {
       case PRIMITIVE:
         switch (((PrimitiveTypeInfo) typeInfo).getPrimitiveCategory()) {
@@ -83,9 +115,9 @@ class HiveSchemaConverter {
             return Types.BooleanType.get();
           case BYTE:
           case SHORT:
-            Preconditions.checkArgument(autoConvert, "Unsupported Hive type: %s, use integer " +
+            Preconditions.checkArgument(autoConvert, "Unsupported Hive type %s, use integer " +
                     "instead or enable automatic type conversion, set 'iceberg.mr.schema.auto.conversion' to true",
-                ((PrimitiveTypeInfo) typeInfo).getPrimitiveCategory());
+                typeInfo.toString().toUpperCase());
 
             LOG.debug("Using auto conversion from SHORT/BYTE to INTEGER");
             return Types.IntegerType.get();
@@ -97,7 +129,7 @@ class HiveSchemaConverter {
             return Types.BinaryType.get();
           case CHAR:
           case VARCHAR:
-            Preconditions.checkArgument(autoConvert, "Unsupported Hive type: %s, use integer " +
+            Preconditions.checkArgument(autoConvert, "Unsupported Hive type %s, use string " +
                     "instead or enable automatic type conversion, set 'iceberg.mr.schema.auto.conversion' to true",
                 ((PrimitiveTypeInfo) typeInfo).getPrimitiveCategory());
 
@@ -106,6 +138,10 @@ class HiveSchemaConverter {
           case STRING:
             return Types.StringType.get();
           case TIMESTAMP:
+            TimestampTypeInfo ts = (TimestampTypeInfo) typeInfo;
+            if (ts.getPrecision() == 9) {
+              return Types.TimestampNanoType.withoutZone();
+            }
             return Types.TimestampType.withoutZone();
           case DATE:
             return Types.DateType.get();
@@ -117,6 +153,10 @@ class HiveSchemaConverter {
           default:
             // special case for Timestamp with Local TZ which is only available in Hive3
             if ("TIMESTAMPLOCALTZ".equalsIgnoreCase(((PrimitiveTypeInfo) typeInfo).getPrimitiveCategory().name())) {
+              TimestampLocalTZTypeInfo tz = (TimestampLocalTZTypeInfo) typeInfo;
+              if (tz.getPrecision() == 9) {
+                return Types.TimestampNanoType.withZone();
+              }
               return Types.TimestampType.withZone();
             }
             throw new IllegalArgumentException("Unsupported Hive type (" +
@@ -125,22 +165,29 @@ class HiveSchemaConverter {
         }
       case STRUCT:
         StructTypeInfo structTypeInfo = (StructTypeInfo) typeInfo;
-        List<Types.NestedField> fields =
-            convertInternal(structTypeInfo.getAllStructFieldNames(), structTypeInfo.getAllStructFieldTypeInfos(),
-                    Collections.emptyList());
+        List<Types.NestedField> fields = convertInternal(
+            structTypeInfo.getAllStructFieldNames(),
+            structTypeInfo.getAllStructFieldTypeInfos(),
+            HiveSchemaUtil.getDefaultValuesMap(null, defaultValue),
+            Collections.emptyList(),
+            shouldAddInitialDefault);
         return Types.StructType.of(fields);
       case MAP:
         MapTypeInfo mapTypeInfo = (MapTypeInfo) typeInfo;
-        Type keyType = convertType(mapTypeInfo.getMapKeyTypeInfo());
-        Type valueType = convertType(mapTypeInfo.getMapValueTypeInfo());
         int keyId = id++;
+        Type keyType = convertType(mapTypeInfo.getMapKeyTypeInfo(), defaultValue, shouldAddInitialDefault);
         int valueId = id++;
+        Type valueType = convertType(mapTypeInfo.getMapValueTypeInfo(), defaultValue, shouldAddInitialDefault);
         return Types.MapType.ofOptional(keyId, valueId, keyType, valueType);
       case LIST:
         ListTypeInfo listTypeInfo = (ListTypeInfo) typeInfo;
-        Type listType = convertType(listTypeInfo.getListElementTypeInfo());
-        return Types.ListType.ofOptional(id++, listType);
-      case UNION:
+        int listId = id++;
+        Type listType = convertType(listTypeInfo.getListElementTypeInfo(), defaultValue, shouldAddInitialDefault);
+        return Types.ListType.ofOptional(listId, listType);
+      case VARIANT:
+        return Types.VariantType.get();
+      case UNKNOWN:
+        return Types.UnknownType.get();
       default:
         throw new IllegalArgumentException("Unknown type " + typeInfo.getCategory());
     }

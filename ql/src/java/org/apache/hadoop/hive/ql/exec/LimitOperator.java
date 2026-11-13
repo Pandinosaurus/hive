@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -68,7 +69,7 @@ public class LimitOperator extends Operator<LimitDesc> implements Serializable {
     currCount = 0;
     isMap = hconf.getBoolean("mapred.task.is.map", true);
 
-    String queryId = HiveConf.getVar(getConfiguration(), HiveConf.ConfVars.HIVEQUERYID);
+    String queryId = HiveConf.getVar(getConfiguration(), HiveConf.ConfVars.HIVE_QUERY_ID);
     this.runtimeCache = ObjectCacheFactory.getCache(getConfiguration(), queryId, false, true);
 
     // this can happen in HS2 while doing local fetch optimization, where LimitOperator is used
@@ -168,14 +169,14 @@ public class LimitOperator extends Operator<LimitDesc> implements Serializable {
   }
 
   public static boolean checkLimitReached(JobConf jobConf) {
-    String queryId = HiveConf.getVar(jobConf, HiveConf.ConfVars.HIVEQUERYID);
+    String queryId = HiveConf.getVar(jobConf, HiveConf.ConfVars.HIVE_QUERY_ID);
     String limitReachedKey = getLimitReachedKey(jobConf);
 
     return checkLimitReached(jobConf, queryId, limitReachedKey);
   }
 
   public static boolean checkLimitReachedForVertex(JobConf jobConf, String vertexName) {
-    String queryId = HiveConf.getVar(jobConf, HiveConf.ConfVars.HIVEQUERYID);
+    String queryId = HiveConf.getVar(jobConf, HiveConf.ConfVars.HIVE_QUERY_ID);
     return checkLimitReached(jobConf, queryId, vertexName + LIMIT_REACHED_KEY_SUFFIX);
   }
 

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.view.materialized.show;
@@ -40,8 +41,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.hadoop.hive.conf.Constants.MATERIALIZED_VIEW_REWRITING_TIME_WINDOW;
-import static org.apache.hadoop.hive.ql.metadata.HiveRelOptMaterialization.IncrementalRebuildMode.UNKNOWN;
-import static org.apache.hadoop.hive.ql.metadata.HiveRelOptMaterialization.RewriteAlgorithm.ALL;
+import static org.apache.hadoop.hive.ql.metadata.RewriteAlgorithm.ALL;
+import static org.apache.hadoop.hive.ql.optimizer.calcite.rules.views.IncrementalRebuildMode.NOT_AVAILABLE;
 
 /**
  * Formats SHOW MATERIALIZED VIEWS results.
@@ -136,27 +137,13 @@ abstract class ShowMaterializedViewsFormatter {
 
   @NotNull
   private static String formatIncrementalRebuildMode(Table materializedView) {
-    String incrementalRebuild;
     HiveRelOptMaterialization relOptMaterialization = HiveMaterializedViewsRegistry.get().
-            getRewritingMaterializedView(materializedView.getDbName(), materializedView.getTableName(), ALL);
-    if (relOptMaterialization == null || relOptMaterialization.getRebuildMode() == UNKNOWN) {
-      incrementalRebuild = "Unknown";
-    } else {
-      switch (relOptMaterialization.getRebuildMode()) {
-        case AVAILABLE:
-          incrementalRebuild = "Available";
-          break;
-        case INSERT_ONLY:
-          incrementalRebuild = "Available in presence of insert operations only";
-          break;
-        case NOT_AVAILABLE:
-          incrementalRebuild = "Not available";
-          break;
-        default:
-          incrementalRebuild = "Unknown";
-          break;
-      }
+        getRewritingMaterializedView(materializedView.getFullTableName(), ALL);
+
+    if (relOptMaterialization == null) {
+      return NOT_AVAILABLE.getMessage();
     }
-    return incrementalRebuild;
+
+    return relOptMaterialization.getRebuildMode().getMessage();
   }
 }

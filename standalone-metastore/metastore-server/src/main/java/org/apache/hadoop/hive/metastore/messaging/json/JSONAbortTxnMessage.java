@@ -22,6 +22,8 @@ import org.apache.hadoop.hive.metastore.messaging.AbortTxnMessage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
+
 /**
  * JSON implementation of AbortTxnMessage
  */
@@ -39,17 +41,24 @@ public class JSONAbortTxnMessage extends AbortTxnMessage {
   @JsonProperty
   private String servicePrincipal;
 
+  @JsonProperty
+  private List<String> dbsUpdated;
+  @JsonProperty
+  private List<Long> writeIds;
+
   /**
    * Default constructor, needed for Jackson.
    */
   public JSONAbortTxnMessage() {
   }
 
-  public JSONAbortTxnMessage(String server, String servicePrincipal, Long txnid, Long timestamp) {
+  public JSONAbortTxnMessage(String server, String servicePrincipal, Long txnid, Long timestamp, List<String> dbsUpdated, List<Long> writeIds) {
     this.timestamp = timestamp;
     this.txnid = txnid;
     this.server = server;
     this.servicePrincipal = servicePrincipal;
+    this.dbsUpdated = dbsUpdated;
+    this.writeIds = writeIds;
   }
 
   @Override
@@ -75,6 +84,16 @@ public class JSONAbortTxnMessage extends AbortTxnMessage {
   @Override
   public String getServer() {
     return server;
+  }
+
+  @Override
+  public List<String> getDbsUpdated() {
+    return dbsUpdated;
+  }
+
+  @Override
+  public List<Long> getWriteIds() {
+    return writeIds;
   }
 
   @Override

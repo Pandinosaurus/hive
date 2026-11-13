@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.service.auth.ldap;
 
@@ -289,5 +290,57 @@ public class TestLdapSearch {
     search = new LdapSearch(conf, ctx);
     assertTrue(search.isUserMemberOfGroup("CN=User1,OU=org1,DC=foo,DC=bar", "grp1"));
     assertFalse(search.isUserMemberOfGroup("CN=User2,OU=org1,DC=foo,DC=bar", "grp2"));
+  }
+  @Test
+  public void testExecuteUserAndGroupFilterQueryWithSpecialCharacter() throws NamingException {
+    final String groupSearchFilter = "member=CN={0},OU=org1,DC=foo,DC=bar";
+    final String groupBaseDn = "dc=example,dc=com";
+    NamingEnumeration<SearchResult> validResult1 = LdapTestUtils.mockNamingEnumeration("Test User 1");
+    NamingEnumeration<SearchResult> validResult2 = LdapTestUtils.mockNamingEnumeration("Test User 2");
+    NamingEnumeration<SearchResult> validResult3 = LdapTestUtils.mockNamingEnumeration("Test User 3");
+    NamingEnumeration<SearchResult> validResult4 = LdapTestUtils.mockNamingEnumeration("Test User 4");
+    NamingEnumeration<SearchResult> validResult5 = LdapTestUtils.mockNamingEnumeration("Test User 5");
+
+    when(ctx.search(anyString(), contains("member=CN=Test \\5c User,OU=org1,DC=foo,DC=bar,OU=org1,DC=foo,DC=bar"),
+        any(SearchControls.class))).thenReturn(validResult1);
+    when(ctx.search(anyString(), contains("member=CN=Test \\2a User,OU=org1,DC=foo,DC=bar,OU=org1,DC=foo,DC=bar"),
+        any(SearchControls.class))).thenReturn(validResult2);
+    when(ctx.search(anyString(), contains("member=CN=Test \\28 User,OU=org1,DC=foo,DC=bar,OU=org1,DC=foo,DC=bar"),
+        any(SearchControls.class))).thenReturn(validResult3);
+    when(ctx.search(anyString(), contains("member=CN=Test \\29 User,OU=org1,DC=foo,DC=bar,OU=org1,DC=foo,DC=bar"),
+        any(SearchControls.class))).thenReturn(validResult4);
+    when(ctx.search(anyString(), contains("member=CN=Test \\00 User,OU=org1,DC=foo,DC=bar,OU=org1,DC=foo,DC=bar"),
+        any(SearchControls.class))).thenReturn(validResult5);
+    search = new LdapSearch(conf, ctx);
+
+    // contains \
+    List<String> result = search.executeUserAndGroupFilterQuery("Test , User", "Test \\ User,OU=org1,DC=foo,DC=bar",
+        groupSearchFilter, groupBaseDn);
+    assertEquals(1, result.size());
+    assertEquals("Test User 1", result.get(0));
+
+    //contains *
+    result = search.executeUserAndGroupFilterQuery("Test , User", "Test * User,OU=org1,DC=foo,DC=bar",
+        groupSearchFilter, groupBaseDn);
+    assertEquals(1, result.size());
+    assertEquals("Test User 2", result.get(0));
+
+    //contains (
+    result = search.executeUserAndGroupFilterQuery("Test , User", "Test ( User,OU=org1,DC=foo,DC=bar",
+        groupSearchFilter, groupBaseDn);
+    assertEquals(1, result.size());
+    assertEquals("Test User 3", result.get(0));
+
+    //contains )
+    result = search.executeUserAndGroupFilterQuery("Test , User", "Test ) User,OU=org1,DC=foo,DC=bar",
+        groupSearchFilter, groupBaseDn);
+    assertEquals(1, result.size());
+    assertEquals("Test User 4", result.get(0));
+
+    //contains   
+    result = search.executeUserAndGroupFilterQuery("Test , User", "Test \000 User,OU=org1,DC=foo,DC=bar",
+        groupSearchFilter, groupBaseDn);
+    assertEquals(1, result.size());
+    assertEquals("Test User 5", result.get(0));
   }
 }

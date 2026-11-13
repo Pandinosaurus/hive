@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.cli.service;
@@ -92,7 +93,6 @@ class AsyncTaskCreateUdfFile implements Callable<Void> {
     Map<String, String> udfs = new HashMap<String, String>();
     HiveConf hiveConf = new HiveConf(conf);
     // disable expensive operations on the metastore
-    hiveConf.setBoolean(MetastoreConf.ConfVars.INIT_METADATA_COUNT_ENABLED.getVarname(), false);
     hiveConf.setBoolean(MetastoreConf.ConfVars.METRICS_ENABLED.getVarname(), false);
     // performance problem: ObjectStore does its own new HiveConf()
     Hive hive = Hive.getWithFastCheck(hiveConf, false);
@@ -116,7 +116,7 @@ class AsyncTaskCreateUdfFile implements Callable<Void> {
       }
     }
     for (URI srcUri : srcUris) {
-      List<URI> localUris = resourceDownloader.downloadExternal(srcUri, null, false);
+      List<URI> localUris = resourceDownloader.downloadExternal(srcUri, null);
       for(URI dst : localUris) {
         LOG.warn("Downloaded " + dst + " from " + srcUri);
       }

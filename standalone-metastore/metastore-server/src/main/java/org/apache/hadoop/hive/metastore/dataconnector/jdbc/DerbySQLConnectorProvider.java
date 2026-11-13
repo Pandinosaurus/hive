@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore.dataconnector.jdbc;
@@ -21,37 +22,15 @@ package org.apache.hadoop.hive.metastore.dataconnector.jdbc;
 import org.apache.hadoop.hive.metastore.ColumnType;
 import org.apache.hadoop.hive.metastore.api.DataConnector;
 import org.apache.hadoop.hive.metastore.api.MetaException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
-import java.sql.SQLException;
 
 public class DerbySQLConnectorProvider extends AbstractJDBCConnectorProvider {
-  private static Logger LOG = LoggerFactory.getLogger(DerbySQLConnectorProvider.class);
 
-  // private static final String DRIVER_CLASS = "org.apache.derby.jdbc.EmbeddedDriver".intern();
-  private static final String DRIVER_CLASS = "org.apache.derby.jdbc.AutoloadedDriver".intern();
+  private static final String DRIVER_CLASS = "org.apache.derby.iapi.jdbc.AutoloadedDriver";
 
   public DerbySQLConnectorProvider(String dbName, DataConnector connector) {
     super(dbName, connector, DRIVER_CLASS);
-  }
-
-  /**
-   * Returns a list of all table names from the remote database.
-   * @return List A collection of all the table names, null if there are no tables.
-   * @throws MetaException To indicate any failures with executing this API
-   */
-  @Override
-  protected ResultSet fetchTableNames() throws MetaException {
-    ResultSet rs = null;
-    try {
-      rs = getConnection().getMetaData().getTables(scoped_db, null, null, new String[] { "TABLE" });
-    } catch (SQLException sqle) {
-      LOG.warn("Could not retrieve table names from remote datasource, cause:" + sqle.getMessage());
-      throw new MetaException("Could not retrieve table names from remote datasource, cause:" + sqle);
-    }
-    return rs;
   }
 
   /**

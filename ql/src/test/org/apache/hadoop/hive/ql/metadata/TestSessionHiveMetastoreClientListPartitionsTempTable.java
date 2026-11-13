@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.metadata;
 
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.conf.HiveConfForTest;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.TestMetastoreExpr;
 import org.apache.hadoop.hive.metastore.annotation.MetastoreCheckinTest;
@@ -94,7 +96,7 @@ public class TestSessionHiveMetastoreClientListPartitionsTempTable
   }
 
   private void initHiveConf() throws HiveException {
-    conf = Hive.get().getConf();
+    conf = new HiveConfForTest(Hive.get().getConf(), getClass());
     conf.setBoolVar(HiveConf.ConfVars.METASTORE_FASTPATH, true);
   }
 
@@ -233,7 +235,7 @@ public class TestSessionHiveMetastoreClientListPartitionsTempTable
     super.testListPartitionNamesNoDb();
   }
 
-  @Test
+  @Test(expected = NoSuchObjectException.class)
   @Override
   public void testListPartitionsAllNoTable() throws Exception {
     super.testListPartitionsAllNoTable();
@@ -260,7 +262,7 @@ public class TestSessionHiveMetastoreClientListPartitionsTempTable
   @Test
   public void testListPartitionNames() throws Exception {
     Table t = createTable4PartColsParts(getClient()).table;
-    String defaultPartitionName = HiveConf.getVar(conf, HiveConf.ConfVars.DEFAULTPARTITIONNAME);
+    String defaultPartitionName = HiveConf.getVar(conf, HiveConf.ConfVars.DEFAULT_PARTITION_NAME);
     List<List<String>> testValues = Lists.newArrayList(
         Lists.newArrayList("1999", defaultPartitionName, "02"),
         Lists.newArrayList(defaultPartitionName, "02", "10"),

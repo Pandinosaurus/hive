@@ -9,17 +9,19 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.hadoop.hive.metastore.Warehouse;
 import org.apache.hadoop.hive.metastore.api.ResourceType;
 import org.apache.hadoop.hive.metastore.api.ResourceUri;
 import org.apache.hadoop.hive.ql.exec.FunctionInfo.FunctionResource;
@@ -102,6 +104,20 @@ public final class FunctionUtils {
 
   public static boolean isQualifiedFunctionName(String functionName) {
     return functionName.indexOf('.') >= 0;
+  }
+
+  /**
+   * Qualifies the provided function name with the current database if it is not already qualified.
+   * If a session is not available, the default database name will be used for qualification.
+   * @return a qualified function name with the current database
+   */
+  public static String qualifyFunctionName(String functionName) {
+    if (isQualifiedFunctionName(functionName)) {
+      return functionName;
+    }
+    SessionState ss = SessionState.get();
+    String dbName = ss != null ? ss.getCurrentDatabase().toLowerCase() : Warehouse.DEFAULT_DATABASE_NAME;
+    return dbName + "." + functionName;
   }
 
   public static String qualifyFunctionName(String functionName, String dbName) {

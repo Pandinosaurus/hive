@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.ql.security.authorization.plugin.sqlstd;
 
@@ -62,7 +63,7 @@ public class GrantPrivAuthUtils {
 
     // get privileges for this user and its roles on this object
     RequiredPrivileges availPrivs = SQLAuthorizationUtils.getPrivilegesFromMetaStore(
-        metastoreClient, userName, hivePrivObject, curRoles, isAdmin);
+        metastoreClient, userName, hivePrivObject, curRoles, isAdmin, false);
 
     // check if required privileges is subset of available privileges
     List<String> deniedMessages = new ArrayList<String>();

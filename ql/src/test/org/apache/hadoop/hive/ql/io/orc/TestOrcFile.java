@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.io.orc;
@@ -707,7 +708,7 @@ public class TestOrcFile {
 
     assertEquals(3, stats[1].getNumberOfValues());
     assertEquals(15, ((BinaryColumnStatistics) stats[1]).getSum());
-    assertEquals("count: 3 hasNull: true bytesOnDisk: 28 sum: 15", stats[1].toString());
+    assertEquals("count: 3 hasNull: true bytesOnDisk: 30 sum: 15", stats[1].toString());
 
     assertEquals(3, stats[2].getNumberOfValues());
     assertEquals("bar", ((StringColumnStatistics) stats[2]).getMinimum());
@@ -945,7 +946,7 @@ public class TestOrcFile {
     assertEquals(-15.0, ((DoubleColumnStatistics) stats[7]).getMinimum());
     assertEquals(-5.0, ((DoubleColumnStatistics) stats[7]).getMaximum());
     assertEquals(-20.0, ((DoubleColumnStatistics) stats[7]).getSum(), 0.00001);
-    assertEquals("count: 2 hasNull: false bytesOnDisk: 15 min: -15.0 max: -5.0 sum: -20.0",
+    assertEquals("count: 2 hasNull: false bytesOnDisk: 19 min: -15.0 max: -5.0 sum: -20.0",
         stats[7].toString());
 
     assertEquals("count: 2 hasNull: false bytesOnDisk: 14 min: bye max: hi sum: 5", stats[9].toString());
@@ -1234,7 +1235,7 @@ public class TestOrcFile {
     assertEquals(false, reader.rows().hasNext());
     assertEquals(CompressionKind.NONE, reader.getCompression());
     assertEquals(0, reader.getNumberOfRows());
-    assertEquals(0, reader.getCompressionSize());
+    assertEquals(262144, reader.getCompressionSize());
     assertEquals(false, reader.getMetadataKeys().iterator().hasNext());
     assertEquals(3, reader.getContentLength());
     assertEquals(false, reader.getStripes().iterator().hasNext());

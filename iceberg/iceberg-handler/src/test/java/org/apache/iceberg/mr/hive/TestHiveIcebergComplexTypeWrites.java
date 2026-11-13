@@ -20,6 +20,7 @@
 package org.apache.iceberg.mr.hive;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
@@ -27,11 +28,13 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.mr.TestHelper;
+import org.apache.iceberg.mr.hive.test.utils.HiveIcebergTestUtils;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runners.Parameterized.Parameters;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
 
@@ -39,6 +42,12 @@ import static org.apache.iceberg.types.Types.NestedField.required;
  * Runs insert queries against Iceberg tables with complex type columns, such as arrays, structs and maps.
  */
 public class TestHiveIcebergComplexTypeWrites extends HiveIcebergStorageHandlerWithEngineBase {
+
+  @Parameters(name = "fileFormat={0}, catalog={1}, isVectorized={2}, formatVersion={3}")
+  public static Collection<Object[]> parameters() {
+    return HiveIcebergStorageHandlerWithEngineBase.getParameters(p ->
+        p.isVectorized() && p.formatVersion() == 2);
+  }
 
   @Test
   public void testWriteArrayOfPrimitivesInTable() throws IOException {
@@ -210,9 +219,16 @@ public class TestHiveIcebergComplexTypeWrites extends HiveIcebergStorageHandlerW
       query.append("),");
     } else if (type instanceof Types.StructType) {
       query.append("named_struct(");
-      ((GenericRecord) field).struct().fields().stream()
-          .forEach(f -> query.append(buildComplexTypeInnerQuery(f.name(), Types.StringType.get()))
-              .append(buildComplexTypeInnerQuery(((GenericRecord) field).getField(f.name()), f.type())));
+      ((GenericRecord) field)
+          .struct()
+          .fields()
+          .forEach(
+              f ->
+                  query
+                      .append(buildComplexTypeInnerQuery(f.name(), Types.StringType.get()))
+                      .append(
+                          buildComplexTypeInnerQuery(
+                              ((GenericRecord) field).getField(f.name()), f.type())));
       query.setLength(query.length() - 1);
       query.append("),");
     } else if (type instanceof Types.StringType) {

@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hadoop.hive.cli;
 
@@ -44,27 +45,8 @@ public class TestTezTPCDS30TBPerfCliDriver {
   @ClassRule
   public static TestRule cliClassRule = adapter.buildClassRule();
 
-  /**
-   * Rule for calling only {@link CliAdapter#setUp()} and {@link CliAdapter#tearDown()} before/after running each test.
-   *
-   * At the moment of writing this class the rule is mostly necessary for calling {@link CliAdapter#tearDown()} to avoid
-   * state from one test pass to other (e.g., disabling one test should not disable subsequent ones).
-   * 
-   * {@link CliAdapter#buildTestRule()} cannot not used since it is doing more than necessary for this test case. For
-   * instance, we do not want to create and destroy the metastore after each query.
-   */
   @Rule
-  public TestRule cliTestRule = (statement, description) -> new Statement() {
-    @Override
-    public void evaluate() throws Throwable {
-      adapter.setUp();
-      try {
-        statement.evaluate();
-      } finally {
-        adapter.tearDown();
-      }
-    }
-  };
+  public TestRule cliTestRule = adapter.buildTestRule();
 
   private final String name;
   private final File qfile;

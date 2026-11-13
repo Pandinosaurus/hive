@@ -1,16 +1,20 @@
 /*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.hive.storage.jdbc.conf;
 
@@ -45,6 +49,7 @@ public class JdbcStorageConfigManager {
   public static final String CONFIG_PWD_KEYSTORE = Constants.JDBC_KEYSTORE;
   public static final String CONFIG_PWD_KEY = Constants.JDBC_KEY;
   public static final String CONFIG_PWD_URI = Constants.JDBC_PASSWORD_URI;
+
   private static final EnumSet<JdbcStorageConfig> DEFAULT_REQUIRED_PROPERTIES =
     EnumSet.of(JdbcStorageConfig.DATABASE_TYPE,
                JdbcStorageConfig.JDBC_URL,
@@ -66,7 +71,9 @@ public class JdbcStorageConfigManager {
       if (!key.equals(CONFIG_PWD) &&
           !key.equals(CONFIG_PWD_KEYSTORE) &&
           !key.equals(CONFIG_PWD_KEY) &&
-          !key.equals(CONFIG_PWD_URI)) {
+          !key.equals(CONFIG_PWD_URI) &&
+          !key.equals(CONFIG_USERNAME)
+      ) {
         jobProps.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
       }
     }
@@ -192,11 +199,11 @@ public class JdbcStorageConfigManager {
   }
 
   private static String getMetastoreDatabaseType(HiveConf conf) {
-    return conf.getVar(HiveConf.ConfVars.METASTOREDBTYPE);
+    return conf.getVar(HiveConf.ConfVars.METASTORE_DB_TYPE);
   }
 
   private static String getMetastoreConnectionURL(HiveConf conf) {
-    return conf.getVar(HiveConf.ConfVars.METASTORECONNECTURLKEY);
+    return conf.getVar(HiveConf.ConfVars.METASTORE_CONNECT_URL_KEY);
   }
 
   private static String getMetastoreDriver(HiveConf conf) {
@@ -209,6 +216,6 @@ public class JdbcStorageConfigManager {
 
   private static String getMetastoreJdbcPasswd(HiveConf conf) throws IOException {
     return ShimLoader.getHadoopShims().getPassword(conf,
-        HiveConf.ConfVars.METASTOREPWD.varname);
+        HiveConf.ConfVars.METASTORE_PWD.varname);
   }
 }

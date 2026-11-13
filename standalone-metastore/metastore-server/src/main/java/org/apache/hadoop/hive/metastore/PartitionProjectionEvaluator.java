@@ -1,20 +1,20 @@
 /*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *  Licensed to the Apache Software Foundation (ASF) under one
- *  or more contributor license agreements.  See the NOTICE file
- *  distributed with this work for additional information
- *  regarding copyright ownership.  The ASF licenses this file
- *  to you under the Apache License, Version 2.0 (the
- *  "License"); you may not use this file except in compliance
- *  with the License.  You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.metastore;
@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableBiMap;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
@@ -32,7 +31,7 @@ import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.SerDeInfo;
 import org.apache.hadoop.hive.metastore.api.StorageDescriptor;
-import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.directsql.MetastoreDirectSqlUtils;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreServerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +53,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
-import static org.apache.hadoop.hive.metastore.MetastoreDirectSqlUtils.extractSqlLong;
+import static org.apache.hadoop.hive.metastore.directsql.MetastoreDirectSqlUtils.extractSqlLong;
 
 /**
  * Evaluator for partition projection filters which specify parts of the partition that should be
@@ -175,14 +174,14 @@ public class PartitionProjectionEvaluator {
     this.excludeParamKeyPattern = excludeParamKeyPattern;
     this.PARTITIONS =
         fieldNameToTableName.containsKey("PARTITIONS_TABLE_NAME") ? fieldNameToTableName
-            .get("PARTITIONS_TABLE_NAME") : "PARTITIONS";
+            .get("PARTITIONS_TABLE_NAME") : "\"PARTITIONS\"";
     this.SDS = fieldNameToTableName.containsKey("SDS_TABLE_NAME") ? fieldNameToTableName
-        .get("SDS_TABLE_NAME") : "SDS";
+        .get("SDS_TABLE_NAME") : "\"SDS\"";
     this.SERDES = fieldNameToTableName.containsKey("SERDES_TABLE_NAME") ? fieldNameToTableName
-        .get("SERDES_TABLE_NAME") : "SERDES";
+        .get("SERDES_TABLE_NAME") : "\"SERDES\"";
     this.PARTITION_PARAMS =
         fieldNameToTableName.containsKey("PARTITION_PARAMS") ? fieldNameToTableName
-            .get("PARTITION_PARAMS") : "PARTITION_PARAMS";
+            .get("PARTITION_PARAMS") : "\"PARTITION_PARAMS\"";
 
     roots = parse(projectionFields);
 
@@ -410,6 +409,8 @@ public class PartitionProjectionEvaluator {
                   // string to a boolean value
                   if (node.fieldName.equals("sd.compressed") || node.fieldName.equals("sd.storedAsSubDirectories")) {
                     value = MetastoreDirectSqlUtils.extractSqlBoolean(value);
+                  } else if (node.fieldName.equals("lastAccessTime") || node.fieldName.equals("createTime")) {
+                    value = MetastoreDirectSqlUtils.extractSqlInt(value);
                   }
                   MetaStoreServerUtils.setNestedProperty(partition, node.fieldName, value, true);
                 }
@@ -521,15 +522,13 @@ public class PartitionProjectionEvaluator {
     queryTextBuilder.append(SPACE);
     queryTextBuilder.append("from " + PARTITIONS);
     // if SD fields are selected add join clause with SDS
-    boolean foundSD = false;
     if (find(SD_PATTERN)) {
       queryTextBuilder.append(SPACE);
       queryTextBuilder.append(
           "left outer join " + SDS + " on " + PARTITIONS + ".\"SD_ID\" = " + SDS + ".\"SD_ID\"");
-      foundSD = true;
     }
     // if serde fields are selected add join clause on serdes
-    if (foundSD || find(SERDE_PATTERN)) {
+    if (find(SERDE_PATTERN)) {
       queryTextBuilder.append(SPACE);
       queryTextBuilder.append(
           "  left outer join " + SERDES + " on " + SDS + ".\"SERDE_ID\" = " + SERDES
@@ -684,7 +683,7 @@ public class PartitionProjectionEvaluator {
         throws MetaException {
       final String tableName =
           fieldNameToTableName.containsKey("PARTITION_KEY_VALS") ? fieldNameToTableName
-              .get("PARTITION_KEY_VALS") : "PARTITION_KEY_VALS";
+              .get("PARTITION_KEY_VALS") : "\"PARTITION_KEY_VALS\"";
       MetastoreDirectSqlUtils
           .setPartitionValues(tableName, pm, Joiner.on(',').join(partitions.keySet()), partitions);
     }
@@ -719,7 +718,7 @@ public class PartitionProjectionEvaluator {
       // children field names would be sd.cols.name, sd.cols.type or sd.cols.description
       List<String> childFields = getChildrenFieldNames(root);
       final String tableName = fieldNameToTableName.containsKey("COLUMNS_V2") ? fieldNameToTableName
-          .get("COLUMNS_V2") : "COLUMNS_V2";
+          .get("COLUMNS_V2") : "\"COLUMNS_V2\"";
       MetastoreDirectSqlUtils
           .setSDCols(tableName, childFields, pm, cds, Joiner.on(',').join(cds.keySet()));
     }
@@ -736,7 +735,7 @@ public class PartitionProjectionEvaluator {
         throws MetaException {
       final String tableName =
           fieldNameToTableName.containsKey("BUCKETING_COLS") ? fieldNameToTableName
-              .get("BUCKETING_COLS") : "BUCKETING_COLS";
+              .get("BUCKETING_COLS") : "\"BUCKETING_COLS\"";
       MetastoreDirectSqlUtils
           .setSDBucketCols(tableName, pm, sds, Joiner.on(',').join(sds.keySet()));
     }
@@ -753,7 +752,7 @@ public class PartitionProjectionEvaluator {
         throws MetaException {
       List<String> childFieldNames = getChildrenFieldNames(root);
       final String tableName = fieldNameToTableName.containsKey("SORT_COLS") ? fieldNameToTableName
-          .get("SORT_COLS") : "SORT_COLS";
+          .get("SORT_COLS") : "\"SORT_COLS\"";
       MetastoreDirectSqlUtils
           .setSDSortCols(tableName, childFieldNames, pm, sds, Joiner.on(',').join(sds.keySet()));
     }
@@ -780,7 +779,7 @@ public class PartitionProjectionEvaluator {
         TreeMap<Long, SerDeInfo> serdes, TreeMap<Long, List<FieldSchema>> cds)
         throws MetaException {
       final String tableName = fieldNameToTableName.containsKey("SD_PARAMS") ? fieldNameToTableName
-          .get("SD_PARAMS") : "SD_PARAMS";
+          .get("SD_PARAMS") : "\"SD_PARAMS\"";
       MetastoreDirectSqlUtils.setSDParameters(tableName, convertMapNullsToEmptyStrings, pm, sds,
           Joiner.on(',').join(sds.keySet()));
     }
@@ -797,7 +796,7 @@ public class PartitionProjectionEvaluator {
         throws MetaException {
       final String tableName =
           fieldNameToTableName.containsKey("SERDE_PARAMS") ? fieldNameToTableName
-              .get("SERDE_PARAMS") : "SERDE_PARAMS";
+              .get("SERDE_PARAMS") : "\"SERDE_PARAMS\"";
       MetastoreDirectSqlUtils.setSerdeParams(tableName, convertMapNullsToEmptyStrings, pm, serdes,
           Joiner.on(',').join(serdes.keySet()));
     }
@@ -814,7 +813,7 @@ public class PartitionProjectionEvaluator {
         throws MetaException {
       final String tableName =
           fieldNameToTableName.containsKey("SKEWED_COL_NAMES") ? fieldNameToTableName
-              .get("SKEWED_COL_NAMES") : "SKEWED_COL_NAMES";
+              .get("SKEWED_COL_NAMES") : "\"SKEWED_COL_NAMES\"";
       MetastoreDirectSqlUtils
           .setSkewedColNames(tableName, pm, sds, Joiner.on(',').join(sds.keySet()));
     }
@@ -831,10 +830,10 @@ public class PartitionProjectionEvaluator {
         throws MetaException {
       final String skewedStringListVals =
           fieldNameToTableName.containsKey("SKEWED_STRING_LIST_VALUES") ? fieldNameToTableName
-              .get("SKEWED_STRING_LIST_VALUES") : "SKEWED_STRING_LIST_VALUES";
+              .get("SKEWED_STRING_LIST_VALUES") : "\"SKEWED_STRING_LIST_VALUES\"";
       final String skewedVals =
           fieldNameToTableName.containsKey("SKEWED_VALUES") ? fieldNameToTableName
-              .get("SKEWED_VALUES") : "SKEWED_VALUES";
+              .get("SKEWED_VALUES") : "\"SKEWED_VALUES\"";
       MetastoreDirectSqlUtils.setSkewedColValues(skewedStringListVals, skewedVals, pm, sds,
           Joiner.on(',').join(sds.keySet()));
     }
@@ -851,10 +850,10 @@ public class PartitionProjectionEvaluator {
         throws MetaException {
       final String skewedStringListVals =
           fieldNameToTableName.containsKey("SKEWED_STRING_LIST_VALUES") ? fieldNameToTableName
-              .get("SKEWED_STRING_LIST_VALUES") : "SKEWED_STRING_LIST_VALUES";
+              .get("SKEWED_STRING_LIST_VALUES") : "\"SKEWED_STRING_LIST_VALUES\"";
       final String skewedColValLocMap =
           fieldNameToTableName.containsKey("SKEWED_COL_VALUE_LOC_MAP") ? fieldNameToTableName
-              .get("SKEWED_COL_VALUE_LOC_MAP") : "SKEWED_COL_VALUE_LOC_MAP";
+              .get("SKEWED_COL_VALUE_LOC_MAP") : "\"SKEWED_COL_VALUE_LOC_MAP\"";
       MetastoreDirectSqlUtils
           .setSkewedColLocationMaps(skewedColValLocMap, skewedStringListVals, pm, sds,
               Joiner.on(',').join(sds.keySet()));

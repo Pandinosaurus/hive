@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.kafka;
@@ -140,7 +141,7 @@ class KafkaRecordIterator implements Iterator<ConsumerRecord<byte[], byte[]>> {
       }
     } else {
       // case seek to beginning of stream
-      consumer.seekToBeginning(Collections.singleton(topicPartition));
+      consumer.seekToBeginning(topicPartitionList);
       // seekToBeginning is lazy thus need to call position() or poll(0)
       this.startOffset = consumer.position(topicPartition);
       LOG.info("Consumer at beginning of topic partition [{}], current start offset [{}]",

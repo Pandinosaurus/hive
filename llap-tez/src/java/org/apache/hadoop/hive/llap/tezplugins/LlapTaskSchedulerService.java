@@ -1,15 +1,20 @@
 /*
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.tezplugins;
@@ -24,6 +29,7 @@ import org.apache.hadoop.hive.llap.tezplugins.scheduler.StatsPerDag;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.metrics2.MetricsSource;
 import org.apache.hadoop.metrics2.MetricsSystem;
+import org.apache.hadoop.yarn.api.records.ApplicationAttemptId;
 import org.apache.hadoop.yarn.api.records.ApplicationId;
 
 import org.apache.hadoop.hive.registry.impl.TezAmRegistryImpl;
@@ -198,9 +204,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
                 "Lock metrics for R/W locks LLAP task scheduler", LOCK_METRICS);
   }
 
-  // TODO: this is an ugly hack; see the same in LlapTaskCommunicator for discussion.
-  //       This only lives for the duration of the service init.
-  static LlapTaskSchedulerService instance = null;
+  private final ApplicationAttemptId appAttemptId;
 
   private final Configuration conf;
 
@@ -372,7 +376,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
         Token<JobTokenIdentifier> token = createAmsToken(id);
         serializedToken = serializeToken(token);
         jobIdForToken = token.getService().toString();
-        sm = new JobTokenSecretManager();
+        sm = new JobTokenSecretManager(conf);
         sm.addTokenForJob(jobIdForToken, token);
       } else {
         serializedToken = jobIdForToken = null;
@@ -455,7 +459,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
       pauseMonitor.start();
       String displayName = "LlapTaskSchedulerMetrics-" + MetricsUtils.getHostName();
       String sessionId = conf.get("llap.daemon.metrics.sessionid");
-      // TODO: Not sure about the use of this. Should we instead use workerIdentity as sessionId?
+      // TODO: HIVE-29569: Not sure about the use of this. Should we instead use workerIdentity as sessionId?
       this.metrics = LlapTaskSchedulerMetrics.create(displayName, sessionId);
     } else {
       this.metrics = null;
@@ -470,17 +474,8 @@ public class LlapTaskSchedulerService extends TaskScheduler {
     this.workloadManagementEnabled =
         !StringUtils.isEmpty(conf.get(ConfVars.HIVE_SERVER2_TEZ_INTERACTIVE_QUEUE.varname, "").trim());
 
-    synchronized (LlapTaskCommunicator.pluginInitLock) {
-      LlapTaskCommunicator peer = LlapTaskCommunicator.instance;
-      if (peer != null) {
-        // We are the last to initialize.
-        this.setTaskCommunicator(peer);
-        peer.setScheduler(this);
-        LlapTaskCommunicator.instance = null;
-      } else {
-        instance = this;
-      }
-    }
+    this.appAttemptId = getContext().getApplicationAttemptId();
+    LlapPluginBroker.INSTANCE.registerScheduler(appAttemptId, this);
   }
 
   private Map<Integer, Set<Integer>> getDependencyInfo(TezDAGID depsDagId) {
@@ -565,7 +560,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
   private static Token<JobTokenIdentifier> createAmsToken(ApplicationId id) {
     if (!UserGroupInformation.isSecurityEnabled()) return null;
     JobTokenIdentifier identifier = new JobTokenIdentifier(new Text(id.toString()));
-    JobTokenSecretManager jobTokenManager = new JobTokenSecretManager();
+    JobTokenSecretManager jobTokenManager = new JobTokenSecretManager(new Configuration());
     Token<JobTokenIdentifier> sessionToken = new Token<>(identifier, jobTokenManager);
     sessionToken.setService(identifier.getJobId());
     return sessionToken;
@@ -848,7 +843,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
       if (amRegistry != null) {
         amRegistry.start();
         int pluginPort = pluginEndpoint != null ? pluginEndpoint.getActualPort() : -1;
-        amRegistry.register(amPort, pluginPort, HiveConf.getVar(conf, ConfVars.HIVESESSIONID),
+        amRegistry.register(amPort, pluginPort, HiveConf.getVar(conf, ConfVars.HIVE_SESSION_ID),
             serializedToken, jobIdForToken, 0);
       }
 
@@ -940,6 +935,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
 
   @Override
   public void shutdown() {
+    LlapPluginBroker.INSTANCE.unregisterScheduler(appAttemptId, this);
     writeLock.lock();
     try {
       if (!this.isStopped.getAndSet(true)) {
@@ -1080,6 +1076,9 @@ public class LlapTaskSchedulerService extends TaskScheduler {
     writeLock.lock();
     try {
       dagRunning = false;
+      if (metrics != null) {
+        metrics.setDagRunning(false);
+      }
       dagStats = new StatsPerDag();
       int pendingCount = 0;
       for (Entry<Priority, List<TaskInfo>> entry : pendingTasks.entrySet()) {
@@ -1170,9 +1169,12 @@ public class LlapTaskSchedulerService extends TaskScheduler {
             task, priority, capability);
     if (!dagRunning) {
       if (metrics != null && id != null) {
-        metrics.setDagId(id.getTaskID().getVertexID().getDAGId().toString());
+        metrics.setDagId(id.getDAGID().toString());
       }
       dagRunning = true;
+      if (metrics != null) {
+        metrics.setDagRunning(true);
+      }
     }
     dagStats.registerTaskRequest(hosts, racks);
     addPendingTask(taskInfo);
@@ -1191,9 +1193,12 @@ public class LlapTaskSchedulerService extends TaskScheduler {
         task, priority, capability, containerId);
     if (!dagRunning) {
       if (metrics != null && id != null) {
-        metrics.setDagId(id.getTaskID().getVertexID().getDAGId().toString());
+        metrics.setDagId(id.getDAGID().toString());
       }
       dagRunning = true;
+      if (metrics != null) {
+        metrics.setDagRunning(true);
+      }
     }
     dagStats.registerTaskRequest(null, null);
     addPendingTask(taskInfo);
@@ -1204,7 +1209,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
   protected TezTaskAttemptID getTaskAttemptId(Object task) {
     // TODO: why does Tez API use "Object" for this?
     if (task instanceof TaskAttempt) {
-      return ((TaskAttempt)task).getID();
+      return ((TaskAttempt)task).getTaskAttemptID();
     }
     throw new AssertionError("LLAP plugin can only schedule task attempts");
   }
@@ -1716,7 +1721,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
         isGuaranteed ? guaranteedTasks : speculativeTasks;
     writeLock.lock();
     try {
-      WM_LOG.info("Registering " + taskInfo.attemptId + "; " + taskInfo.isGuaranteed);
+      WM_LOG.info("Registering {}, guaranteed: {}", taskInfo.attemptId, taskInfo.isGuaranteed);
       addToRunningTasksMap(runningTasks, taskInfo);
       if (metrics != null) {
         metrics.decrPendingTasksCount();
@@ -2108,7 +2113,7 @@ public class LlapTaskSchedulerService extends TaskScheduler {
           if (preemptHosts != null && !preemptHosts.contains(taskInfo.getAssignedNode().getHost())) {
             continue; // Not the right host.
           }
-          Map<Integer, Set<Integer>> depInfo = getDependencyInfo(taskInfo.getAttemptId().getTaskID().getVertexID().getDAGId());
+          Map<Integer, Set<Integer>> depInfo = getDependencyInfo(taskInfo.getAttemptId().getDAGID());
           Set<Integer> vertexDepInfo = null;
           if (depInfo != null) {
             vertexDepInfo = depInfo.get(vertexNum(forTask));
@@ -3160,6 +3165,11 @@ public class LlapTaskSchedulerService extends TaskScheduler {
 
   void setTaskCommunicator(LlapTaskCommunicator communicator) {
     this.communicator = communicator;
+  }
+
+  @VisibleForTesting
+  LlapTaskCommunicator getTaskCommunicator() {
+    return communicator;
   }
 
 

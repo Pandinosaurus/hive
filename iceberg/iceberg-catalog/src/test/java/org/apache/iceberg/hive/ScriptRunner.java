@@ -8,11 +8,12 @@
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
  *
  *  Slightly modified version of the com.ibatis.common.jdbc.ScriptRunner class
  *  from the iBATIS Apache project. Only removed dependency on Resource class
@@ -38,10 +39,10 @@ public class ScriptRunner {
 
   private static final String DEFAULT_DELIMITER = ";";
 
-  private Connection connection;
+  private final Connection connection;
 
-  private boolean stopOnError;
-  private boolean autoCommit;
+  private final boolean stopOnError;
+  private final boolean autoCommit;
 
   private PrintWriter logWriter = new PrintWriter(System.out);
   private PrintWriter errorLogWriter = new PrintWriter(System.err);
@@ -101,9 +102,7 @@ public class ScriptRunner {
       } finally {
         connection.setAutoCommit(originalAutoCommit);
       }
-    } catch (IOException e) {
-      throw e;
-    } catch (SQLException e) {
+    } catch (IOException | SQLException e) {
       throw e;
     } catch (Exception e) {
       throw new RuntimeException("Error running script.  Cause: " + e, e);
@@ -128,7 +127,7 @@ public class ScriptRunner {
     StringBuilder command = null;
     try {
       LineNumberReader lineReader = new LineNumberReader(reader);
-      String line = null;
+      String line;
       while ((line = lineReader.readLine()) != null) {
         if (command == null) {
           command = new StringBuilder();
@@ -136,14 +135,11 @@ public class ScriptRunner {
         String trimmedLine = line.trim();
         if (trimmedLine.startsWith("--")) {
           println(trimmedLine);
-        } else if (trimmedLine.length() < 1 || trimmedLine.startsWith("//")) {
-          // Do nothing
-        } else if (trimmedLine.length() < 1 || trimmedLine.startsWith("--")) {
+        } else if (trimmedLine.isEmpty() || trimmedLine.startsWith("//")) {
           // Do nothing
         } else if (!fullLineDelimiter && trimmedLine.endsWith(getDelimiter()) ||
             fullLineDelimiter && trimmedLine.equals(getDelimiter())) {
-          command.append(line.substring(0, line
-                  .lastIndexOf(getDelimiter())));
+          command.append(line, 0, line.lastIndexOf(getDelimiter()));
           command.append(" ");
           Statement statement = conn.createStatement();
 
@@ -199,12 +195,7 @@ public class ScriptRunner {
       if (!autoCommit) {
         conn.commit();
       }
-    } catch (SQLException e) {
-      e.fillInStackTrace();
-      printlnError("Error executing: " + command);
-      printlnError(e);
-      throw e;
-    } catch (IOException e) {
+    } catch (IOException | SQLException e) {
       e.fillInStackTrace();
       printlnError("Error executing: " + command);
       printlnError(e);

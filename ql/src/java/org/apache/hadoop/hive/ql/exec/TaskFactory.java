@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.exec;
@@ -31,6 +32,8 @@ import org.apache.hadoop.hive.ql.exec.repl.AtlasDumpTask;
 import org.apache.hadoop.hive.ql.exec.repl.AtlasDumpWork;
 import org.apache.hadoop.hive.ql.exec.repl.AtlasLoadTask;
 import org.apache.hadoop.hive.ql.exec.repl.AtlasLoadWork;
+import org.apache.hadoop.hive.ql.exec.repl.ClearDanglingTxnTask;
+import org.apache.hadoop.hive.ql.exec.repl.ClearDanglingTxnWork;
 import org.apache.hadoop.hive.ql.exec.repl.ReplDumpTask;
 import org.apache.hadoop.hive.ql.exec.repl.ReplDumpWork;
 import org.apache.hadoop.hive.ql.exec.repl.ReplLoadTask;
@@ -52,6 +55,7 @@ import org.apache.hadoop.hive.ql.exec.tez.TezTask;
 import org.apache.hadoop.hive.ql.io.merge.MergeFileTask;
 import org.apache.hadoop.hive.ql.io.merge.MergeFileWork;
 import org.apache.hadoop.hive.ql.plan.ColumnStatsUpdateWork;
+import org.apache.hadoop.hive.ql.plan.ColumnStatsDropWork;
 import org.apache.hadoop.hive.ql.plan.ConditionalWork;
 import org.apache.hadoop.hive.ql.plan.CopyWork;
 import org.apache.hadoop.hive.ql.plan.DependencyCollectionWork;
@@ -112,6 +116,7 @@ public final class TaskFactory {
         MapredLocalTask.class));
     taskvec.add(new TaskTuple<StatsWork>(StatsWork.class, StatsTask.class));
     taskvec.add(new TaskTuple<ColumnStatsUpdateWork>(ColumnStatsUpdateWork.class, ColumnStatsUpdateTask.class));
+    taskvec.add(new TaskTuple<>(ColumnStatsDropWork.class, ColumnStatsDropTask.class));
     taskvec.add(new TaskTuple<MergeFileWork>(MergeFileWork.class,
         MergeFileTask.class));
     taskvec.add(new TaskTuple<DependencyCollectionWork>(DependencyCollectionWork.class,
@@ -131,6 +136,8 @@ public final class TaskFactory {
     taskvec.add(new TaskTuple<DirCopyWork>(DirCopyWork.class, DirCopyTask.class));
     taskvec.add(new TaskTuple<ScheduledQueryMaintenanceWork>(ScheduledQueryMaintenanceWork.class,
             ScheduledQueryMaintenanceTask.class));
+    taskvec.add(new TaskTuple<>(ClearDanglingTxnWork.class,
+            ClearDanglingTxnTask.class));
   }
 
   private static ThreadLocal<Integer> tid = new ThreadLocal<Integer>() {

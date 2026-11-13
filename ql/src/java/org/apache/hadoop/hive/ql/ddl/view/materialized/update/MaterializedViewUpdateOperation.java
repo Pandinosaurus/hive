@@ -9,16 +9,16 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.ql.ddl.view.materialized.update;
 
-import org.apache.hadoop.hive.common.ValidTxnWriteIdList;
 import org.apache.hadoop.hive.ql.ddl.DDLOperation;
 import org.apache.hadoop.hive.ql.ddl.DDLOperationContext;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
@@ -26,6 +26,8 @@ import org.apache.hadoop.hive.ql.metadata.HiveMaterializedViewsRegistry;
 import org.apache.hadoop.hive.ql.metadata.MaterializedViewMetadata;
 import org.apache.hadoop.hive.ql.metadata.Table;
 import org.apache.hadoop.hive.ql.parse.ExplainConfiguration.AnalyzeState;
+
+import static org.apache.hadoop.hive.ql.optimizer.calcite.rules.views.HiveMaterializedViewUtils.getSnapshotOf;
 
 /**
  * Operation process of updating a materialized view.
@@ -47,13 +49,13 @@ public class MaterializedViewUpdateOperation extends DDLOperation<MaterializedVi
         HiveMaterializedViewsRegistry.get().createMaterializedView(context.getDb().getConf(), mvTable);
       } else if (desc.isDisableRewrite()) {
         // Disabling rewriting, removing from cache
-        String[] names = desc.getName().split("\\.");
-        HiveMaterializedViewsRegistry.get().dropMaterializedView(names[0], names[1]);
+        Table mvTable = context.getDb().getTable(desc.getName());
+        HiveMaterializedViewsRegistry.get().dropMaterializedView(mvTable.getFullTableName());
       } else if (desc.isUpdateCreationMetadata()) {
         // We need to update the status of the creation signature
         Table mvTable = context.getDb().getTable(desc.getName());
         MaterializedViewMetadata newMetadata = mvTable.getMVMetadata().reset(
-                context.getConf().get(ValidTxnWriteIdList.VALID_TABLES_WRITEIDS_KEY));
+                getSnapshotOf(context, mvTable.getMVMetadata().getSourceTableNames()));
         context.getDb().updateCreationMetadata(mvTable.getDbName(), mvTable.getTableName(), newMetadata);
         mvTable.setMaterializedViewMetadata(newMetadata);
         HiveMaterializedViewsRegistry.get().refreshMaterializedView(context.getDb().getConf(), mvTable);

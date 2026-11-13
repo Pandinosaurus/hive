@@ -9,11 +9,12 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 package org.apache.hadoop.hive.llap.registry.impl;
@@ -41,7 +42,6 @@ import org.apache.curator.utils.CloseableUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
-import org.apache.hadoop.hive.llap.LlapUtil;
 import org.apache.hadoop.hive.llap.io.api.LlapProxy;
 import org.apache.hadoop.hive.llap.registry.LlapServiceInstance;
 import org.apache.hadoop.hive.llap.registry.LlapServiceInstanceSet;
@@ -72,7 +72,6 @@ public class LlapZookeeperRegistryImpl
   private static final String IPC_SHUFFLE = "shuffle";
   private static final String IPC_LLAP = "llap";
   private static final String IPC_OUTPUTFORMAT = "llapoutputformat";
-  private static final String IPC_EXTERNAL_LLAP = "externalllap";
   private final static String NAMESPACE_PREFIX = "llap-";
   private static final String SLOT_PREFIX = "slot-";
   private static final String SASL_LOGIN_CONTEXT_NAME = "LlapZooKeeperClient";
@@ -136,12 +135,6 @@ public class LlapZookeeperRegistryImpl
         HiveConf.getIntVar(conf, ConfVars.LLAP_DAEMON_OUTPUT_SERVICE_PORT)));
   }
 
-  private Endpoint getExternalRpcEndpoint() {
-    int port = HiveConf.getIntVar(conf, ConfVars.LLAP_EXTERNAL_CLIENT_CLOUD_RPC_PORT);
-    String host = LlapUtil.getPublicHostname();
-    return RegistryTypeUtils.ipcEndpoint(IPC_EXTERNAL_LLAP, new InetSocketAddress(host, port));
-  }
-
   @Override
   public String register() throws IOException {
     daemonZkRecord = new ServiceRecord();
@@ -151,11 +144,6 @@ public class LlapZookeeperRegistryImpl
     daemonZkRecord.addInternalEndpoint(getShuffleEndpoint());
     daemonZkRecord.addExternalEndpoint(getServicesEndpoint());
     daemonZkRecord.addInternalEndpoint(getOutputFormatEndpoint());
-    Endpoint externalRpcEndpoint = null;
-    if (LlapUtil.isCloudDeployment(conf)) {
-      externalRpcEndpoint = getExternalRpcEndpoint();
-      daemonZkRecord.addExternalEndpoint(externalRpcEndpoint);
-    }
 
     populateConfigValues(this.conf);
     Map<String, String> capacityValues = new HashMap<>(2);
@@ -168,6 +156,16 @@ public class LlapZookeeperRegistryImpl
     String uniqueId = UNIQUE_ID.toString();
     long znodeCreationTimeout = 120;
 
+    /* When no LLAP executors are running, the getInstances()/ llapRegistryService.getInstances() method results in
+     InvalidACL exception when Hive tries to evict the cache in DROP DATABASE/TABLE
+
+     As ContainerManager of zookeeper makes sure to cleanup znodes periodically, once query-coordinator zookeeper
+     client session is terminated,entire path will get deleted sooner or later. This results in InvalidACL exception
+
+     PersistentNode created on server will be preserved through restarts of query executor and makes sure
+     proactive eviction call of DROP DATABASE/ DROP TABLE go through
+     successfully. */
+    ensurePersistentNodePath(daemonZkRecord);
     initializeWithoutRegisteringInternal();
     // Create a znode under the rootNamespace parent for this instance of the server
     try {
@@ -185,15 +183,9 @@ public class LlapZookeeperRegistryImpl
     }
 
     registerServiceRecord(daemonZkRecord, uniqueId);
-    if (LlapUtil.isCloudDeployment(conf)) {
-      LOG.info("Registered node. Created a znode on ZooKeeper for LLAP instance: rpc: {}, external client rpc : {} "
-              + "shuffle: {}, webui: {}, mgmt: {}, znodePath: {}", rpcEndpoint, externalRpcEndpoint,
-          getShuffleEndpoint(), getServicesEndpoint(), getMngEndpoint(), getRegistrationZnodePath());
-    } else {
-      LOG.info("Registered node. Created a znode on ZooKeeper for LLAP instance: rpc: {}, "
-              + "shuffle: {}, webui: {}, mgmt: {}, znodePath: {}", rpcEndpoint, getShuffleEndpoint(),
-          getServicesEndpoint(), getMngEndpoint(), getRegistrationZnodePath());
-    }
+    LOG.info("Registered node. Created a znode on ZooKeeper for LLAP instance: rpc: {}, "
+            + "shuffle: {}, webui: {}, mgmt: {}, znodePath: {}", rpcEndpoint, getShuffleEndpoint(),
+        getServicesEndpoint(), getMngEndpoint(), getRegistrationZnodePath());
 
     return uniqueId;
   }
@@ -231,9 +223,6 @@ public class LlapZookeeperRegistryImpl
     private final int outputFormatPort;
     private final String serviceAddress;
 
-    private String externalHost;
-    private int externalClientsRpcPort;
-
     private final Resource resource;
 
     public DynamicServiceInstance(ServiceRecord srv) throws IOException {
@@ -256,15 +245,6 @@ public class LlapZookeeperRegistryImpl
       this.serviceAddress =
           RegistryTypeUtils.getAddressField(services.addresses.get(0), AddressTypes.ADDRESS_URI);
 
-      if (LlapUtil.isCloudDeployment(conf)) {
-        final Endpoint externalRpc = srv.getExternalEndpoint(IPC_EXTERNAL_LLAP);
-        this.externalHost = RegistryTypeUtils.getAddressField(externalRpc.addresses.get(0),
-            AddressTypes.ADDRESS_HOSTNAME_FIELD);
-        this.externalClientsRpcPort = Integer.parseInt(
-            RegistryTypeUtils.getAddressField(externalRpc.addresses.get(0),
-                AddressTypes.ADDRESS_PORT_FIELD));
-      }
-
       String memStr = srv.get(ConfVars.LLAP_DAEMON_MEMORY_PER_INSTANCE_MB.varname, "");
       String coreStr = srv.get(LlapRegistryService.LLAP_DAEMON_NUM_ENABLED_EXECUTORS, "");
       try {
@@ -283,18 +263,6 @@ public class LlapZookeeperRegistryImpl
     @Override
     public String getServicesAddress() {
       return serviceAddress;
-    }
-
-    @Override
-    public String getExternalHostname() {
-      ensureCloudEnv(LlapZookeeperRegistryImpl.this.conf);
-      return externalHost;
-    }
-
-    @Override
-    public int getExternalClientsRpcPort() {
-      ensureCloudEnv(LlapZookeeperRegistryImpl.this.conf);
-      return externalClientsRpcPort;
     }
 
     @Override
